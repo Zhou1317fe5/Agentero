@@ -19,6 +19,8 @@
 | 打开笔记 | 论文 tab 右键 /文件树论文行右键 → NOTES 进右侧阅读列（已开则聚焦） |
 | 关光文档 | 回到全库 Library panel |
 
+标题栏 Layout 菜单中的论文预设只改变当前论文的 Notes 分屏和外层 Agent panel 宽度：Agent 模式为 PDF / Agent `1:1`，笔记模式为 PDF / Notes / Agent `1:1:1`，阅读模式关闭 Notes 与 Agent。其它 PDF tab 保持打开。
+
 标签组 chip 的颜色菜单会将展开/收起 icon 染为对应颜色，并同步用于组内 tab 的强调线；清除颜色后恢复默认颜色。
 
 布局只存 dockview `toJSON()`；path/mode/title 在 panel params。同一路径可存在多个 split pane，panel id 保留 pane 实例后缀用于恢复布局。

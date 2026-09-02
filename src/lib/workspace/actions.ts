@@ -42,6 +42,7 @@ import {
 	plazaSourceForPath,
 } from "@/lib/plaza";
 import { loadSettings } from "@/lib/settings";
+import { setLayoutMode } from "@/lib/shell/ui-store";
 import {
 	type FileNode,
 	isMarkdownPath,
@@ -366,7 +367,7 @@ export function openTab(
  * Closing a paper body (PDF/HTML) also closes its NOTES companion;
  * closing NOTES leaves the body open.
  */
-export function closeTab(id: string): void {
+export function closeTab(id: string, opts: { remember?: boolean } = {}): void {
 	// Resolve pair before setState so Strict Mode double-invoke is stable.
 	const idsToClose = readingPairCloseIds(getTabs(), id);
 	const active = getActiveTabId();
@@ -374,7 +375,7 @@ export function closeTab(id: string): void {
 		notePaperFocus(null);
 	}
 
-	rememberClosedTabs(idsToClose);
+	if (opts.remember !== false) rememberClosedTabs(idsToClose);
 
 	setTabs((prev) => {
 		let next = prev;
@@ -547,10 +548,9 @@ export function closeTabOrWindow(): void {
 	closeWindow();
 }
 
-/** Toggle NOTES.md panel for the active paper (⌘\ / Layout menu). */
-export function toggleNotesSplit(): void {
+function activeNotesTarget(): DocTab | null {
 	const id = getActiveTabId();
-	if (!id) return;
+	if (!id) return null;
 	const tab = getTabs().find((t) => t.id === id);
 	// NOTES may be toggled from paper PDF/HTML, or when NOTES panel itself is active.
 	const paper =
@@ -563,11 +563,22 @@ export function toggleNotesSplit(): void {
 						tab?.path &&
 						normalizeTabPath(t.notesPath) === normalizeTabPath(tab.path),
 				);
-	const target = paper ?? tab;
+	return paper ?? tab ?? null;
+}
+
+/** Set the active paper's NOTES panel without touching other PDF tabs. */
+export function setNotesSplit(open: boolean): void {
+	setLayoutMode("custom");
+	const target = activeNotesTarget();
 	if (!target?.notesPath) return;
 	const notesId = tabIdForPath(target.notesPath);
-	if (tabHasNotesSplit(getTabs(), target)) {
-		closeTab(notesId);
+	const isOpen = tabHasNotesSplit(getTabs(), target);
+	if (isOpen === open) {
+		if (open) dockHandle()?.equalizeGridGroups();
+		return;
+	}
+	if (!open) {
+		closeTab(notesId, { remember: false });
 		return;
 	}
 	if (!tabNotesEligible(target) && target.kind !== "paper") return;
@@ -584,7 +595,15 @@ export function toggleNotesSplit(): void {
 		return [...prev, notesPane];
 	});
 	dockHandle()?.openPanel(notesPane, notesPlacement);
+	dockHandle()?.equalizeGridGroups();
 	setActiveTabId(notesPane.id);
+}
+
+/** Toggle NOTES.md panel for the active paper (⌘\ / Layout menu). */
+export function toggleNotesSplit(): void {
+	const target = activeNotesTarget();
+	if (!target) return;
+	setNotesSplit(!tabHasNotesSplit(getTabs(), target));
 }
 
 /** Open (or focus) the NOTES.md panel of a paper body tab (tab context menu). */

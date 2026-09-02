@@ -85,6 +85,8 @@ export type DockWorkspaceHandle = {
 	cycleActive: (delta: number) => void;
 	/** Activate an existing panel by id. */
 	activatePanel: (panelId: string) => void;
+	/** Make all visible Dockview grid groups equal width. */
+	equalizeGridGroups: () => void;
 };
 
 type WorkspaceCtx = {
@@ -651,6 +653,11 @@ export const DockWorkspace = memo(
 				},
 				activatePanel(panelId) {
 					apiRef.current?.getPanel(panelId)?.api.setActive();
+				},
+				equalizeGridGroups() {
+					const api = apiRef.current;
+					if (!api) return;
+					rebalanceGridGroupWidths(api);
 				},
 			}),
 			[endSync],

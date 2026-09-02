@@ -9,6 +9,7 @@ import type { PaperSearchGroup, SkillDiscovery } from "@/lib/paper/lookup";
 import type { PaletteMode } from "@/lib/shell/commands/types";
 
 export type RightSidebarTab = "agent" | "annotations";
+export type LayoutMode = "agent" | "notes" | "reading" | "custom";
 
 /** Crop + multi-turn payload when opening a visual-trace pin in Agent. */
 export type AgentSessionOpenVisualTrace = {
@@ -61,6 +62,8 @@ export type PaperSearchDraftGroup = PaperSearchGroup & {
 
 type UiStore = {
 	sidebarCollapsed: boolean;
+	/** Last layout preset selected from the title-bar menu. */
+	layoutMode: LayoutMode;
 	/** Right sidebar (⌘L): Agent (default) or Annotations. */
 	rightSidebarOpen: boolean;
 	rightSidebarTab: RightSidebarTab;
@@ -89,6 +92,7 @@ type UiStore = {
 
 export const uiStore = createStore<UiStore>(() => ({
 	sidebarCollapsed: false,
+	layoutMode: "custom",
 	rightSidebarOpen: false,
 	rightSidebarTab: "agent",
 	agentPanelMounted: false,
@@ -106,6 +110,10 @@ export const uiStore = createStore<UiStore>(() => ({
 
 export function setSidebarCollapsedState(collapsed: boolean): void {
 	uiStore.setState({ sidebarCollapsed: collapsed });
+}
+
+export function setLayoutMode(layoutMode: LayoutMode): void {
+	uiStore.setState({ layoutMode });
 }
 
 export function setRightSidebarOpenState(open: boolean): void {
@@ -208,6 +216,7 @@ export type LayoutController = {
 		collapsed: boolean,
 		opts?: { focusAgent?: boolean },
 	) => void;
+	applyLayoutMode: (mode: Exclude<LayoutMode, "custom">) => void;
 	/** Expand the left rail and move focus into it. */
 	focusSidebar: () => void;
 	focusEditorPane: () => void;
@@ -227,6 +236,7 @@ export function layout(): LayoutController | null {
 export function toggleSidebar(): void {
 	const { sidebarCollapsed } = uiStore.getState();
 	// React state is source of truth — isCollapsed() can lag at 0px.
+	setLayoutMode("custom");
 	layout()?.setLeftCollapsed(!sidebarCollapsed);
 }
 

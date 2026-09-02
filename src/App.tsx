@@ -64,6 +64,7 @@ import {
 import {
 	layout,
 	openPalette,
+	setLayoutMode,
 	setRightSidebarOpenState,
 	setSidebarCollapsedState,
 	toggleSidebar,
@@ -133,6 +134,7 @@ function zoomReset(): void {
 function AppTitleBar() {
 	const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
 	const rightSidebarOpen = useUiStore((s) => s.rightSidebarOpen);
+	const layoutMode = useUiStore((s) => s.layoutMode);
 
 	return (
 		<TitleBar
@@ -140,8 +142,10 @@ function AppTitleBar() {
 			showSettingsGear={showSettingsGear}
 			sidebarCollapsed={sidebarCollapsed}
 			rightSidebarOpen={rightSidebarOpen}
+			layoutMode={layoutMode}
 			onToggleSidebar={toggleSidebar}
 			onToggleAgent={toggleChat}
+			onApplyLayoutMode={(mode) => layout()?.applyLayoutMode(mode)}
 			onOpenSettings={openSettingsWindow}
 		/>
 	);
@@ -393,6 +397,7 @@ export default function App() {
 									onResize={(size) => {
 										// Programmatic collapse/expand transition in flight.
 										if (animatingRailRef.current === "left") return;
+										setLayoutMode("custom");
 										// Only mark collapsed after a real collapse, never mid-drag.
 										if (size.inPixels <= 1) setSidebarCollapsedState(true);
 										else if (size.inPixels >= 80) {
@@ -456,6 +461,7 @@ export default function App() {
 							onResize={(size) => {
 								// Programmatic collapse/expand transition in flight.
 								if (animatingRailRef.current === "right") return;
+								setLayoutMode("custom");
 								if (size.inPixels <= 1) setRightSidebarOpenState(false);
 								else if (size.inPixels >= 80) {
 									setRightSidebarOpenState(true);
