@@ -144,6 +144,9 @@ export const AgentPanel = memo(function AgentPanel({
 		[clampComposerHeight],
 	);
 	const composerCompact = composerHeightPx <= COMPOSER_COMPACT_THRESHOLD_PX;
+	const composerDisplayHeightPx = composerCompact
+		? COMPOSER_MIN_HEIGHT_PX
+		: composerHeightPx;
 
 	const {
 		t,
@@ -362,7 +365,7 @@ export const AgentPanel = memo(function AgentPanel({
 
 							<AgentComposer
 								autoFocus={autoFocus}
-								heightPx={composerHeightPx}
+								heightPx={composerDisplayHeightPx}
 								compact={composerCompact}
 								activeTabIsRunning={activeTabIsRunning}
 								switching={switching}
