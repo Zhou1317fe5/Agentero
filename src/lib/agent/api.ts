@@ -74,6 +74,12 @@ export type AcpListSessionsResult = {
 	supported: boolean;
 };
 
+export type PromptImage = {
+	/** Raw base64 without data: prefix */
+	data: string;
+	mimeType: string;
+};
+
 export type AcpHistoryToolCall = {
 	id: string;
 	title: string;
@@ -97,6 +103,18 @@ export type AcpHistoryLine = {
 	/** Ordered parts for agent lines (reasoning/text/tool/plan). */
 	parts?: AcpHistoryPart[];
 	sources?: string[];
+	/** Visual PDF annotations attached to a user turn. */
+	visualAnnotations?: {
+		id: string;
+		/** 1-based PDF page number. */
+		page: number;
+		comment: string;
+		image: PromptImage;
+		/** Vault-relative paper path when known. */
+		paperPath?: string;
+	}[];
+	/** Multimodal images attached to a user turn. */
+	images?: PromptImage[];
 };
 
 export type AcpLoadSessionResult = {
@@ -430,12 +448,6 @@ export async function toolUninstallInfo(
 ): Promise<UninstallInfo | null> {
 	return invokeAgentApi("agent_tool_uninstall_info", { templateId });
 }
-
-export type PromptImage = {
-	/** Raw base64 without data: prefix */
-	data: string;
-	mimeType: string;
-};
 
 export async function runOnce(request: {
 	agentId?: string;
