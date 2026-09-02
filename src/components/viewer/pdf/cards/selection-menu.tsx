@@ -80,7 +80,7 @@ export function SelectionMenu({
 	const barW = readOnly ? BAR_W_READONLY : BAR_W_NORMAL;
 	let left = screen.x - barW / 2;
 	left = Math.min(Math.max(12, left), vw - barW - 12);
-	// Prefer just above the selection; flip below if near the top edge
+	// Prefer just above the selection; flip below if near the top edge.
 	let top = screen.y - BAR_H - 10;
 	let overContent = false;
 	if (top < 12) {
@@ -88,6 +88,8 @@ export function SelectionMenu({
 		// Menu sits below the selection and may cover body text.
 		overContent = true;
 	}
+	// Keep the toolbar on-screen even if the anchor page is scrolled out of view.
+	top = Math.max(12, Math.min(vh - BAR_H - 12, top));
 
 	const handleCopy = useCallback(() => {
 		onCopy();
