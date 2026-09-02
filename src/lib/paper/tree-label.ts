@@ -15,10 +15,13 @@ export {
 	type PaperTreeSortMode,
 } from "@/lib/paper/tree-modes";
 
-const LOCALE_CMP = { sensitivity: "base" as const };
+const PAPER_TREE_LABEL_COLLATOR = new Intl.Collator(undefined, {
+	numeric: true,
+	sensitivity: "base",
+});
 
 function cmpName(a: string, b: string): number {
-	return a.localeCompare(b, undefined, LOCALE_CMP);
+	return PAPER_TREE_LABEL_COLLATOR.compare(a, b);
 }
 
 function firstAuthorKey(meta: PaperMetadata | null | undefined): string {

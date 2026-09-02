@@ -79,11 +79,18 @@ export function isEagerTreeRel(rel: string): boolean {
 	return TREE_EAGER_ROOT_NAMES.has(top);
 }
 
+const VAULT_TREE_NAME_COLLATOR = new Intl.Collator(undefined, {
+	numeric: true,
+	sensitivity: "base",
+});
+
+export function compareVaultTreeNodes(a: FileNode, b: FileNode): number {
+	if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
+	return VAULT_TREE_NAME_COLLATOR.compare(a.name, b.name);
+}
+
 function sortNodes(nodes: FileNode[]): FileNode[] {
-	return [...nodes].sort((a, b) => {
-		if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
-		return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-	});
+	return [...nodes].sort(compareVaultTreeNodes);
 }
 
 /**

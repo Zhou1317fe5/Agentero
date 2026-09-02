@@ -12,6 +12,7 @@ use crate::core::error::AppError;
 use crate::features::catalog::CapsCache;
 use crate::features::import::has_local_tex;
 use serde::Serialize;
+use std::cmp::Ordering;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -78,6 +79,74 @@ fn should_ignore(name: &str) -> bool {
         return true;
     }
     name.ends_with(".egg-info")
+}
+
+fn natural_name_cmp(a: &str, b: &str) -> Ordering {
+    let mut ai = a.chars().peekable();
+    let mut bi = b.chars().peekable();
+
+    loop {
+        let Some(ac) = ai.peek().copied() else {
+            return if bi.peek().is_some() {
+                Ordering::Less
+            } else {
+                Ordering::Equal
+            };
+        };
+        let Some(bc) = bi.peek().copied() else {
+            return Ordering::Greater;
+        };
+
+        if ac.is_ascii_digit() && bc.is_ascii_digit() {
+            let mut anum = String::new();
+            while let Some(c) = ai.peek().copied() {
+                if !c.is_ascii_digit() {
+                    break;
+                }
+                anum.push(c);
+                ai.next();
+            }
+
+            let mut bnum = String::new();
+            while let Some(c) = bi.peek().copied() {
+                if !c.is_ascii_digit() {
+                    break;
+                }
+                bnum.push(c);
+                bi.next();
+            }
+
+            let a_trimmed = anum.trim_start_matches('0');
+            let b_trimmed = bnum.trim_start_matches('0');
+            let a_key = if a_trimmed.is_empty() { "0" } else { a_trimmed };
+            let b_key = if b_trimmed.is_empty() { "0" } else { b_trimmed };
+            match a_key.len().cmp(&b_key.len()).then_with(|| a_key.cmp(b_key)) {
+                Ordering::Equal => match anum.len().cmp(&bnum.len()) {
+                    Ordering::Equal => continue,
+                    tie => return tie,
+                },
+                cmp => return cmp,
+            }
+        }
+
+        let ac_folded = ac.to_lowercase().to_string();
+        let bc_folded = bc.to_lowercase().to_string();
+        match ac_folded.cmp(&bc_folded) {
+            Ordering::Equal => {
+                ai.next();
+                bi.next();
+            }
+            cmp => return cmp,
+        }
+    }
+}
+
+fn sort_nodes(nodes: &mut [VaultTreeNode]) {
+    nodes.sort_by(|a, b| match (a.kind, b.kind) {
+        ("directory", "file") => Ordering::Less,
+        ("file", "directory") => Ordering::Greater,
+        _ => natural_name_cmp(&a.name, &b.name),
+    });
 }
 
 /// Whether a vault-relative dir (`""` = root) belongs to a fully-walked tree.
@@ -232,6 +301,7 @@ fn list_dir(
         nodes.push(node);
     }
     nodes.extend(files);
+    sort_nodes(&mut nodes);
     nodes
 }
 
@@ -454,5 +524,28 @@ mod tests {
             warm < cold,
             "warm build ({warm:?}) should be faster than cold build ({cold:?})"
         );
+    }
+
+    #[test]
+    fn sorts_names_naturally_with_directories_first() {
+        let root = &temp_root("sort");
+        write(&root.join("papers/10-topic/NOTES.md"), "# n");
+        write(&root.join("papers/9-topic/NOTES.md"), "# n");
+        write(&root.join("10-note.md"), "x");
+        write(&root.join("9-note.md"), "x");
+
+        let tree = build_tree(root, &CapsCache::new());
+        let names: Vec<&str> = tree.iter().map(|n| n.name.as_str()).collect();
+        assert_eq!(names, vec!["papers", "9-note.md", "10-note.md"]);
+
+        let papers = find(&tree, "papers").unwrap();
+        let paper_names: Vec<&str> = papers
+            .children
+            .as_ref()
+            .unwrap()
+            .iter()
+            .map(|n| n.name.as_str())
+            .collect();
+        assert_eq!(paper_names, vec!["9-topic", "10-topic"]);
     }
 }
