@@ -14,6 +14,7 @@ import type {
 import type { PageAnnotationComment } from "@/components/viewer/pdf/types";
 import type { PdfVisualSessionTrace } from "@/lib/pdf/agent-trace";
 import { tracePreview } from "@/lib/pdf/agent-trace";
+import { traceMessages } from "@/lib/pdf/agent-trace/schema";
 import {
 	annotationSnippet,
 	annotationWikilinkAlias,
@@ -137,6 +138,15 @@ export function buildMarksIndex({
 					paperTitle,
 					annotationSnippet({ comment: trace.comment }),
 				) ?? null,
+			...(hasAgent
+				? {
+						messages: traceMessages(trace).map((m) => ({
+							id: m.id,
+							role: m.role,
+							content: m.content,
+						})),
+					}
+				: {}),
 		};
 		const list = comments.get(trace.page);
 		if (list) list.push(entry);

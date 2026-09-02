@@ -127,6 +127,13 @@ export type VisualDraftEditorState = {
 /** Discriminator for a right-rail comment card. */
 export type CommentRailKind = "highlight" | "visual";
 
+/** One turn from a visual mark's inline Agent conversation preview. */
+export type PageAnnotationCommentMessage = {
+	id: string;
+	role: "user" | "assistant";
+	content: string;
+};
+
 /** Persistent comment-rail card for one annotated highlight or visual note. */
 export type PageAnnotationComment = {
 	id: string;
@@ -142,6 +149,8 @@ export type PageAnnotationComment = {
 	kind: CommentRailKind;
 	/** Pre-computed `[[alias|target]]` or null if no wiki target. */
 	linkAlias: string | null;
+	/** Visual marks with an Agent conversation show a truncated inline preview. */
+	messages?: PageAnnotationCommentMessage[];
 };
 
 /**
