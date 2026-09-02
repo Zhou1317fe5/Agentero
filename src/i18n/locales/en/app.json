@@ -62,7 +62,7 @@
 		"hideRightSidebarHint": "Hide right sidebar ({{shortcut}})",
 		"layout": "Layout",
 		"layoutHint": "Choose layout",
-		"layoutModes": "Paper layout",
+		"layoutModes": "Window layout",
 		"layoutAgent": "Agent",
 		"layoutNotes": "Notes",
 		"layoutReading": "Reading",

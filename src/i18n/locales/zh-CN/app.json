@@ -62,7 +62,7 @@
 		"hideRightSidebarHint": "隐藏右侧边栏 ({{shortcut}})",
 		"layout": "布局",
 		"layoutHint": "选择布局",
-		"layoutModes": "论文布局",
+		"layoutModes": "窗口布局",
 		"layoutAgent": "Agent",
 		"layoutNotes": "笔记",
 		"layoutReading": "阅读",
