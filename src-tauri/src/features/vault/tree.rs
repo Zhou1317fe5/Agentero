@@ -82,63 +82,48 @@ fn should_ignore(name: &str) -> bool {
 }
 
 fn natural_name_cmp(a: &str, b: &str) -> Ordering {
-    let mut ai = a.chars().peekable();
-    let mut bi = b.chars().peekable();
+    let a = a.as_bytes();
+    let b = b.as_bytes();
+    let mut ai = 0;
+    let mut bi = 0;
 
-    loop {
-        let Some(ac) = ai.peek().copied() else {
-            return if bi.peek().is_some() {
-                Ordering::Less
-            } else {
-                Ordering::Equal
-            };
-        };
-        let Some(bc) = bi.peek().copied() else {
-            return Ordering::Greater;
-        };
+    while ai < a.len() && bi < b.len() {
+        let ac = a[ai];
+        let bc = b[bi];
 
         if ac.is_ascii_digit() && bc.is_ascii_digit() {
-            let mut anum = String::new();
-            while let Some(c) = ai.peek().copied() {
-                if !c.is_ascii_digit() {
-                    break;
-                }
-                anum.push(c);
-                ai.next();
+            let mut a_end = ai;
+            while a_end < a.len() && a[a_end].is_ascii_digit() {
+                a_end += 1;
             }
 
-            let mut bnum = String::new();
-            while let Some(c) = bi.peek().copied() {
-                if !c.is_ascii_digit() {
-                    break;
-                }
-                bnum.push(c);
-                bi.next();
+            let mut b_end = bi;
+            while b_end < b.len() && b[b_end].is_ascii_digit() {
+                b_end += 1;
             }
 
-            let a_trimmed = anum.trim_start_matches('0');
-            let b_trimmed = bnum.trim_start_matches('0');
-            let a_key = if a_trimmed.is_empty() { "0" } else { a_trimmed };
-            let b_key = if b_trimmed.is_empty() { "0" } else { b_trimmed };
-            match a_key.len().cmp(&b_key.len()).then_with(|| a_key.cmp(b_key)) {
-                Ordering::Equal => match anum.len().cmp(&bnum.len()) {
-                    Ordering::Equal => continue,
-                    tie => return tie,
-                },
+            let a_num = &a[ai..a_end];
+            let b_num = &b[bi..b_end];
+            match a_num.len().cmp(&b_num.len()).then_with(|| a_num.cmp(b_num)) {
+                Ordering::Equal => {
+                    ai = a_end;
+                    bi = b_end;
+                    continue;
+                }
                 cmp => return cmp,
             }
         }
 
-        let ac_folded = ac.to_lowercase().to_string();
-        let bc_folded = bc.to_lowercase().to_string();
-        match ac_folded.cmp(&bc_folded) {
+        match ac.to_ascii_lowercase().cmp(&bc.to_ascii_lowercase()) {
             Ordering::Equal => {
-                ai.next();
-                bi.next();
+                ai += 1;
+                bi += 1;
             }
             cmp => return cmp,
         }
     }
+
+    a.len().cmp(&b.len())
 }
 
 fn sort_nodes(nodes: &mut [VaultTreeNode]) {

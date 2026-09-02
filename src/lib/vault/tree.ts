@@ -1,6 +1,7 @@
 import { errorText } from "@/lib/core/error";
 import { invokeApi } from "@/lib/core/ipc";
 import { toVaultRelative } from "@/lib/core/path";
+import { compareNaturalName } from "@/lib/core/sort";
 import { normalizePathKey } from "@/lib/vault/path";
 import {
 	isRemoteVaultHandle,
@@ -79,14 +80,9 @@ export function isEagerTreeRel(rel: string): boolean {
 	return TREE_EAGER_ROOT_NAMES.has(top);
 }
 
-const VAULT_TREE_NAME_COLLATOR = new Intl.Collator(undefined, {
-	numeric: true,
-	sensitivity: "base",
-});
-
 export function compareVaultTreeNodes(a: FileNode, b: FileNode): number {
 	if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
-	return VAULT_TREE_NAME_COLLATOR.compare(a.name, b.name);
+	return compareNaturalName(a.name, b.name);
 }
 
 function sortNodes(nodes: FileNode[]): FileNode[] {

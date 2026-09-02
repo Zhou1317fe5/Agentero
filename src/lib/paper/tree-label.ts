@@ -1,3 +1,4 @@
+import { compareNaturalName } from "@/lib/core/sort";
 import { isPaperDirectory } from "@/lib/paper/detect";
 import type {
 	PaperTreeLabelMode,
@@ -14,15 +15,6 @@ export {
 	type PaperTreeLabelMode,
 	type PaperTreeSortMode,
 } from "@/lib/paper/tree-modes";
-
-const PAPER_TREE_LABEL_COLLATOR = new Intl.Collator(undefined, {
-	numeric: true,
-	sensitivity: "base",
-});
-
-function cmpName(a: string, b: string): number {
-	return PAPER_TREE_LABEL_COLLATOR.compare(a, b);
-}
 
 function firstAuthorKey(meta: PaperMetadata | null | undefined): string {
 	if (!meta?.authors?.length) return "";
@@ -83,15 +75,15 @@ export function sortFileTreeNodes(
 		if (a.kind !== b.kind) return a.kind === "directory" ? -1 : 1;
 
 		// Files always by name
-		if (a.kind === "file") return cmpName(a.name, b.name);
+		if (a.kind === "file") return compareNaturalName(a.name, b.name);
 
 		// Default: org folders first, then papers by **display** name (matches tree labels)
 		if (mode === "folder") {
 			const aPaper = isPaperDirectory(a.path, a.children);
 			const bPaper = isPaperDirectory(b.path, b.children);
 			if (aPaper !== bPaper) return aPaper ? 1 : -1;
-			const c = cmpName(displayKey(a), displayKey(b));
-			return c !== 0 ? c : cmpName(a.name, b.name);
+			const c = compareNaturalName(displayKey(a), displayKey(b));
+			return c !== 0 ? c : compareNaturalName(a.name, b.name);
 		}
 
 		const aPaper = isPaperDirectory(a.path, a.children);
@@ -99,7 +91,7 @@ export function sortFileTreeNodes(
 
 		// Metadata modes: org folders first (by name), then papers by criterion
 		if (aPaper !== bPaper) return aPaper ? 1 : -1;
-		if (!aPaper && !bPaper) return cmpName(a.name, b.name);
+		if (!aPaper && !bPaper) return compareNaturalName(a.name, b.name);
 
 		const am = metaOf(a);
 		const bm = metaOf(b);
@@ -107,15 +99,15 @@ export function sortFileTreeNodes(
 		if (mode === "title") {
 			const at = (am?.title ?? "").trim() || displayKey(a);
 			const bt = (bm?.title ?? "").trim() || displayKey(b);
-			const c = cmpName(at, bt);
-			return c !== 0 ? c : cmpName(a.name, b.name);
+			const c = compareNaturalName(at, bt);
+			return c !== 0 ? c : compareNaturalName(a.name, b.name);
 		}
 
 		if (mode === "author") {
 			const aa = firstAuthorKey(am) || displayKey(a).toLowerCase();
 			const ba = firstAuthorKey(bm) || displayKey(b).toLowerCase();
-			const c = cmpName(aa, ba);
-			return c !== 0 ? c : cmpName(a.name, b.name);
+			const c = compareNaturalName(aa, ba);
+			return c !== 0 ? c : compareNaturalName(a.name, b.name);
 		}
 
 		if (mode === "year-desc" || mode === "year-asc") {
@@ -127,8 +119,8 @@ export function sortFileTreeNodes(
 			if (ay !== null && by !== null && ay !== by) {
 				return mode === "year-desc" ? by - ay : ay - by;
 			}
-			const c = cmpName(displayKey(a), displayKey(b));
-			return c !== 0 ? c : cmpName(a.name, b.name);
+			const c = compareNaturalName(displayKey(a), displayKey(b));
+			return c !== 0 ? c : compareNaturalName(a.name, b.name);
 		}
 
 		// added-desc
@@ -138,8 +130,8 @@ export function sortFileTreeNodes(
 		const bMissing = bt === null;
 		if (aMissing !== bMissing) return aMissing ? 1 : -1;
 		if (at !== null && bt !== null && at !== bt) return bt - at;
-		const c = cmpName(displayKey(a), displayKey(b));
-		return c !== 0 ? c : cmpName(a.name, b.name);
+		const c = compareNaturalName(displayKey(a), displayKey(b));
+		return c !== 0 ? c : compareNaturalName(a.name, b.name);
 	};
 
 	return [...nodes].sort(compare).map((n) => {
