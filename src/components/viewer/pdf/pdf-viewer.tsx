@@ -822,7 +822,6 @@ function PdfViewerInner({
 		handleVisualDraft,
 		updateVisualComment,
 		handleVisualAddToChatById,
-		handleVisualOpenConversationById,
 		deleteVisualTraceById,
 	} = usePdfVisualMarks({
 		paperAbsPath,
@@ -909,7 +908,6 @@ function PdfViewerInner({
 		openCard,
 		openEditorForAnnotation,
 		beginRailEdit,
-		onOpenVisualConversation: handleVisualOpenConversationById,
 		annotationCap,
 		docId,
 		deleteHighlightAnnotation,
@@ -1359,6 +1357,13 @@ function PdfViewerInner({
 					onOpenSettings: openTranslateSettings,
 					onHide: hideActiveCard,
 					onDelete: deleteTranslateCard,
+				}}
+				visual={{
+					trace: activeVisualTrace,
+					onHide: hideActiveCard,
+					onDelete: () => {
+						if (activeVisualTrace) deleteVisualTraceById(activeVisualTrace.id);
+					},
 				}}
 			/>
 

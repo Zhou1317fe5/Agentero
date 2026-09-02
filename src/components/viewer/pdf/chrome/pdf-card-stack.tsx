@@ -7,12 +7,14 @@ import {
 import { PdfCrossrefPreview } from "@/components/viewer/pdf/cards/crossref-preview";
 import { SelectionMenu } from "@/components/viewer/pdf/cards/selection-menu";
 import { TranslateCard } from "@/components/viewer/pdf/cards/translate-card";
+import { VisualTraceCard } from "@/components/viewer/pdf/cards/visual-trace-card";
 import type {
 	CardScreenPoint,
 	CitationPreviewState,
 	CrossrefPreviewState,
 	SelectionMenuState,
 } from "@/components/viewer/pdf/types";
+import type { PdfVisualSessionTrace } from "@/lib/pdf/agent-trace";
 import type { PdfAskThread } from "@/lib/pdf/ask";
 import type { HighlightColor } from "@/lib/pdf/highlight/palette";
 import type { PdfTranslateRecord } from "@/lib/pdf/translate/types";
@@ -68,6 +70,11 @@ type PdfCardStackProps = {
 		onHide: () => void;
 		onDelete: () => void;
 	};
+	visual: {
+		trace: PdfVisualSessionTrace | null;
+		onHide: () => void;
+		onDelete: () => void;
+	};
 };
 
 /**
@@ -83,6 +90,7 @@ export function PdfCardStack({
 	onCardHoverLeave,
 	ask,
 	translate,
+	visual,
 }: PdfCardStackProps) {
 	if (typeof document === "undefined") return null;
 
@@ -152,6 +160,18 @@ export function PdfCardStack({
 					onOpenSettings={translate.onOpenSettings}
 					onHide={translate.onHide}
 					onDelete={translate.onDelete}
+					onPointerEnter={onCardHoverEnter}
+					onPointerLeave={onCardHoverLeave}
+				/>
+			) : null}
+
+			{visual.trace && cardScreen ? (
+				<VisualTraceCard
+					trace={visual.trace}
+					screen={cardScreen}
+					preferRight={cardScreen.preferRight ?? true}
+					onHide={visual.onHide}
+					onDelete={visual.onDelete}
 					onPointerEnter={onCardHoverEnter}
 					onPointerLeave={onCardHoverLeave}
 				/>
