@@ -1621,7 +1621,7 @@ Host 作为 ACP Client：按注册表 spawn 用户本机 Agent（`cwd` = 当前 
   - `uninstall`：镜像安装矩阵做 best-effort 清理（先 `resolve_command("npm")` 预检，缺失即报错而非假成功）——npm 全局包逐个 `npm uninstall -g`（unix 上适配器带 `--prefix "$HOME/.local"`，与安装一致）；dsh 删除受管目录 `~/.agentero/dsh-acp`，kimi-code 在 npm 卸载后删除 `~/.kimi-code`（Windows 为 `%USERPROFILE%\.kimi-code`）；**不改 shell rc**（官方 installer 写入的 PATH 行保留）、不处理官方脚本/brew 安装的 CLI（无法可靠定位）。Hermes 无 npm 包/受管目录 → 仅移除注册项（不跑命令）。成功后同命令联动删除该模板的 catalog 注册项（`catalog-{templateId}`，或 command+args 匹配），避免二进制已删而注册项残留；phase 用 `agent-lifecycle-uninstall` 推送进度。
   - 本机 lifecycle 全局串行执行，避免多个 npm 全局安装/升级任务并发抢锁或互相覆盖临时脚本；设置页在对应 Agent 卡片内展示安装 / 扫描 / 探测阶段进度（#250）。
   - 安装子进程运行期间，Host 以 `agent-lifecycle:progress` 推送 `agent-lifecycle-*` phase tick，供设置页行内进度条消费，避免快捷下载脚本长时间停在无进度状态。
-  - 若传入 `taskId`，等待 lifecycle 锁和执行安装子进程时会检查 `background_task_cancel`；取消是尽力而为，不回滚已完成的包管理器写入。
+  - 若传入 `taskId`，等待 lifecycle 锁和执行安装子进程时会检查 `background_task_cancel`；取消是尽力而为，不回滚已完成的包管理器写入。设置页 Agent 目录行与引导页 Agent 卡片在行内进度条上提供取消（X）按钮，点击即以本次 lifecycle 的 `taskId` 调 `background_task_cancel`；取消为静默处理（不弹错误 toast、不显示错误条）。
   - macOS/Linux：注入 login shell 的 `PATH`（GUI 窄 PATH）。
   - Windows：写唯一临时 `.bat` + `CREATE_NO_WINDOW` + `call` 前缀；安装进程 PATH 合并 npm/pnpm/WinGet/Scoop shim；批处理切到 UTF-8，错误输出按 UTF-8 优先、GBK 回退解码。
   - 在 `spawn_blocking` 中执行，避免卡住 async runtime。

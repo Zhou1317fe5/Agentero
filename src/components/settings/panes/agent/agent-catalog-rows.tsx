@@ -1,4 +1,11 @@
-import { ArrowUpCircle, Loader2, Pencil, Terminal, Trash2 } from "lucide-react";
+import {
+	ArrowUpCircle,
+	Loader2,
+	Pencil,
+	Terminal,
+	Trash2,
+	X,
+} from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentLogo } from "@/components/agent/agent-logo";
@@ -103,7 +110,12 @@ function AgentCatalogEntryRow({
 	openUninstallDialog: (target: UninstallTarget) => void;
 }) {
 	const { t } = useTranslation(["settings", "agent", "common"]);
-	const { lifecycleBusyIds, lifecycleProgress, runToolLifecycle } = lifecycle;
+	const {
+		lifecycleBusyIds,
+		lifecycleProgress,
+		runToolLifecycle,
+		cancelToolLifecycle,
+	} = lifecycle;
 	const installAgent = showInstallAgent(entry);
 	const installAcp = showInstallAcp(entry);
 	const updateAgent = showUpdateAgent(entry);
@@ -275,7 +287,7 @@ function AgentCatalogEntryRow({
 				</div>
 			</div>
 			{rowLifecycle ? (
-				<div className="grid grid-cols-[8rem_minmax(0,1fr)_2.5rem] items-center gap-3 pr-2">
+				<div className="grid grid-cols-[8rem_minmax(0,1fr)_2.5rem_1.5rem] items-center gap-3 pr-2">
 					<span className="truncate text-[11px] text-muted-foreground">
 						{rowLifecycle.detail}
 					</span>
@@ -285,6 +297,17 @@ function AgentCatalogEntryRow({
 							? ""
 							: `${Math.round(rowLifecycle.progress)}%`}
 					</span>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon-xs"
+						className="size-6"
+						aria-label={t("common:cancel")}
+						title={t("common:cancel")}
+						onClick={() => cancelToolLifecycle(entry.templateId)}
+					>
+						<X className="size-3.5" aria-hidden />
+					</Button>
 				</div>
 			) : null}
 		</div>
