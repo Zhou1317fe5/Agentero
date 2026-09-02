@@ -822,6 +822,7 @@ function PdfViewerInner({
 		handleVisualDraft,
 		updateVisualComment,
 		handleVisualAddToChatById,
+		handleVisualOpenConversationById,
 		deleteVisualTraceById,
 	} = usePdfVisualMarks({
 		paperAbsPath,
@@ -908,6 +909,7 @@ function PdfViewerInner({
 		openCard,
 		openEditorForAnnotation,
 		beginRailEdit,
+		onOpenVisualConversation: handleVisualOpenConversationById,
 		annotationCap,
 		docId,
 		deleteHighlightAnnotation,

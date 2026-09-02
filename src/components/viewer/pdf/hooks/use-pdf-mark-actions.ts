@@ -36,6 +36,11 @@ export type UsePdfMarkActionsOptions = {
 	openEditorForAnnotation: (id: string) => void;
 	/** Note editor: open the rail edit of a visual pin (#396). */
 	beginRailEdit: (state: RailEditState) => void;
+	/**
+	 * Open a visual mark's Agent conversation in the sidebar.
+	 * Called for visual pins whose mark has a conversation but no comment.
+	 */
+	onOpenVisualConversation?: (traceId: string) => void;
 	/** EmbedPDF capability; owned by `PdfViewerInner` (plugin context). */
 	annotationCap: AnnotationCapabilityProvides;
 	docId: string;
@@ -67,6 +72,7 @@ export function usePdfMarkActions({
 	openCard,
 	openEditorForAnnotation,
 	beginRailEdit,
+	onOpenVisualConversation,
 	annotationCap,
 	docId,
 	deleteHighlightAnnotation,
@@ -88,7 +94,14 @@ export function usePdfMarkActions({
 				const markId = pin.traceId || pin.id;
 				const tr = visualTracesRef.current.find((item) => item.id === markId);
 				if (!tr) return;
-				// Visual marks now edit in the right-rail comment card (#396).
+				const hasComment = tr.comment.trim().length > 0;
+				const hasAgent = Boolean(tr.agent);
+				// Marks with a comment open the rail editor. Marks that only carry
+				// an Agent conversation open that conversation in the sidebar.
+				if (!hasComment && hasAgent && onOpenVisualConversation) {
+					onOpenVisualConversation(tr.id);
+					return;
+				}
 				const state: RailEditState = {
 					id: tr.id,
 					pageIndex: tr.page - 1,
@@ -108,6 +121,7 @@ export function usePdfMarkActions({
 			openCard,
 			openEditorForAnnotation,
 			beginRailEdit,
+			onOpenVisualConversation,
 			threadsRef,
 			visualTracesRef,
 		],

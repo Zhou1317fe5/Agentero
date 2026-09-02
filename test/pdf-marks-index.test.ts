@@ -7,6 +7,7 @@ function visualTrace(opts: {
 	id: string;
 	page: number;
 	y: number;
+	comment?: string;
 	hasAgent?: boolean;
 }): PdfVisualSessionTrace {
 	return {
@@ -16,7 +17,7 @@ function visualTrace(opts: {
 		paperPath: "papers/test",
 		page: opts.page,
 		rects: [{ x: 0.1, y: opts.y, width: 0.2, height: 0.05 }],
-		comment: "region note",
+		comment: opts.comment ?? "region note",
 		image: { data: "base64", mimeType: "image/png" },
 		...(opts.hasAgent
 			? {
@@ -76,5 +77,46 @@ describe("buildMarksIndex", () => {
 		expect(comments[0]?.messages).toHaveLength(1);
 		expect(comments[0]?.messages?.[0]?.role).toBe("user");
 		expect(comments[0]?.messages?.[0]?.content).toBe("explain");
+	});
+
+	it("skips the comment card for agent-only marks without a comment", () => {
+		const index = buildMarksIndex({
+			highlights: [],
+			highlightAnchors: new Map(),
+			askPinAnchors: [],
+			translatePinAnchors: [],
+			visualTraces: [
+				visualTrace({
+					id: "v1",
+					page: 1,
+					y: 0.4,
+					comment: "",
+					hasAgent: true,
+				}),
+			],
+			pageTextMap: new Map(),
+			paperTitle: undefined,
+		});
+		expect(index.commentsByPage.get(1) ?? []).toHaveLength(0);
+		const pins = index.pinsByPage.get(1) ?? [];
+		expect(pins).toHaveLength(1);
+		expect(pins[0]?.kind).toBe("visual");
+	});
+
+	it("keeps a gutter pin for visual marks that have an agent conversation", () => {
+		const index = buildMarksIndex({
+			highlights: [],
+			highlightAnchors: new Map(),
+			askPinAnchors: [],
+			translatePinAnchors: [],
+			visualTraces: [
+				visualTrace({ id: "v1", page: 1, y: 0.4, hasAgent: true }),
+			],
+			pageTextMap: new Map(),
+			paperTitle: undefined,
+		});
+		const pins = index.pinsByPage.get(1) ?? [];
+		expect(pins).toHaveLength(1);
+		expect(pins[0]?.kind).toBe("visual");
 	});
 });

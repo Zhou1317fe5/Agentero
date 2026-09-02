@@ -122,37 +122,41 @@ export function buildMarksIndex({
 	}
 	for (const trace of visualTraces) {
 		const hasAgent = Boolean(trace.agent);
-		// Every visual mark has a right-rail comment card; the add-to-chat
-		// action lives there instead of in a floating card (#396).
-		const entry: PageAnnotationComment = {
-			id: trace.id,
-			pageIndex: trace.page - 1,
-			anchorY: trace.rects[0]?.y ?? 0,
-			rects: trace.rects,
-			quote: "",
-			comment: trace.comment,
-			color: DEFAULT_HIGHLIGHT_COLOR,
-			kind: "visual",
-			linkAlias:
-				annotationWikilinkAlias(
-					paperTitle,
-					annotationSnippet({ comment: trace.comment }),
-				) ?? null,
-			...(hasAgent
-				? {
-						messages: traceMessages(trace).map((m) => ({
-							id: m.id,
-							role: m.role,
-							content: m.content,
-						})),
-					}
-				: {}),
-		};
-		const list = comments.get(trace.page);
-		if (list) list.push(entry);
-		else comments.set(trace.page, [entry]);
-		// Marks with an active Agent conversation still keep a gutter pin so
-		// users can locate them; clicking the pin opens the rail card.
+		const hasComment = trace.comment.trim().length > 0;
+		// Visual marks with a user note get a comment-rail card. Marks that only
+		// carry an Agent conversation (no note) rely on the gutter pin to open
+		// the chat record, so they don't clutter the rail with an empty card.
+		if (hasComment) {
+			const entry: PageAnnotationComment = {
+				id: trace.id,
+				pageIndex: trace.page - 1,
+				anchorY: trace.rects[0]?.y ?? 0,
+				rects: trace.rects,
+				quote: "",
+				comment: trace.comment,
+				color: DEFAULT_HIGHLIGHT_COLOR,
+				kind: "visual",
+				linkAlias:
+					annotationWikilinkAlias(
+						paperTitle,
+						annotationSnippet({ comment: trace.comment }),
+					) ?? null,
+				...(hasAgent
+					? {
+							messages: traceMessages(trace).map((m) => ({
+								id: m.id,
+								role: m.role,
+								content: m.content,
+							})),
+						}
+					: {}),
+			};
+			const list = comments.get(trace.page);
+			if (list) list.push(entry);
+			else comments.set(trace.page, [entry]);
+		}
+		// Marks with an active Agent conversation keep a gutter pin. When there is
+		// no comment the pin becomes the conversation entry point.
 		if (hasAgent) {
 			const pageText = pageTextMap.get(trace.page - 1);
 			const pin = pinFromRects(trace.rects, pageText);

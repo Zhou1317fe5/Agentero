@@ -25,6 +25,7 @@ import type {
 	RailEditState,
 	VisualDraftEditorState,
 } from "@/components/viewer/pdf/types";
+import { agentSessionStore } from "@/lib/agent/agent-session-store";
 import { addVisualDraft } from "@/lib/agent/visual-context-store";
 import { errorText } from "@/lib/core/error";
 import { notifyError } from "@/lib/core/notify";
@@ -35,8 +36,13 @@ import {
 	writePdfVisualTrace,
 } from "@/lib/pdf/agent-trace";
 import { loadPdfVisualTraceImage } from "@/lib/pdf/agent-trace/image";
+import { traceMessages } from "@/lib/pdf/agent-trace/schema";
 import { DEFAULT_HIGHLIGHT_COLOR } from "@/lib/pdf/highlight/palette";
-import { openRightTab } from "@/lib/shell/ui-window-actions";
+import { setAgentPanelMounted } from "@/lib/shell/ui-store";
+import {
+	openRightTab,
+	requestOpenAgentSession,
+} from "@/lib/shell/ui-window-actions";
 
 export type UsePdfVisualMarksOptions = {
 	/** Sidecar root for `marks/<id>.json` (null for loose PDFs — nothing persists). */
@@ -67,6 +73,8 @@ export type PdfVisualMarks = {
 	updateVisualComment: (id: string, comment: string) => void;
 	/** Add an existing visual mark's crop to the Agent sidebar composer (#396). */
 	handleVisualAddToChatById: (id: string) => void;
+	/** Open a visual mark's Agent conversation in the sidebar. */
+	handleVisualOpenConversationById: (id: string) => void;
 	/** Drop a mark from state + disk (also used by the imperative handle). */
 	deleteVisualTraceById: (id: string) => void;
 };
@@ -190,6 +198,60 @@ export function usePdfVisualMarks({
 		[paperAbsPath, paperRelPath, t, visualTracesRef],
 	);
 
+	/** Open a visual mark's Agent conversation in the sidebar. */
+	const handleVisualOpenConversationById = useCallback(
+		(id: string) => {
+			const latest = visualTracesRef.current.find((tr) => tr.id === id);
+			const agent = latest?.agent;
+			if (!agent) return;
+			void (async () => {
+				setAgentPanelMounted(true);
+				const store = agentSessionStore.getState();
+				const existing =
+					store.findByVisualTraceId(latest.id) ??
+					(agent.providerSessionId
+						? store.findByProviderSessionId(agent.providerSessionId)
+						: undefined);
+				if (existing) {
+					store.setActiveTabId(existing.id);
+					store.setLines(existing.lines);
+				} else {
+					const messages = traceMessages(latest);
+					const image = await loadPdfVisualTraceImage(
+						paperAbsPath ?? "",
+						latest.image,
+					);
+					const title =
+						messages.find((m) => m.role === "user")?.content.trim() ||
+						latest.comment.trim() ||
+						t("pdfExplain.visualAnnotation");
+					const agentId = agent.agentId === "pending" ? "" : agent.agentId;
+					requestOpenAgentSession({
+						agentId,
+						runtimeSessionId: agent.runtimeSessionId,
+						providerSessionId: agent.providerSessionId,
+						messageId: agent.messageId,
+						title,
+						prompt: title,
+						answerSnapshot: agent.answerSnapshot,
+						paperAbsPath: paperAbsPath ?? undefined,
+						visualTrace: {
+							traceId: latest.id,
+							page: latest.page,
+							comment: latest.comment,
+							paperPath: latest.paperPath,
+							...(image ? { image } : {}),
+							messages: messages.map((m) => ({ ...m })),
+							status: agent.status,
+						},
+					});
+				}
+				openRightTab("agent");
+			})();
+		},
+		[paperAbsPath, t, visualTracesRef],
+	);
+
 	const deleteVisualTraceById = useCallback(
 		(id: string) => {
 			setVisualTraces((prev) => prev.filter((tr) => tr.id !== id));
@@ -202,6 +264,7 @@ export function usePdfVisualMarks({
 		handleVisualDraft,
 		updateVisualComment,
 		handleVisualAddToChatById,
+		handleVisualOpenConversationById,
 		deleteVisualTraceById,
 	};
 }
