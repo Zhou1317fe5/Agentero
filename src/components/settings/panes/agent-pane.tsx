@@ -84,6 +84,7 @@ export function AgentPane({
 
 	const handleAddCustom = useCallback(
 		async (draft: {
+			id?: string;
 			name: string;
 			command: string;
 			args: string;
@@ -93,11 +94,12 @@ export function AgentPane({
 			try {
 				const args = draft.args.trim().split(/\s+/).filter(Boolean);
 				await upsertAgent({
+					id: draft.id,
 					name: draft.name.trim() || draft.command,
 					template: "custom" as AgentTemplate,
 					command: draft.command.trim(),
 					args,
-					setDefault: true,
+					setDefault: !draft.id,
 				});
 				const scan = await scanOnce();
 				if (scan) {
@@ -167,6 +169,7 @@ export function AgentPane({
 					probingKeys={probingKeys}
 					lifecycle={lifecycle}
 					openUninstallDialog={openUninstallDialog}
+					onEditCustom={handleAddCustom}
 				/>
 				<AgentCustomForm busy={loading} onSubmit={handleAddCustom} />
 			</SettingsGroup>

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { isTauri } from "@/lib/core/tauri";
 
 export type CustomAgentFormDraft = {
+	id?: string;
 	name: string;
 	command: string;
 	args: string;
@@ -32,6 +33,7 @@ export function AgentCustomForm({
 
 	const onAddCustom = async () => {
 		const done = await onSubmit({
+			id: undefined,
 			name: formName,
 			command: formCommand,
 			args: formArgs,

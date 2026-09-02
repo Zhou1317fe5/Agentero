@@ -164,6 +164,9 @@ impl AgentRegistry {
 
         // Preserve probe history when re-saving the same id.
         let prev = guard.agents.iter().find(|a| a.id == id).cloned();
+        let preserve_probe = prev.as_ref().is_some_and(|p| {
+            p.command == req.command.trim() && p.args == req.args && p.env == req.env
+        });
 
         let descriptor = AgentDescriptor {
             id: id.clone(),
@@ -174,10 +177,18 @@ impl AgentRegistry {
             env: req.env,
             available,
             last_error,
-            last_probe_ok: prev.as_ref().and_then(|p| p.last_probe_ok),
-            last_probe_agent_name: prev.as_ref().and_then(|p| p.last_probe_agent_name.clone()),
-            last_probe_error: prev.as_ref().and_then(|p| p.last_probe_error.clone()),
-            last_probed_at: prev.as_ref().and_then(|p| p.last_probed_at.clone()),
+            last_probe_ok: preserve_probe
+                .then(|| prev.as_ref().and_then(|p| p.last_probe_ok))
+                .flatten(),
+            last_probe_agent_name: preserve_probe
+                .then(|| prev.as_ref().and_then(|p| p.last_probe_agent_name.clone()))
+                .flatten(),
+            last_probe_error: preserve_probe
+                .then(|| prev.as_ref().and_then(|p| p.last_probe_error.clone()))
+                .flatten(),
+            last_probed_at: preserve_probe
+                .then(|| prev.as_ref().and_then(|p| p.last_probed_at.clone()))
+                .flatten(),
         };
 
         if let Some(existing) = guard.agents.iter_mut().find(|a| a.id == id) {

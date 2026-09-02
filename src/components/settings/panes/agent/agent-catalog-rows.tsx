@@ -1,6 +1,8 @@
-import { ArrowUpCircle, Loader2, Terminal, Trash2 } from "lucide-react";
+import { ArrowUpCircle, Loader2, Pencil, Terminal, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentLogo } from "@/components/agent/agent-logo";
+import type { CustomAgentFormDraft } from "@/components/settings/panes/agent/agent-custom-form";
 import type { UninstallTarget } from "@/components/settings/panes/agent/use-agent-uninstall";
 import {
 	catalogProbeKey,
@@ -16,6 +18,8 @@ import {
 	showUpdateAgent,
 } from "@/components/settings/panes/agent-catalog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import type { useAgentToolLifecycle } from "@/hooks/use-agent-tool-lifecycle";
 import {
@@ -36,6 +40,7 @@ export function AgentCatalogRows({
 	probingKeys,
 	lifecycle,
 	openUninstallDialog,
+	onEditCustom,
 }: {
 	catalog: CatalogScanResponse | null;
 	/** Global scan busy — ProbingBadge inference needs it next to probingKeys. */
@@ -43,6 +48,7 @@ export function AgentCatalogRows({
 	probingKeys: ReadonlySet<string>;
 	lifecycle: AgentToolLifecycle;
 	openUninstallDialog: (target: UninstallTarget) => void;
+	onEditCustom: (draft: CustomAgentFormDraft) => Promise<boolean>;
 }) {
 	const { t } = useTranslation(["settings", "agent", "common"]);
 	const entries = catalog?.entries ?? [];
@@ -76,6 +82,7 @@ export function AgentCatalogRows({
 					probing={probingKeys.has(customProbeKey(agent.id))}
 					batchActive={batchActive}
 					openUninstallDialog={openUninstallDialog}
+					onSubmit={onEditCustom}
 				/>
 			))}
 		</>
@@ -290,73 +297,173 @@ function AgentCustomAgentRow({
 	probing,
 	batchActive,
 	openUninstallDialog,
+	onSubmit,
 }: {
 	agent: AgentDescriptor;
 	isDefault: boolean;
 	probing: boolean;
 	batchActive: boolean;
 	openUninstallDialog: (target: UninstallTarget) => void;
+	onSubmit: (draft: CustomAgentFormDraft) => Promise<boolean>;
 }) {
 	const { t } = useTranslation(["settings", "agent", "common"]);
 	const isProbing = isCustomAgentProbing(agent, probing, batchActive);
+	const [editing, setEditing] = useState(false);
+	const [formName, setFormName] = useState(agent.name);
+	const [formCommand, setFormCommand] = useState(agent.command);
+	const [formArgs, setFormArgs] = useState(agent.args.join(" "));
+
+	const resetForm = () => {
+		setFormName(agent.name);
+		setFormCommand(agent.command);
+		setFormArgs(agent.args.join(" "));
+	};
+
+	const onCancel = () => {
+		resetForm();
+		setEditing(false);
+	};
+
+	const onSave = async () => {
+		const done = await onSubmit({
+			id: agent.id,
+			name: formName,
+			command: formCommand,
+			args: formArgs,
+		});
+		if (done) {
+			setEditing(false);
+		}
+	};
+
 	return (
-		<div className="flex items-center justify-between gap-3 border-b py-2.5 pr-1.5 pl-3.5 last:border-b-0">
-			<div className="flex min-w-0 flex-1 items-center gap-4">
-				<div className="flex w-32 shrink-0 items-center gap-2">
-					<AgentLogo template={agent.template} />
-					<span className="min-w-0 truncate font-medium text-[13px]">
-						{agent.name}
-					</span>
+		<div className="border-b last:border-b-0">
+			<div className="flex items-center justify-between gap-3 py-2.5 pr-1.5 pl-3.5">
+				<div className="flex min-w-0 flex-1 items-center gap-4">
+					<div className="flex w-32 shrink-0 items-center gap-2">
+						<AgentLogo template={agent.template} />
+						<span className="min-w-0 truncate font-medium text-[13px]">
+							{agent.name}
+						</span>
+					</div>
+					<div className="flex min-w-0 flex-wrap items-center gap-1.5">
+						{isDefault ? (
+							<StatusBadge tone="primary">
+								{t("agent.badges.default")}
+							</StatusBadge>
+						) : null}
+						{isProbing ? (
+							<ProbingBadge label={t("agent.probing")} />
+						) : agent.lastProbeOk === true ? (
+							<StatusBadge tone="ok">{t("agent:acpStatus.ready")}</StatusBadge>
+						) : agent.lastProbeOk === false ? (
+							<StatusBadge
+								tone={isAgentAuthFailure(agent.lastProbeError) ? "warn" : "err"}
+								title={agent.lastProbeError ?? undefined}
+							>
+								{isAgentAuthFailure(agent.lastProbeError)
+									? t("agent:acpStatus.notLoggedIn")
+									: t("agent:acpStatus.failed")}
+							</StatusBadge>
+						) : agent.available ? (
+							<ProbingBadge label={t("agent.probing")} />
+						) : (
+							<StatusBadge tone="muted">
+								{t("agent:acpStatus.notInstalled")}
+							</StatusBadge>
+						)}
+					</div>
 				</div>
-				<div className="flex min-w-0 flex-wrap items-center gap-1.5">
-					{isDefault ? (
-						<StatusBadge tone="primary">
-							{t("agent.badges.default")}
-						</StatusBadge>
-					) : null}
-					{isProbing ? (
-						<ProbingBadge label={t("agent.probing")} />
-					) : agent.lastProbeOk === true ? (
-						<StatusBadge tone="ok">{t("agent:acpStatus.ready")}</StatusBadge>
-					) : agent.lastProbeOk === false ? (
-						<StatusBadge
-							tone={isAgentAuthFailure(agent.lastProbeError) ? "warn" : "err"}
-							title={agent.lastProbeError ?? undefined}
+				<div className="flex h-7 w-20 shrink-0 items-center justify-center gap-1">
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon-xs"
+						className="size-7"
+						aria-label={editing ? t("common:cancel") : t("common:edit")}
+						title={editing ? t("common:cancel") : t("common:edit")}
+						disabled={!isTauri()}
+						onClick={() => {
+							if (editing) {
+								onCancel();
+							} else {
+								resetForm();
+								setEditing(true);
+							}
+						}}
+					>
+						<Pencil className="size-3.5" aria-hidden />
+					</Button>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon-xs"
+						className="size-7"
+						aria-label={t("common:remove")}
+						title={t("common:remove")}
+						disabled={!isTauri()}
+						onClick={() =>
+							openUninstallDialog({
+								kind: "custom",
+								id: agent.id,
+								name: agent.name,
+								template: agent.template,
+							})
+						}
+					>
+						<Trash2 className="size-3.5 text-destructive" aria-hidden />
+					</Button>
+				</div>
+			</div>
+			{editing ? (
+				<div className="space-y-2.5 px-3.5 pb-3">
+					<div className="space-y-1">
+						<Label className="font-normal text-[13px]">
+							{t("agent.form.name")}
+						</Label>
+						<Input
+							value={formName}
+							onChange={(e) => setFormName(e.target.value)}
+							spellCheck={false}
+						/>
+					</div>
+					<div className="space-y-1">
+						<Label className="font-normal text-[13px]">
+							{t("agent.form.command")}
+						</Label>
+						<Input
+							value={formCommand}
+							onChange={(e) => setFormCommand(e.target.value)}
+							spellCheck={false}
+							autoComplete="off"
+						/>
+					</div>
+					<div className="space-y-1">
+						<Label className="font-normal text-[13px]">
+							{t("agent.form.args")}
+						</Label>
+						<Input
+							value={formArgs}
+							onChange={(e) => setFormArgs(e.target.value)}
+							spellCheck={false}
+							autoComplete="off"
+						/>
+					</div>
+					<div className="flex justify-end gap-1.5 pt-1">
+						<Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+							{t("common:cancel")}
+						</Button>
+						<Button
+							type="button"
+							size="sm"
+							disabled={!formCommand.trim()}
+							onClick={() => void onSave()}
 						>
-							{isAgentAuthFailure(agent.lastProbeError)
-								? t("agent:acpStatus.notLoggedIn")
-								: t("agent:acpStatus.failed")}
-						</StatusBadge>
-					) : agent.available ? (
-						<ProbingBadge label={t("agent.probing")} />
-					) : (
-						<StatusBadge tone="muted">
-							{t("agent:acpStatus.notInstalled")}
-						</StatusBadge>
-					)}
+							{t("common:save")}
+						</Button>
+					</div>
 				</div>
-			</div>
-			<div className="flex h-7 w-20 shrink-0 items-center justify-center gap-1">
-				<Button
-					type="button"
-					variant="ghost"
-					size="icon-xs"
-					className="size-7"
-					aria-label={t("common:remove")}
-					title={t("common:remove")}
-					disabled={!isTauri()}
-					onClick={() =>
-						openUninstallDialog({
-							kind: "custom",
-							id: agent.id,
-							name: agent.name,
-							template: agent.template,
-						})
-					}
-				>
-					<Trash2 className="size-3.5 text-destructive" aria-hidden />
-				</Button>
-			</div>
+			) : null}
 		</div>
 	);
 }
