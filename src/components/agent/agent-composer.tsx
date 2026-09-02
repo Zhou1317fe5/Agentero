@@ -151,7 +151,12 @@ export function AgentComposer(props: AgentComposerProps) {
 				className="relative flex min-h-0 flex-1 flex-col gap-1.5"
 			>
 				{/* Context / skill chips sit above the bordered prompt shell. */}
-				<div className="flex shrink-0 flex-wrap items-center gap-1.5 empty:hidden">
+				<div
+					className={cn(
+						"flex shrink-0 items-center gap-1.5 empty:hidden",
+						compact ? "flex-nowrap overflow-hidden" : "flex-wrap",
+					)}
+				>
 					<ComposerContextChips
 						compact={compact}
 						currentFilePath={props.currentFilePath}

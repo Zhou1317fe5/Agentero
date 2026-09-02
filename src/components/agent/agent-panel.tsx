@@ -21,6 +21,7 @@ import { cn } from "@/lib/core/utils";
 
 const COMPOSER_DEFAULT_HEIGHT_PX = 208;
 const COMPOSER_MIN_HEIGHT_PX = 88;
+const COMPOSER_COMPACT_WITH_CHIPS_HEIGHT_PX = 104;
 const COMPOSER_MAX_HEIGHT_PX = 360;
 const COMPOSER_COMPACT_THRESHOLD_PX = 160;
 const TRANSCRIPT_MIN_HEIGHT_PX = 160;
@@ -144,8 +145,16 @@ export const AgentPanel = memo(function AgentPanel({
 		[clampComposerHeight],
 	);
 	const composerCompact = composerHeightPx <= COMPOSER_COMPACT_THRESHOLD_PX;
+	const hasComposerChips =
+		panel.currentFilePath !== null ||
+		panel.mentionChipPaths.length > 0 ||
+		panel.selectionChips.length > 0 ||
+		panel.visualDrafts.length > 0 ||
+		panel.selectedSkills.length > 0;
 	const composerDisplayHeightPx = composerCompact
-		? COMPOSER_MIN_HEIGHT_PX
+		? hasComposerChips
+			? COMPOSER_COMPACT_WITH_CHIPS_HEIGHT_PX
+			: COMPOSER_MIN_HEIGHT_PX
 		: composerHeightPx;
 
 	const {
