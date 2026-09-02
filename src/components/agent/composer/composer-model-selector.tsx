@@ -72,7 +72,7 @@ export function ComposerModelSelector({
 						side: "bottom",
 					}}
 				>
-					<span className="min-w-0 truncate text-xs">
+					<span className="min-w-0 flex-1 truncate text-xs">
 						{selectedModelName ??
 							(warming ? t("models.loading") : t("models.button"))}
 					</span>
