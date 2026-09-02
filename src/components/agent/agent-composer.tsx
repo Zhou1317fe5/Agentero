@@ -269,7 +269,7 @@ export function AgentComposer(props: AgentComposerProps) {
 											className={cn(
 												"agentero-scroll min-h-0 flex-1 overflow-y-auto px-0 py-1 placeholder:text-muted-foreground/80",
 												compact
-													? "max-h-none min-w-0 text-sm leading-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+													? "h-6 max-h-none min-w-0 py-0 text-sm leading-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 													: "text-[15px] leading-6",
 											)}
 											value={composerText}

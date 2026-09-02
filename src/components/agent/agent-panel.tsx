@@ -22,7 +22,7 @@ import { cn } from "@/lib/core/utils";
 const COMPOSER_DEFAULT_HEIGHT_PX = 208;
 const COMPOSER_MIN_HEIGHT_PX = 88;
 const COMPOSER_MAX_HEIGHT_PX = 360;
-const COMPOSER_COMPACT_THRESHOLD_PX = 140;
+const COMPOSER_COMPACT_THRESHOLD_PX = 160;
 const TRANSCRIPT_MIN_HEIGHT_PX = 160;
 
 export type { AgentPanelProps } from "@/components/agent/types";
