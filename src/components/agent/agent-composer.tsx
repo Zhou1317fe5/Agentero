@@ -176,7 +176,8 @@ export function AgentComposer(props: AgentComposerProps) {
 					<PromptInput
 						className="h-full w-full"
 						inputGroupClassName={cn(
-							"!flex !h-full min-h-0 !flex-col overflow-hidden rounded-xl border border-border bg-background shadow-none transition-[background-color,box-shadow,border-color] duration-150",
+							"!flex min-h-0 !flex-col overflow-hidden rounded-xl border border-border bg-background shadow-none transition-[background-color,box-shadow,border-color] duration-150",
+							compact ? "h-auto" : "!h-full",
 							// Keep the same surface while any child is disabled or a run is
 							// in progress — never dim / recolor the composer for "processing".
 							"has-disabled:bg-transparent has-disabled:opacity-100 dark:has-disabled:bg-input/30 dark:bg-background",
