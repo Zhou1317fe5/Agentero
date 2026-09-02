@@ -59,7 +59,10 @@ import {
 	type PdfLayoutRegion,
 	type PointerOrigin,
 } from "@/lib/pdf/layout";
-import { PDF_PAGE_RASTER_DARK_CLASS } from "@/lib/pdf/page-theme";
+import {
+	PDF_ANNOTATION_DARK_CLASS,
+	PDF_PAGE_RASTER_DARK_CLASS,
+} from "@/lib/pdf/page-theme";
 import type { SelectionPin } from "@/lib/pdf/selection";
 
 /** A mark region pinned to a page (visual draft frame / formula legend frame). */
@@ -312,13 +315,13 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 		!!emphasizedComment && emphasizedComment.id === marks.hoveredCommentId;
 	const isEditingComment =
 		!!emphasizedComment && emphasizedComment.id === marks.editingCommentId;
-	// Page shell: paper-white in light mode; near-black when PDF dark mode is on
-	// so loading gaps match inverted page rasters.
+	// Page shell: paper-white in light mode; muted dark gray when PDF dark mode
+	// is on so loading gaps match the softer inverted page rasters.
 	return (
 		<div
 			className={cn(
 				"relative overflow-visible rounded-sm shadow-sm ring-1",
-				pdfDark ? "bg-zinc-900 ring-white/10" : "bg-white ring-black/5",
+				pdfDark ? "bg-zinc-800 ring-white/10" : "bg-white ring-black/5",
 			)}
 			style={{ width, height }}
 			{...{ [EMBED_PAGE_ATTR]: pageIndex }}
@@ -367,18 +370,31 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 				{mode.regionSelecting ? null : (
 					<SelectionLayer documentId={docId} pageIndex={pageIndex} />
 				)}
-				<AnnotationLayer
-					documentId={docId}
-					pageIndex={pageIndex}
-					selectionMenu={(menuProps) => (
-						<HighlightAnnotationMenu
-							{...menuProps}
-							onEdit={handlers.onEditHighlightAnnotation}
-							onDelete={handlers.onDeleteHighlightAnnotation}
-							onChangeColor={handlers.onChangeHighlightColor}
-						/>
+				{/*
+				 * AnnotationLayer is not inverted with the page rasters. In PDF dark
+				 * mode its bright highlight colors look glaring on dark paper, so
+				 * dim/saturation-reduce the whole layer slightly. Link annotations
+				 * are affected too but remain legible.
+				 */}
+				<div
+					className={cn(
+						"absolute inset-0",
+						pdfDark && PDF_ANNOTATION_DARK_CLASS,
 					)}
-				/>
+				>
+					<AnnotationLayer
+						documentId={docId}
+						pageIndex={pageIndex}
+						selectionMenu={(menuProps) => (
+							<HighlightAnnotationMenu
+								{...menuProps}
+								onEdit={handlers.onEditHighlightAnnotation}
+								onDelete={handlers.onDeleteHighlightAnnotation}
+								onChangeColor={handlers.onChangeHighlightColor}
+							/>
+						)}
+					/>
+				</div>
 				<PageTranslateTab
 					pageIndex={pageIndex}
 					active={pageTranslateState.active}

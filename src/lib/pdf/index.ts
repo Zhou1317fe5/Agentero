@@ -202,7 +202,10 @@ export {
 	subscribePaperOutline,
 } from "@/lib/pdf/outline-location";
 export { getPdfPageCount } from "@/lib/pdf/page-count";
-export { PDF_PAGE_RASTER_DARK_CLASS } from "@/lib/pdf/page-theme";
+export {
+	PDF_ANNOTATION_DARK_CLASS,
+	PDF_PAGE_RASTER_DARK_CLASS,
+} from "@/lib/pdf/page-theme";
 export { readReadingPage, writeReadingPage } from "@/lib/pdf/reading-position";
 export {
 	normalizedRegionFromPoints,
