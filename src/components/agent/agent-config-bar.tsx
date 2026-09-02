@@ -102,7 +102,7 @@ export function AgentConfigBar({
 										size="sm"
 										className="h-7 max-w-[min(10rem,100%)] gap-1 px-1.5 text-xs font-medium text-foreground"
 									>
-										<span className="truncate">
+										<span className="min-w-0 truncate">
 											{t("composer.collaboration.label")}:{" "}
 											{selectedCollaborationName ??
 												collaborationModeId ??
@@ -126,7 +126,7 @@ export function AgentConfigBar({
 									)}
 									onSelect={() => onPickCollaborationMode(mode.id)}
 								>
-									<span className="truncate">{mode.name}</span>
+									<span className="min-w-0 truncate">{mode.name}</span>
 									{collaborationModeId === mode.id ? (
 										<CheckIcon className="size-3.5 shrink-0 text-muted-foreground" />
 									) : null}
@@ -146,7 +146,7 @@ export function AgentConfigBar({
 										size="sm"
 										className="h-7 max-w-[min(8rem,100%)] gap-1 px-1.5 text-xs font-medium text-foreground"
 									>
-										<span className="truncate">
+										<span className="min-w-0 truncate">
 											{t("composer.effort.label")}:{" "}
 											{formatEffort(reasoningEffort ?? "medium")}
 										</span>
