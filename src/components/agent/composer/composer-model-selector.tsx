@@ -62,7 +62,7 @@ export function ComposerModelSelector({
 			<ModelSelectorTrigger asChild>
 				<PromptInputButton
 					type="button"
-					className="h-7 max-w-[min(16rem,100%)] gap-1 px-1.5 text-xs font-medium text-foreground"
+					className="h-7 min-w-0 max-w-[min(16rem,100%)] shrink gap-1 px-1.5 text-xs font-medium text-foreground"
 					disabled={warming}
 					tooltip={{
 						content:

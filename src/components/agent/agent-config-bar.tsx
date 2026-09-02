@@ -75,10 +75,10 @@ export function AgentConfigBar({
 	return (
 		<div
 			role="toolbar"
-			className="flex h-9 shrink-0 items-center gap-1 border-b bg-muted/15 px-3"
+			className="flex h-9 min-w-0 shrink-0 items-center gap-1 overflow-hidden border-b bg-muted/15 px-3"
 			aria-label={t("configBar.label")}
 		>
-			<div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+			<div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-hidden">
 				<ComposerModelSelector
 					open={modelSelectorOpen}
 					onOpenChange={onModelSelectorOpenChange}
@@ -100,7 +100,7 @@ export function AgentConfigBar({
 										type="button"
 										variant="ghost"
 										size="sm"
-										className="h-7 max-w-[min(10rem,100%)] gap-1 px-1.5 text-xs font-medium text-foreground"
+										className="h-7 min-w-0 max-w-[min(10rem,100%)] shrink gap-1 px-1.5 text-xs font-medium text-foreground"
 									>
 										<span className="min-w-0 flex-1 truncate">
 											{t("composer.collaboration.label")}:{" "}
@@ -144,7 +144,7 @@ export function AgentConfigBar({
 										type="button"
 										variant="ghost"
 										size="sm"
-										className="h-7 max-w-[min(8rem,100%)] gap-1 px-1.5 text-xs font-medium text-foreground"
+										className="h-7 min-w-0 max-w-[min(8rem,100%)] shrink gap-1 px-1.5 text-xs font-medium text-foreground"
 									>
 										<span className="min-w-0 flex-1 truncate">
 											{t("composer.effort.label")}:{" "}
