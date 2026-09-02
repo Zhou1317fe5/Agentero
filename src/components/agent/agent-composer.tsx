@@ -219,7 +219,7 @@ export function AgentComposer(props: AgentComposerProps) {
 										className={cn(
 											"relative flex min-h-0 w-full flex-1 overflow-hidden",
 											compact
-												? "flex-row items-center gap-1 px-2 py-2"
+												? "flex-row items-center gap-1 px-2 pt-2 pb-2.5"
 												: "flex-col px-3 pt-3",
 										)}
 										onVaultPathDragOver={onComposerDragOver}
