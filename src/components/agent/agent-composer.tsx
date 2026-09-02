@@ -137,7 +137,7 @@ export function AgentComposer(props: AgentComposerProps) {
 			className={cn(
 				// Only the prompt shell is height-bound (resize handle is above this in the panel).
 				"flex shrink-0 flex-col overflow-hidden border-t bg-muted/10",
-				compact ? "gap-1.5 p-2" : "gap-2 p-3",
+				compact ? "gap-1.5 px-2 pt-2 pb-3" : "gap-2 p-3",
 			)}
 			style={heightPx ? { height: heightPx } : undefined}
 		>
@@ -174,7 +174,7 @@ export function AgentComposer(props: AgentComposerProps) {
 				</div>
 				<div className="relative min-h-0 flex-1">
 					<PromptInput
-						className="h-full w-full"
+						className={cn("h-full w-full", compact && "flex items-end")}
 						inputGroupClassName={cn(
 							"!flex min-h-0 !flex-col overflow-hidden rounded-xl border border-border bg-background shadow-none transition-[background-color,box-shadow,border-color] duration-150",
 							compact ? "h-auto" : "!h-full",
