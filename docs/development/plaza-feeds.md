@@ -47,7 +47,6 @@
 | 注册 | `PLAZA_SOURCES` 一条：`id: "feeds"`，`panel: "feeds"`，`url: null` |
 | 侧栏 | 与 Skill 推荐相同：单击打开 panel；无删除 / 拖拽 / Finder |
 | 图标 | Lucide `Rss`；en **Feeds**；zh-CN **订阅** |
-| 首页卡 | 广场根上多一张来源卡：「订阅 RSS / Atom，论文条目可入库」 |
 
 订阅列表**只活在面板左侧**，不膨胀文件树。
 
@@ -275,7 +274,7 @@ M1–M3 可一次 PR；M4 可同 PR 或紧随。
 
 ## 9. 验收清单（实现后）
 
-- [x] 侧栏与广场首页能进「订阅」；path 不落盘。
+- [x] 侧栏广场子节点能进「订阅」；path 不落盘。
 - [x] 粘 `https://rss.arxiv.org/rss/cs.LG` 后时间线出现当日论文。
 - [x] 论文卡入库走魔棒；成功不打开论文；刷新后仍为已入库。
 - [x] 无 arXiv/DOI 的博客条目只有「打开原文」。

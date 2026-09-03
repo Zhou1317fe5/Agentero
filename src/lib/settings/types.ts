@@ -189,9 +189,8 @@ export type AppSettings = {
 	 */
 	plazaEnabled: boolean;
 	/**
-	 * Plaza source ids hidden from the sidebar and Plaza home page
-	 * (e.g. `"cool-papers"`). Right-click a source row to hide it, the Plaza
-	 * parent row to restore. Empty = show all sources.
+	 * Plaza source ids hidden from the sidebar tree (e.g. `"cool-papers"`).
+	 * Right-click the Plaza parent row to toggle sources. Empty = show all.
 	 */
 	plazaHiddenSources: string[];
 	/**

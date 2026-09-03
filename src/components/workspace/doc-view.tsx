@@ -13,7 +13,6 @@ import type { PdfHighlight } from "@/lib/pdf/highlight/types";
 import type { LibraryColumnPref } from "@/lib/settings";
 import { isMarkdownPath, paperRelFromNotes } from "@/lib/vault";
 import type { WikiRenameHeadingRequest } from "@/lib/wiki";
-import { openPlazaSource } from "@/lib/workspace/actions";
 import { type DocTab, tabIsPaperNotes } from "@/lib/workspace/tabs";
 
 // Heavyweight viewers are lazy-loaded so the EmbedPDF (PDFium) and Plate
@@ -225,11 +224,7 @@ export const DocView = memo(function DocView({
 		if (!active) return null;
 		return (
 			<Suspense fallback={<TabLoadingSkeleton />}>
-				<PlazaView
-					path={tab.path}
-					onOpenSource={openPlazaSource}
-					className="bg-muted/20"
-				/>
+				<PlazaView path={tab.path} className="bg-muted/20" />
 			</Suspense>
 		);
 	}

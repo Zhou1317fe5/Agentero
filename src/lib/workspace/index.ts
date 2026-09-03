@@ -22,7 +22,6 @@ export {
 	reopenClosedTab,
 	selectFileNode,
 	selectLibrary,
-	selectPlaza,
 	selectTrash,
 	splitActivePane,
 	toggleNotesSplit,

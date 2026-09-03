@@ -65,7 +65,6 @@ import {
 	openPlazaSource,
 	selectFileNode,
 	selectLibrary,
-	selectPlaza,
 	selectTrash,
 } from "@/lib/workspace/actions";
 
@@ -206,7 +205,6 @@ export function VaultSidebar() {
 					onSelectFile={selectFileNode}
 					onSelectLibrary={selectLibrary}
 					onSelectTrash={selectTrash}
-					onSelectPlaza={selectPlaza}
 					onSelectPlazaSource={openPlazaSource}
 					onEmptyTrash={onEmptyTrash}
 					onExportLibrary={onExportLibrary}

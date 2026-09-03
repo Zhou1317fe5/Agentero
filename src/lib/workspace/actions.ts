@@ -37,7 +37,6 @@ import {
 import { removeTabAnnotations } from "@/lib/pdf/annotations-store";
 import {
 	isPlazaVirtualPath,
-	PLAZA_VIRTUAL_PATH,
 	type PlazaSource,
 	plazaSourceForPath,
 } from "@/lib/plaza";
@@ -1079,14 +1078,7 @@ export function selectTrash(): void {
 	openTab(TRASH_VIRTUAL_PATH);
 }
 
-/** Plaza tree node: the discovery-source overview. */
-export function selectPlaza(): void {
-	if (!loadSettings().plazaEnabled) return;
-	setTreeSelectedPath(PLAZA_VIRTUAL_PATH);
-	openTab(PLAZA_VIRTUAL_PATH);
-}
-
-/** Open one Plaza source panel (from its tree child row or a home card). */
+/** Open one Plaza source panel (from its tree child row). */
 export function openPlazaSource(source: PlazaSource): void {
 	if (!loadSettings().plazaEnabled) return;
 	setTreeSelectedPath(source.path);
@@ -1125,9 +1117,9 @@ export function selectFileNode(node: FileNode): void {
 	}
 	if (isPlazaVirtualPath(node.path)) {
 		if (!loadSettings().plazaEnabled) return;
+		// The Plaza root is a plain folder; only source children open a tab.
 		const source = plazaSourceForPath(node.path);
 		if (source) openPlazaSource(source);
-		else selectPlaza();
 		return;
 	}
 	if (node.kind === "directory" && isPaperDirectory(node.path, node.children)) {
