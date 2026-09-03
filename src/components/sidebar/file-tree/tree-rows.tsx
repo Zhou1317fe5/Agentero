@@ -27,7 +27,6 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { contextPathIcon } from "@/lib/agent/context-path-icon";
-import { getPlatformOS } from "@/lib/core/tauri";
 import { cn } from "@/lib/core/utils";
 import { LIBRARY_VIRTUAL_PATH, TRASH_VIRTUAL_PATH } from "@/lib/paper/api";
 import {
@@ -130,10 +129,7 @@ export function PaperTreeRow({
 			</FileTreeName>
 			{showActions ? (
 				<FileTreeActions
-					// Linux (WebKitGTK) and macOS (WKWebView) draw overlay scrollbars
-					// that float over content with an 8px-wide hit area; Windows
-					// WebView2 uses classic scrollbars that reserve layout space.
-					className={cn("shrink-0", getPlatformOS() !== "windows" && "pr-2")}
+					className="shrink-0"
 					onClick={(e) => {
 						e.stopPropagation();
 					}}
@@ -278,7 +274,7 @@ export function LibraryRow({
 			</FileTreeName>
 			{showDownload ? (
 				<FileTreeActions
-					className={cn("shrink-0", getPlatformOS() !== "windows" && "pr-2")}
+					className="shrink-0"
 					onClick={(e) => e.stopPropagation()}
 					onKeyDown={(e) => e.stopPropagation()}
 				>
