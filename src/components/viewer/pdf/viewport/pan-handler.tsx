@@ -44,8 +44,8 @@ type PanDragHandlerProps = {
 };
 
 /**
- * Momentary hand tool: middle-button drag always pans; holding Space arms
- * left-button drag as well.
+ * Momentary hand tool: middle-button drag always pans, and holding Space arms
+ * the left button to behave exactly the same.
  *
  * Space is a bare key with no modifier, so claiming it needs an ownership rule:
  * the hovered viewer wins (focus usually sits on a tab, the sidebar or the notes
@@ -82,12 +82,11 @@ export function PanDragHandler({
 		const binding = bindPanDragGesture({
 			target: viewport,
 			isLeftDragArmed: () => armedRef.current,
-			// Editors never pan. An armed left-drag additionally spares buttons and
-			// links (toolbar, in-page citation hits) so they keep their click; the
-			// middle button has no other meaning here, so it pans from anywhere.
-			isExcluded: (event) =>
-				isEditableClipboardTarget(event.target) ||
-				(event.button === 0 && isInteractiveTarget(event.target)),
+			// Armed, the left button is a hand tool exactly like the middle button and
+			// pans from anywhere — including over toolbar buttons and in-page citation
+			// links, whose click the held Space has already suspended. Only editors
+			// keep their own pointer behavior.
+			isExcludedTarget: isEditableClipboardTarget,
 			onStateChange: (state) => {
 				viewport.classList.toggle(PANNING_CLASS, state === "panning");
 			},

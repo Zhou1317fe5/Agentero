@@ -7,15 +7,22 @@ class FakePointerEvent extends Event {
 	readonly button: number;
 	readonly clientX: number;
 	readonly clientY: number;
+	/** Shadows `Event#target`: the harness calls listeners directly, never dispatching. */
+	override readonly target: EventTarget | null;
 	stopPropagationCalls = 0;
 
-	constructor(type: string, init: PointerEventInit = {}) {
+	constructor(
+		type: string,
+		init: PointerEventInit = {},
+		target: EventTarget | null = null,
+	) {
 		super(type, init);
 		this.pointerId = init.pointerId ?? 0;
 		this.pointerType = init.pointerType ?? "mouse";
 		this.button = init.button ?? 0;
 		this.clientX = init.clientX ?? 0;
 		this.clientY = init.clientY ?? 0;
+		this.target = target;
 	}
 
 	override stopPropagation(): void {
@@ -70,11 +77,19 @@ function panTargetHarness() {
 
 	return {
 		target: target as unknown as PanDragTarget,
-		dispatch(type: string, init: PointerEventInit = {}) {
-			const event = new FakePointerEvent(type, {
-				cancelable: true,
-				...init,
-			});
+		dispatch(
+			type: string,
+			init: PointerEventInit = {},
+			target: EventTarget | null = null,
+		) {
+			const event = new FakePointerEvent(
+				type,
+				{
+					cancelable: true,
+					...init,
+				},
+				target,
+			);
 			for (const { listener } of listeners.get(type) ?? []) listener(event);
 			return event;
 		},
@@ -95,7 +110,7 @@ function bind(harness: ReturnType<typeof panTargetHarness>, armed = false) {
 	const binding = bindPanDragGesture({
 		target: harness.target,
 		isLeftDragArmed: () => armed,
-		isExcluded: () => false,
+		isExcludedTarget: () => false,
 		onStateChange: (state) => states.push(state),
 	});
 	return { binding, states };
@@ -178,25 +193,44 @@ describe("PDF drag-to-pan gesture", () => {
 		expect(states).toEqual(["panning"]);
 	});
 
-	it("ignores events the caller excludes, such as an in-page editor", () => {
+	it("ignores excluded targets, but pans an armed left drag from anywhere else", () => {
 		const harness = panTargetHarness();
 		const states: string[] = [];
-		const isExcluded = vi.fn(() => true);
+		const editor = new EventTarget();
+		const isExcludedTarget = vi.fn(
+			(target: EventTarget | null) => target === editor,
+		);
 		bindPanDragGesture({
 			target: harness.target,
 			isLeftDragArmed: () => true,
-			isExcluded,
+			isExcludedTarget,
 			onStateChange: (state) => states.push(state),
 		});
 
-		const editable = harness.dispatch("pointerdown", {
-			button: 1,
-			pointerId: 1,
-		});
+		const editable = harness.dispatch(
+			"pointerdown",
+			{ button: 0, pointerId: 1 },
+			editor,
+		);
 		expect(editable.defaultPrevented).toBe(false);
-		// The predicate sees the event, so it can differ per button.
-		expect(isExcluded).toHaveBeenCalledWith(editable);
+		expect(isExcludedTarget).toHaveBeenCalledWith(editor);
 		expect(states).toEqual([]);
+
+		// Armed, the left button is a hand tool like the middle one: an interactive
+		// element under the pointer does not get to opt out of the pan.
+		const armed = harness.dispatch(
+			"pointerdown",
+			{ button: 0, pointerId: 2, clientX: 40, clientY: 40 },
+			new EventTarget(),
+		);
+		expect(armed.defaultPrevented).toBe(true);
+		harness.dispatch("pointermove", {
+			pointerId: 2,
+			clientX: 90,
+			clientY: 15,
+		});
+		expect(harness.scroll()).toEqual({ left: 50, top: 225 });
+		expect(states).toEqual(["panning"]);
 	});
 
 	it("ignores the right button and touch pointers", () => {
@@ -306,7 +340,7 @@ describe("PDF drag-to-pan gesture", () => {
 		bindPanDragGesture({
 			target: harness.target,
 			isLeftDragArmed: () => true,
-			isExcluded: () => false,
+			isExcludedTarget: () => false,
 			onStateChange: (state) => states.push(state),
 		});
 

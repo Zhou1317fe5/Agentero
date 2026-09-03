@@ -27,13 +27,10 @@ export type PanDragTarget = Pick<
 
 type PanDragGestureOptions = {
 	target: PanDragTarget;
-	/** True while Space is held, arming left-button panning. */
+	/** True while Space is held, arming left-button drag as well. */
 	isLeftDragArmed: () => boolean;
-	/**
-	 * True when the event must keep its native behavior. Receives the event so
-	 * the caller can vary the policy per button.
-	 */
-	isExcluded: (event: MouseEvent) => boolean;
+	/** True for targets that must keep their own pointer behavior (editors). */
+	isExcludedTarget: (target: EventTarget | null) => boolean;
 	/** Cursor feedback; `"panning"` for the duration of a drag. */
 	onStateChange?: (state: PanDragState) => void;
 };
@@ -47,7 +44,7 @@ export type PanDragBinding = {
 export function bindPanDragGesture({
 	target,
 	isLeftDragArmed,
-	isExcluded,
+	isExcludedTarget,
 	onStateChange,
 }: PanDragGestureOptions): PanDragBinding {
 	let disposed = false;
@@ -75,7 +72,7 @@ export function bindPanDragGesture({
 
 	const handlePointerDown = (event: PointerEvent) => {
 		if (disposed || drag || event.pointerType !== "mouse") return;
-		if (!isPanButton(event) || isExcluded(event)) return;
+		if (!isPanButton(event) || isExcludedTarget(event.target)) return;
 		// Capture phase on the scroll container: stopping propagation here keeps
 		// EmbedPDF's text-selection and link handlers (bubble listeners on a
 		// descendant) from ever seeing the gesture.
@@ -108,7 +105,7 @@ export function bindPanDragGesture({
 	// selection instead of panning.
 	const handleMouseDown = (event: MouseEvent) => {
 		if (disposed || !isPanButton(event)) return;
-		if (isExcluded(event)) return;
+		if (isExcludedTarget(event.target)) return;
 		event.preventDefault();
 		event.stopPropagation();
 	};
