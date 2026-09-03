@@ -272,19 +272,20 @@ interface ParsedIdentifier {
 }
 ```
 
-### 3.4 标题搜索回退
+### 3.4 标题搜索（S2 ∥ arXiv 并行竞速）
 
 **Zotero translator 无法承担这一步。** translation-server 的 `POST /search`（§4.2）是标识符入口，Zotero Search Translators 只做「标识符 → 元数据」，没有自由文本检索能力；Agentero 本地也没有 JS runtime 来跑 translator。因此标题搜索必须直连检索 API。
 
 兼容性通过分工保留：**搜索只负责「文本 → 候选标识符」**，用户选中后把 `identifier`（arXiv ID 优先，其次 DOI）重新提交 `lookup_import_batch`，Translator 仍是元数据的唯一事实来源，入库管道不分叉。
 
 - 实现：`src-tauri/src/features/import/title_search.rs`
-- 数据源：Semantic Scholar Graph API `/paper/search` 为主；报错或 0 结果时回退 **arXiv** `search_query=ti:"…"&sortBy=relevance`。两者均免 key，复用 `core::http::client_builder()` 与信号量限流（并发 2）。
-  > **S2 无 key 的搜索接口限流极严（实测连续 3 次均 429）**，所以 arXiv 才是线上的常走路径。不选 Crossref 兜底：NeurIPS proceedings 之类没有 Crossref DOI，搜 "Attention is all you need" 时正确论文**根本不在** Crossref 结果集里，只会返回一堆同名论文。
+- 数据源：Semantic Scholar Graph API `/paper/search` 与 **arXiv** `search_query=ti:"…"&sortBy=relevance` **并行**发起；S2 在 5s 预算（`S2_SEARCH_BUDGET`）内返回非空则优先（跨域、带被引数），否则取已在途的 arXiv 结果。最坏耗时 ≈ max(预算, 单请求 20s 超时)，不再是串行 S2→arXiv 之和（~40s）。两者均免 key，复用 `core::http::client_builder()` 与信号量限流（并发 2）。
+  > **S2 无 key 的搜索接口限流极严（实测连续 3 次均 429）**，所以 arXiv 才是线上的常走路径；并行发起后 429 快速失败时 arXiv 已在途，省掉一次串行往返。不选 Crossref 兜底：NeurIPS proceedings 之类没有 Crossref DOI，搜 "Attention is all you need" 时正确论文**根本不在** Crossref 结果集里，只会返回一堆同名论文。
   > arXiv 的 Atom 需要按 `<entry>` 切块解析 —— `map::map_arxiv_atom` 只处理单条响应，不能复用。
 - 排序：保留 provider 的相关度顺序，但把**标题与 query 归一化后完全相等**的条目提到最前（归一化 = 小写、去非字母数字、压空格）。同名论文很多，这一步防止真正那篇被埋掉。
 - **过滤掉既无 DOI 也无 arXiv ID 的条目** —— 没有标识符就无法入库，不能出现在候选里。
 - Top 3 返回给前端（`SEARCH_CANDIDATE_LIMIT`）；无结果或搜索失败写入 `errors`，不静默。单源失败走 `log::warn!`，否则 S2 的 429 完全不可见。
+- 取消：`resolve_search_queries` 带前端 `task_id`，每条 query 前检查协作取消 —— 关闭搜索卡片即取消任务，剩余查询直接跳过。
 - 副作用：拼错的标识符（如 `1706.0376`）现在会走搜索并得到「无结果」，比原来的 `unrecognized identifier` 更可读。
 
 ---

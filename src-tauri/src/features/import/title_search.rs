@@ -18,6 +18,15 @@ use crate::features::refs::latex;
 
 const SEARCH_CONCURRENCY: usize = 2;
 
+/// Whole-request timeout for one search HTTP call (S2 or arXiv).
+const SEARCH_REQUEST_TIMEOUT: Duration = Duration::from_secs(20);
+
+/// How long Semantic Scholar gets before the already-in-flight arXiv result
+/// decides the search. Healthy S2 answers land sub-second and rate-limit
+/// rejections are fast, so this budget only caps the hang case and keeps the
+/// worst wall at ~max(budget, request timeout) instead of a sequential sum.
+const S2_SEARCH_BUDGET: Duration = Duration::from_secs(5);
+
 fn search_limiter() -> &'static Arc<Semaphore> {
     static LIMITER: OnceLock<Arc<Semaphore>> = OnceLock::new();
     LIMITER.get_or_init(|| Arc::new(Semaphore::new(SEARCH_CONCURRENCY)))
@@ -58,9 +67,11 @@ pub struct PaperSearchGroup {
 /// Search papers by title/keyword. Returns at most `limit` candidates that carry
 /// an arXiv id or DOI (anything else cannot be imported).
 ///
-/// Semantic Scholar first (cross-domain, carries citation counts), arXiv as
-/// fallback. S2's key-less search endpoint is aggressively rate limited, so the
-/// arXiv path is the common one in practice.
+/// Semantic Scholar and arXiv fire concurrently; S2 wins whenever it answers
+/// with hits inside [`S2_SEARCH_BUDGET`] (cross-domain, carries citation
+/// counts), otherwise the already-in-flight arXiv result decides. S2's key-less
+/// search endpoint is aggressively rate limited, so the arXiv path is the
+/// common one in practice.
 pub async fn search_papers(
     query: &str,
     limit: usize,
@@ -71,12 +82,45 @@ pub async fn search_papers(
     }
     let limit = limit.max(1);
 
-    match s2_search(query, limit).await {
-        Ok(hits) if !hits.is_empty() => return Ok(rank(hits, query, limit)),
-        Ok(_) => log::warn!("title search: semantic scholar returned no results for {query}"),
-        Err(e) => log::warn!("title search: semantic scholar failed ({e}); falling back to arXiv"),
-    }
-    match arxiv_search(query, limit).await {
+    let s2 = tokio::time::timeout(S2_SEARCH_BUDGET, s2_search(query, limit));
+    let arxiv = arxiv_search(query, limit);
+    tokio::pin!(s2);
+    tokio::pin!(arxiv);
+
+    let arxiv_hits = tokio::select! {
+        out = &mut s2 => {
+            match out {
+                Ok(Ok(hits)) if !hits.is_empty() => return Ok(rank(hits, query, limit)),
+                Ok(Ok(_)) => log::warn!("title search: semantic scholar returned no results for {query}"),
+                Ok(Err(e)) => log::warn!("title search: semantic scholar failed ({e}); falling back to arXiv"),
+                Err(_elapsed) => log::warn!(
+                    "title search: semantic scholar exceeded its {}s budget; falling back to arXiv",
+                    S2_SEARCH_BUDGET.as_secs()
+                ),
+            }
+            arxiv.await
+        }
+        // arXiv answered first; S2 stays preferred, so wait out its budget.
+        hits = &mut arxiv => match s2.await {
+            Ok(Ok(s2_hits)) if !s2_hits.is_empty() => return Ok(rank(s2_hits, query, limit)),
+            Ok(Ok(_)) => {
+                log::warn!("title search: semantic scholar returned no results for {query}");
+                hits
+            }
+            Ok(Err(e)) => {
+                log::warn!("title search: semantic scholar failed ({e}); using arXiv results");
+                hits
+            }
+            Err(_elapsed) => {
+                log::warn!(
+                    "title search: semantic scholar exceeded its {}s budget; using arXiv results",
+                    S2_SEARCH_BUDGET.as_secs()
+                );
+                hits
+            }
+        },
+    };
+    match arxiv_hits {
         Ok(hits) => Ok(rank(hits, query, limit)),
         Err(e) => Err(AppError::message(format!("arXiv search failed: {e}"))),
     }
@@ -113,7 +157,7 @@ pub(crate) fn normalize_title(s: &str) -> String {
 }
 
 pub(crate) fn http_client() -> Result<reqwest::Client, String> {
-    crate::core::http::client(Duration::from_secs(20)).map_err(|e| e.to_string())
+    crate::core::http::client(SEARCH_REQUEST_TIMEOUT).map_err(|e| e.to_string())
 }
 
 pub(crate) async fn get_text(url: &str) -> Result<String, String> {
@@ -440,6 +484,13 @@ mod tests {
         assert_eq!(ranked[0].title, "Attention Is All You Need");
         // Non-matches keep provider relevance order.
         assert_eq!(ranked[1].title, "Is Attention All You Need?");
+    }
+
+    #[test]
+    fn s2_budget_stays_below_request_timeout() {
+        // The race only bounds the worst wall (~max of both instead of their
+        // sum) while the S2 preference budget is shorter than one HTTP timeout.
+        assert!(S2_SEARCH_BUDGET < SEARCH_REQUEST_TIMEOUT);
     }
 
     #[test]
