@@ -105,6 +105,17 @@ fn windows_shell_quote(s: &str) -> String {
     }
 }
 
+/// Convert Rust's canonicalized local drive path into a form accepted by `cmd.exe`.
+/// True UNC paths stay unchanged; supporting them requires a separate `pushd` flow.
+#[cfg(windows)]
+fn windows_cmd_cwd(cwd: &Path) -> String {
+    let cwd = cwd.to_string_lossy();
+    cwd.strip_prefix(r"\\?\")
+        .filter(|path| path.as_bytes().get(1) == Some(&b':'))
+        .unwrap_or(cwd.as_ref())
+        .to_string()
+}
+
 /// Windows variant of [`wrap_local_command_with_cwd`]. Uses `cmd /D /C` and an
 /// environment variable for the cwd so spaces in the vault path do not need to
 /// be quoted inside the command string.
@@ -117,7 +128,7 @@ fn wrap_local_command_with_cwd(
 ) -> (PathBuf, Vec<String>) {
     env.insert(
         "AGENTERO_AGENT_CWD".to_string(),
-        cwd.to_string_lossy().to_string(),
+        windows_cmd_cwd(cwd),
     );
     let mut script = r#"cd /d "%AGENTERO_AGENT_CWD%" && "#.to_string();
     script.push_str(&windows_shell_quote(&command.to_string_lossy()));
@@ -3433,7 +3444,7 @@ mod cwd_shell_wrap_tests {
             Path::new(r"C:\Users\name\pi-acp.cmd"),
             &["--foo".to_string(), "bar baz".to_string()],
             &mut env,
-            Path::new(r"C:\My Vault"),
+            Path::new(r"\\?\C:\My Vault"),
         );
         assert_eq!(cmd, PathBuf::from("cmd"));
         assert_eq!(
@@ -3448,6 +3459,14 @@ mod cwd_shell_wrap_tests {
         assert_eq!(
             env.get("AGENTERO_AGENT_CWD"),
             Some(&r"C:\My Vault".to_string())
+        );
+        assert_eq!(
+            windows_cmd_cwd(Path::new(r"C:\My Vault")),
+            r"C:\My Vault"
+        );
+        assert_eq!(
+            windows_cmd_cwd(Path::new(r"\\?\UNC\server\share")),
+            r"\\?\UNC\server\share"
         );
     }
 }
