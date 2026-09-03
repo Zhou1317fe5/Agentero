@@ -180,7 +180,7 @@ export const VaultSidebarHeader = memo(function VaultSidebarHeader({
 		<TooltipProvider delayDuration={300}>
 			<div className="shrink-0">
 				<PaneHeader
-					className="relative z-10 border-b-0 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-3 after:bg-gradient-to-b after:from-black/10 after:via-black/5 after:to-transparent"
+					className="relative z-10 border-b-0"
 					trailing={
 						<Popover
 							open={wandOpen}
