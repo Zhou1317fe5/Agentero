@@ -366,6 +366,24 @@
 }
 
 /*
+ * PDF drag-to-pan (hand tool). EmbedPDF writes an inline `cursor: auto` on its
+ * full-size pointer div, so only !important reaches the page under it; the
+ * descendant selector also covers the page layers' crosshair/pointer cursors.
+ */
+.agentero-pdf-pan-ready,
+.agentero-pdf-pan-ready * {
+	/* biome-ignore lint/complexity/noImportantStyles: must beat EmbedPDF's inline cursor */
+	cursor: grab !important;
+}
+
+.agentero-pdf-panning,
+.agentero-pdf-panning * {
+	/* biome-ignore lint/complexity/noImportantStyles: must beat EmbedPDF's inline cursor */
+	cursor: grabbing !important;
+	user-select: none;
+}
+
+/*
  * Horizontal-only nested scrollers (Markdown code blocks) must not trap a
  * vertical wheel gesture before it reaches the document pane.
  */

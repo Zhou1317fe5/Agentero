@@ -103,6 +103,7 @@ import type {
 } from "@/components/viewer/pdf/types";
 import { ActiveCardScrollSync } from "@/components/viewer/pdf/viewport/active-card-scroll-sync";
 import { DockviewViewport } from "@/components/viewer/pdf/viewport/dockview-viewport";
+import { PanDragHandler } from "@/components/viewer/pdf/viewport/pan-handler";
 import { WheelZoomHandler } from "@/components/viewer/pdf/viewport/wheel-zoom-handler";
 import { useLibraryStore } from "@/hooks/use-app-stores";
 import { copyTextToClipboard } from "@/lib/core/clipboard";
@@ -1287,6 +1288,11 @@ function PdfViewerInner({
 				className="agentero-scroll-both min-h-0 min-w-0 flex-1"
 			>
 				<WheelZoomHandler docId={docId} />
+				<PanDragHandler
+					active={isActive}
+					hostRef={hostRef}
+					allowLeftDrag={!regionSelecting}
+				/>
 				<ActiveCardScrollSync
 					active={Boolean(activeCard)}
 					onScroll={rePlaceActiveCardOnScroll}
