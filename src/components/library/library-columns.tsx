@@ -168,65 +168,41 @@ export const COLUMN_META = {
 		labelKey: "papersLibrary.colYear",
 		widthWeight: 8,
 		headerClassName: "min-w-16",
-		render: (p, ctx) => (
-			<CopyTd
-				tdClassName="whitespace-nowrap px-3 py-2.5 tabular-nums text-muted-foreground text-xs"
-				copyText={p.year != null ? String(p.year) : null}
-				labelKey="papersLibrary.colYear"
-				ctx={ctx}
-				buttonClassName="px-0.5"
-			>
+		render: (p) => (
+			<td className="whitespace-nowrap px-3 py-2.5 tabular-nums text-muted-foreground text-xs">
 				{p.year ?? "—"}
-			</CopyTd>
+			</td>
 		),
 	},
 	publication: {
 		labelKey: "papersLibrary.colPublication",
 		widthWeight: 14,
 		headerClassName: "min-w-[120px]",
-		render: (p, ctx) => (
-			<CopyTd
-				tdClassName="min-w-0 max-w-0 overflow-hidden px-3 py-2.5 text-muted-foreground text-xs"
-				copyText={p.publication || null}
-				labelKey="papersLibrary.colPublication"
-				ctx={ctx}
-				buttonClassName="block w-full text-left"
-			>
+		render: (p) => (
+			<td className="min-w-0 max-w-0 overflow-hidden px-3 py-2.5 text-muted-foreground text-xs">
 				<span className="line-clamp-1" title={p.publication ?? undefined}>
 					{p.publication || "—"}
 				</span>
-			</CopyTd>
+			</td>
 		),
 	},
 	tags: {
 		labelKey: "papersLibrary.colTags",
 		widthWeight: 18,
 		headerClassName: "min-w-[120px]",
-		render: (_p, { t, onCellCopy, tags }) => {
-			const label = t("papersLibrary.colTags");
-			const hint = t("papersLibrary.copyHint", { label });
-			return (
-				<td className="min-w-0 max-w-0 overflow-hidden px-3 py-2.5">
-					{tags.length ? (
-						<div className="flex flex-wrap gap-1">
-							{tags.map((tag) => (
-								<PaperTagChip
-									key={tag.name}
-									tag={tag}
-									title={hint}
-									aria-label={t("papersLibrary.copyHint", {
-										label: tag.name,
-									})}
-									onClick={(e) => onCellCopy(e, tag.name, label)}
-								/>
-							))}
-						</div>
-					) : (
-						<span className="text-muted-foreground text-xs">—</span>
-					)}
-				</td>
-			);
-		},
+		render: (_p, { tags }) => (
+			<td className="min-w-0 max-w-0 overflow-hidden px-3 py-2.5">
+				{tags.length ? (
+					<div className="flex flex-wrap gap-1">
+						{tags.map((tag) => (
+							<PaperTagChip key={tag.name} tag={tag} />
+						))}
+					</div>
+				) : (
+					<span className="text-muted-foreground text-xs">—</span>
+				)}
+			</td>
+		),
 	},
 	id: {
 		labelKey: "papersLibrary.colId",
