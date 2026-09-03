@@ -541,11 +541,14 @@ function RecommendCard({
 	return (
 		<div className="group relative rounded-lg border bg-background p-2.5 pr-16 transition-colors hover:border-foreground/20 hover:bg-muted/50">
 			<div className="flex items-baseline gap-2">
-				<span className="min-w-0 flex-1 font-medium text-sm leading-snug">
+				<span
+					className="line-clamp-2 min-w-0 flex-1 font-medium text-sm leading-snug"
+					title={item.title}
+				>
 					{item.title}
 				</span>
 			</div>
-			<p className="mt-1 text-muted-foreground text-xs leading-snug">
+			<p className="mt-1 line-clamp-3 text-muted-foreground text-xs leading-snug">
 				{translation ?? item.abstract}
 			</p>
 			<div className="absolute top-2 right-2 flex items-center gap-0.5">
