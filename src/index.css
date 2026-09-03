@@ -455,12 +455,10 @@
 	--dv-inactivegroup-hiddenpanel-tab-color: var(--muted-foreground);
 	--dv-tab-divider-color: var(--border);
 	--dv-separator-border: var(--border);
-	--dv-sash-color: var(--border);
-	--dv-active-sash-color: color-mix(
-		in oklab,
-		var(--primary) 50%,
-		var(--border)
-	);
+	/* IDE-style sash (VS Code): rest is invisible, only the 1px separator
+	 * line shows; hover/drag paints a translucent highlight over it. */
+	--dv-sash-color: transparent;
+	--dv-active-sash-color: color-mix(in oklab, var(--primary) 40%, transparent);
 	--dv-drag-over-background-color: color-mix(
 		in oklab,
 		var(--primary) 16%,
