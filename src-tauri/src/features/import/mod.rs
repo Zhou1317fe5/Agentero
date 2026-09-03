@@ -427,7 +427,12 @@ pub async fn import_by_identifier_batch(
         }
     }
 
-    let search_candidates = resolve_search_queries(&preflight.queries, &mut preflight.errors).await;
+    let search_candidates = resolve_search_queries(
+        &preflight.queries,
+        &mut preflight.errors,
+        args.task_id.as_deref(),
+    )
+    .await;
 
     let to_import: Vec<(String, LookupImportArgs)> = preflight
         .papers
@@ -511,12 +516,17 @@ const SEARCH_CANDIDATE_LIMIT: usize = 3;
 
 /// Resolve free-text queries to importable candidates. Empty results and search
 /// failures become errors so a title that matches nothing is never a silent no-op.
+/// A cancelled `task_id` (picker card closed) skips the remaining queries.
 pub(crate) async fn resolve_search_queries(
     queries: &[String],
     errors: &mut Vec<String>,
+    task_id: Option<&str>,
 ) -> Vec<PaperSearchGroup> {
     let mut groups = Vec::new();
     for query in queries {
+        if check_task_not_cancelled(task_id).is_err() {
+            break;
+        }
         match title_search::search_papers(query, SEARCH_CANDIDATE_LIMIT).await {
             Ok(candidates) if candidates.is_empty() => {
                 errors.push(format!("{query}: no search results"));
@@ -1913,5 +1923,22 @@ mod tests {
         assert_eq!(fs::read_to_string(&path).unwrap(), "user template");
 
         let _ = fs::remove_dir_all(&vault);
+    }
+
+    #[tokio::test]
+    async fn cancelled_task_skips_title_search() {
+        let task_id = "test-resolve-search-cancelled";
+        crate::core::background_tasks::cancel(task_id);
+        let mut errors = Vec::new();
+        let groups = resolve_search_queries(
+            &["attention is all you need".to_string()],
+            &mut errors,
+            Some(task_id),
+        )
+        .await;
+        crate::core::background_tasks::finish(task_id);
+        // Cancelled before the first query runs: no groups, no network, no errors.
+        assert!(groups.is_empty());
+        assert!(errors.is_empty());
     }
 }

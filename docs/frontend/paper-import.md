@@ -21,10 +21,10 @@
 
 ### 标题搜索
 
-- 输入识别不到标识符时自动走标题/关键词搜索（Semantic Scholar → arXiv 兜底，见 [../backend/identifier-lookup.md](../backend/identifier-lookup.md) § 3.4）。
+- 输入识别不到标识符时自动走标题/关键词搜索（Semantic Scholar 与 arXiv **并行**发起，5s 预算内 S2 非空优先，见 [../backend/identifier-lookup.md](../backend/identifier-lookup.md) § 3.4）。
 - 前端对疑似标题的输入**立刻**弹出单选窗并显示 shimmer 占位（#438）；Host 返回后替换为 Top 3 候选：标题、作者 · 年份 · 出处、arXiv/DOI 徽标与被引数。长标题在卡片内换行，不撑破对话框。
 - 确认后按候选的标识符走常规入库管线，落回发起搜索时的目标文件夹。
-- 取消直接丢弃（含仍在加载的 pending）；无 Host 侧临时态需要清理。
+- 取消/关闭卡片会同时取消仍在进行的后台搜索任务：任务卡立即标记已取消，Host 跳过剩余查询；候选直接丢弃，无 Vault 侧临时态需要清理。
 - 一次粘贴多个标题时按队列逐个弹窗，处理完一个自动显示下一个。
 - 无匹配结果时关闭 pending 弹窗，走错误 Toast。
 

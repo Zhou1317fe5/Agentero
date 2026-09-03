@@ -6,6 +6,7 @@
 import i18n from "@/i18n";
 import { track } from "@/lib/activity";
 import {
+	cancelBackgroundTask,
 	enqueueBackgroundTask,
 	isBackgroundTaskCancelledError,
 } from "@/lib/core/background-tasks";
@@ -68,6 +69,9 @@ export type LookupSubmitOptions = {
 	onComplete?: (result: LookupBatchAddResult) => void | Promise<void>;
 };
 
+/** In-flight title-search tasks; closing the picker card cancels them. */
+const pendingSearchTaskIds = new Set<string>();
+
 export async function lookupSubmit(
 	texts: string[],
 	opts: LookupSubmitOptions = {},
@@ -92,6 +96,7 @@ export async function lookupSubmit(
 				{ query: input, candidates: [], parentDir, pending: true },
 			]);
 		}
+		let searchTaskId: string | null = null;
 		promises.push(
 			enqueueBackgroundTask(
 				{
@@ -242,11 +247,22 @@ export async function lookupSubmit(
 						}
 					}
 				},
-				{ concurrency: settings.batchImportConcurrency },
-			).catch((e) => {
-				if (isBackgroundTaskCancelledError(e)) return;
-				notifyError(`${input}: ${errorText(e)}`);
-			}),
+				{
+					concurrency: settings.batchImportConcurrency,
+					onTaskId: (taskId) => {
+						if (!expectTitleSearch) return;
+						searchTaskId = taskId;
+						pendingSearchTaskIds.add(taskId);
+					},
+				},
+			)
+				.catch((e) => {
+					if (isBackgroundTaskCancelledError(e)) return;
+					notifyError(`${input}: ${errorText(e)}`);
+				})
+				.finally(() => {
+					if (searchTaskId !== null) pendingSearchTaskIds.delete(searchTaskId);
+				}),
 		);
 	}
 	await Promise.all(promises);
@@ -262,6 +278,10 @@ export async function confirmPaperSearchImport(
 }
 
 export function cancelPaperSearchImport(): void {
+	// Closing the picker also ends the searches behind it: cancel each task so
+	// its card stops immediately and the host skips the remaining queries.
+	for (const taskId of pendingSearchTaskIds) cancelBackgroundTask(taskId);
+	pendingSearchTaskIds.clear();
 	clearPaperSearchDraft();
 }
 
