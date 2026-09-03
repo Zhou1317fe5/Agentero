@@ -534,6 +534,16 @@
 }
 
 /*
+ * Drag feedback for the sash being moved. Class-based (see dockview-sash.ts)
+ * because the frame loop prevents pointerdown default, which suppresses
+ * `:active`, and dockview never sets pointer capture — so pseudo-class
+ * styling cannot be relied on while dragging.
+ */
+.agentero-dockview .dv-sash.agentero-dock-sash-dragging {
+	background-color: var(--dv-active-sash-color);
+}
+
+/*
  * Block drag uses a pointer backend (not HTML5). Without this, mousemove
  * over contenteditable paints a native text selection while dragging.
  * Plate's DndPlugin adds `dragging` on body for the gesture.
