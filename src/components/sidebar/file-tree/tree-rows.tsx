@@ -159,7 +159,7 @@ export function PaperTreeRow({
 							</TooltipTrigger>
 							<TooltipContent
 								side="right"
-								className="max-w-xs select-none cursor-default"
+								className="max-w-xs select-none cursor-default flex-col items-start gap-0"
 							>
 								<p className="font-medium">{t("fileTree.downloadAssets")}</p>
 								<ul className="mt-1 list-disc space-y-0.5 pl-3 text-xs opacity-90">

@@ -223,7 +223,16 @@ fn list_dir(
         };
         if file_type.is_dir() {
             dirs.push((name, child_path, child_rel));
-        } else if file_type.is_file() {
+        } else if file_type.is_file()
+            // `file_type()` intentionally does not follow symlinks. A valid
+            // symlink to a regular file is still a local paper asset (for
+            // example a PDF kept in a shared Downloads folder), so include it
+            // in the tree without ever traversing symlinked directories.
+            || (file_type.is_symlink()
+                && fs::metadata(&child_path)
+                    .map(|metadata| metadata.is_file())
+                    .unwrap_or(false))
+        {
             if PAPER_MARKER_FILES.contains(&name.as_str()) {
                 paper_marker = true;
             }
@@ -458,6 +467,25 @@ mod tests {
         // Watcher-style invalidation of the paper folder refreshes the probe.
         caps.invalidate(root, "papers/p1");
         assert_eq!(source_has_tex(&build_tree(root, &caps)), Some(true));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn valid_symlinked_pdf_is_listed_as_a_file() {
+        use std::os::unix::fs::symlink;
+
+        let root = &temp_root("symlink-pdf");
+        let paper = root.join("papers/p1");
+        write(&paper.join("NOTES.md"), "# n");
+        write(&paper.join("source/main.tex"), "x");
+        let target = root.join("outside.pdf");
+        write(&target, "pdf");
+        symlink(&target, paper.join("p1.pdf")).unwrap();
+
+        let tree = build_tree(root, &CapsCache::new());
+        let papers = find(&tree, "papers").unwrap();
+        let p1 = find(papers.children.as_ref().unwrap(), "p1").unwrap();
+        assert!(find(p1.children.as_ref().unwrap(), "p1.pdf").is_some());
     }
 
     /// Quantifies the caps-cache win: 20 papers with 200 files each under
