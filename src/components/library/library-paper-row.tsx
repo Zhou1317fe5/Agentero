@@ -76,7 +76,7 @@ export const LibraryPaperRow = memo(function LibraryPaperRow({
 				<tr
 					data-index={index}
 					ref={measureRef}
-					className="border-b border-border/60 transition-colors hover:bg-muted/50"
+					className="transition-colors hover:bg-muted/50"
 					onDoubleClick={() => onOpenPaper(p)}
 				>
 					{visibleColumns.map((col) => (
