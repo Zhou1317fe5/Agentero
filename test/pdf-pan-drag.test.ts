@@ -257,7 +257,7 @@ describe("PDF drag-to-pan gesture", () => {
 		expect(left.defaultPrevented).toBe(false);
 	});
 
-	it("ends the drag on pointercancel and lostpointercapture", () => {
+	it("ends the drag on pointercancel but pans through a dropped capture", () => {
 		const harness = panTargetHarness();
 		const { binding, states } = bind(harness);
 
@@ -277,11 +277,52 @@ describe("PDF drag-to-pan gesture", () => {
 			clientX: 10,
 			clientY: 10,
 		});
+		// WebKit releases capture right after a default-prevented pointerdown; the
+		// gesture must not treat that as the end of the drag.
 		harness.dispatch("lostpointercapture", { pointerId: 5 });
-		expect(states).toEqual(["panning", "idle", "panning", "idle"]);
+		expect(states).toEqual(["panning", "idle", "panning"]);
+
+		harness.dispatch("pointermove", {
+			pointerId: 5,
+			clientX: 40,
+			clientY: 50,
+		});
+		expect(harness.scroll()).toEqual({ left: 70, top: 160 });
 
 		binding.cancel();
 		expect(states).toEqual(["panning", "idle", "panning", "idle"]);
+	});
+
+	it("still pans when setPointerCapture throws", () => {
+		const harness = panTargetHarness();
+		const states: string[] = [];
+		// Override on the harness's own target so the scroll writes stay observable.
+		const target = harness.target as {
+			setPointerCapture: (pointerId: number) => void;
+		};
+		target.setPointerCapture = () => {
+			throw new Error("NotFoundError");
+		};
+		bindPanDragGesture({
+			target: harness.target,
+			isLeftDragArmed: () => true,
+			isExcluded: () => false,
+			onStateChange: (state) => states.push(state),
+		});
+
+		harness.dispatch("pointerdown", {
+			button: 0,
+			pointerId: 9,
+			clientX: 20,
+			clientY: 20,
+		});
+		harness.dispatch("pointermove", {
+			pointerId: 9,
+			clientX: 60,
+			clientY: 5,
+		});
+		expect(states).toEqual(["panning"]);
+		expect(harness.scroll()).toEqual({ left: 60, top: 215 });
 	});
 
 	it("cancel ends an in-flight drag but keeps the binding alive", () => {
@@ -296,7 +337,7 @@ describe("PDF drag-to-pan gesture", () => {
 		});
 		binding.cancel();
 		expect(states).toEqual(["panning", "idle"]);
-		expect(harness.listenerCount()).toBe(6);
+		expect(harness.listenerCount()).toBe(5);
 
 		harness.dispatch("pointermove", {
 			pointerId: 6,
@@ -329,7 +370,7 @@ describe("PDF drag-to-pan gesture", () => {
 			clientX: 10,
 			clientY: 10,
 		});
-		expect(harness.listenerCount()).toBe(6);
+		expect(harness.listenerCount()).toBe(5);
 
 		binding.dispose();
 		expect(states).toEqual(["panning", "idle"]);

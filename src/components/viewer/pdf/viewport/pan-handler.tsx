@@ -98,6 +98,14 @@ export function PanDragHandler({
 			binding.cancel();
 		};
 
+		// Pointer capture is best-effort (WebKit drops it after a default-prevented
+		// pointerdown), so a release outside the viewport never reaches the binding's
+		// own listeners. This net keeps the drag from sticking with `grabbing` on;
+		// cancel() is a no-op when nothing is in flight.
+		const endDragAnywhere = () => binding.cancel();
+		document.addEventListener("pointerup", endDragAnywhere, true);
+		document.addEventListener("pointercancel", endDragAnywhere, true);
+
 		/** Whether this viewer owns a bare Space keydown. */
 		const ownsSpaceKey = (target: EventTarget | null): boolean => {
 			const host = hostRef.current;
@@ -149,6 +157,8 @@ export function PanDragHandler({
 			window.removeEventListener("keyup", onKeyUp);
 			window.removeEventListener("blur", disarm);
 			document.removeEventListener("visibilitychange", disarm);
+			document.removeEventListener("pointerup", endDragAnywhere, true);
+			document.removeEventListener("pointercancel", endDragAnywhere, true);
 			binding.dispose();
 			armedRef.current = false;
 			viewport.classList.remove(PAN_READY_CLASS, PANNING_CLASS);

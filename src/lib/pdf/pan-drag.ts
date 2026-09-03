@@ -81,7 +81,17 @@ export function bindPanDragGesture({
 		// descendant) from ever seeing the gesture.
 		event.preventDefault();
 		event.stopPropagation();
-		target.setPointerCapture(event.pointerId);
+		// Capture is a nicety, not a requirement: it keeps move/up arriving when the
+		// pointer leaves the viewport, but the drag works without it because those
+		// events still bubble from the page layers to this scroll container. WebKit
+		// drops capture right after a default-prevented pointerdown and throws
+		// NotFoundError for a pointer it no longer considers active, so never let it
+		// abort the gesture.
+		try {
+			target.setPointerCapture(event.pointerId);
+		} catch {
+			// Ignored: see above.
+		}
 		drag = {
 			pointerId: event.pointerId,
 			startX: event.clientX,
@@ -118,8 +128,9 @@ export function bindPanDragGesture({
 	target.addEventListener("mousedown", handleMouseDown, true);
 	target.addEventListener("pointermove", handlePointerMove);
 	target.addEventListener("pointerup", handlePointerEnd);
+	// Not `lostpointercapture`: WebKit fires it immediately after a
+	// default-prevented pointerdown, which would end the drag as it starts.
 	target.addEventListener("pointercancel", handlePointerEnd);
-	target.addEventListener("lostpointercapture", handlePointerEnd);
 
 	return {
 		cancel: endDrag,
@@ -132,7 +143,6 @@ export function bindPanDragGesture({
 			target.removeEventListener("pointermove", handlePointerMove);
 			target.removeEventListener("pointerup", handlePointerEnd);
 			target.removeEventListener("pointercancel", handlePointerEnd);
-			target.removeEventListener("lostpointercapture", handlePointerEnd);
 		},
 	};
 }

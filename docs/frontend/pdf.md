@@ -140,7 +140,7 @@ PDFium engine 由窗口共享。默认优先 **worker 引擎**（PDFium WASM 跑
 | `src/lib/pdf/translate/` | 划词翻译 IO |
 | `src/lib/pdf/zoom.ts` | 精确缩放比例解析与范围限制 |
 | `src/lib/pdf/wheel-zoom.ts` | ⌘滚轮缩放 delta 累加与每帧合并步进；wheel 监听 passive / non-passive 切换；WebKit 捏合手势（gesture*）换算为等价 wheel delta |
-| `src/lib/pdf/pan-drag.ts` | 拖拽平移（临时抓手）手势：capture 阶段拦截中键 / 空格+左键，1:1 写 viewport `scrollLeft` / `scrollTop`，并抑制兼容 `mousedown` |
+| `src/lib/pdf/pan-drag.ts` | 拖拽平移（临时抓手）手势：capture 阶段拦截中键 / 空格+左键，1:1 写 viewport `scrollLeft` / `scrollTop`，并抑制兼容 `mousedown`。pointer capture 只作尽力而为（WebKit 会在 `preventDefault` 过的 `pointerdown` 之后立刻释放，`lostpointercapture` 因此不能当结束信号），move / up 靠页面层冒泡回滚动容器，`pan-handler` 再挂一层 document 级抬手兜底 |
 | `src/lib/pdf/annotations-store.ts` | 按 tab 状态 |
 | `src/lib/pdf/selection/` | 选区与 marks IO |
 | `src/lib/core/math.ts` | `clamp01` / `clamp`（几何与放置的唯一实现） |
