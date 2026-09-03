@@ -7,8 +7,26 @@ import { bindPanDragGesture } from "@/lib/pdf/pan-drag";
 const PAN_READY_CLASS = "agentero-pdf-pan-ready";
 const PANNING_CLASS = "agentero-pdf-panning";
 
-/** Space must still activate these rather than arm the hand tool. */
-const INTERACTIVE_SELECTOR = "button, [role='button'], a, summary, select";
+/**
+ * Space must still activate these rather than arm the hand tool — the roles that
+ * natively respond to Space, matching the list `index.css` keeps unselectable.
+ */
+const INTERACTIVE_SELECTOR = [
+	"button",
+	"a",
+	"summary",
+	"select",
+	"[role='button']",
+	"[role='tab']",
+	"[role='menuitem']",
+	"[role='menuitemcheckbox']",
+	"[role='menuitemradio']",
+	"[role='option']",
+	"[role='radio']",
+	"[role='checkbox']",
+	"[role='switch']",
+	"[role='treeitem']",
+].join(", ");
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
 	return (
@@ -17,7 +35,7 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
 }
 
 type PanDragHandlerProps = {
-	/** Only the active viewer may claim the bare Space key. */
+	/** Gates the focus fallback for the bare Space key; hover claims without it. */
 	active: boolean;
 	/** PDF host; Space is claimed with the same ownership rule as `⌘F`. */
 	hostRef: RefObject<HTMLDivElement | null>;
@@ -30,10 +48,12 @@ type PanDragHandlerProps = {
  * left-button drag as well.
  *
  * Space is a bare key with no modifier, so claiming it needs an ownership rule:
- * the key event must target this viewer (or `body` while the pointer is over
- * it), and editable or button-like targets keep their native behavior. The
- * pointer gesture itself is not gated on `active` — a drag starts on whatever
- * viewport the pointer is actually on, which matters in split panes.
+ * the hovered viewer wins (focus usually sits on a tab, the sidebar or the notes
+ * pane while reading), otherwise the active viewer when focus is inside its host
+ * or still neutral on `body` after a page click. Editable and button-like targets
+ * always keep their native behavior. The pointer gesture is not gated on
+ * ownership at all — a drag starts on whatever viewport the pointer is actually
+ * on, which matters in split panes.
  *
  * Must render inside `DockviewViewport` (ViewportElementContext).
  */
@@ -84,12 +104,21 @@ export function PanDragHandler({
 			if (!host) return false;
 			if (isEditableClipboardTarget(target)) return false;
 			if (isInteractiveTarget(target)) return false;
-			if (target instanceof Node && host.contains(target)) return true;
-			// Focus is nowhere: only claim Space while the pointer is over this
-			// viewer, so a merely-hovered PDF cannot eat Space from another pane.
+			// The viewer under the pointer owns Space whichever panel dockview calls
+			// active: focus normally sits on a tab, the sidebar or the notes pane while
+			// the user reads, and only one viewer can be hovered.
+			if (host.matches(":hover")) return true;
+			// Not hovered, so fall back to focus — gated on `active` so two mounted
+			// panes cannot both arm from one keypress.
+			if (!activeRef.current) return false;
+			// Clicking a page never moves focus off `body`, so a neutral focus still
+			// belongs to the viewer the user last clicked even after the pointer leaves.
+			const focused = document.activeElement;
 			return (
-				(target === document.body || target === document.documentElement) &&
-				host.matches(":hover")
+				!focused ||
+				focused === document.body ||
+				focused === document.documentElement ||
+				host.contains(focused)
 			);
 		};
 
@@ -99,7 +128,7 @@ export function PanDragHandler({
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.repeat || armedRef.current || !isSpaceKey(event)) return;
 			if (event.metaKey || event.ctrlKey || event.altKey) return;
-			if (!activeRef.current || !allowLeftDragRef.current) return;
+			if (!allowLeftDragRef.current) return;
 			if (!ownsSpaceKey(event.target)) return;
 			// Stop the viewport's native Space page-scroll while panning is armed.
 			event.preventDefault();
