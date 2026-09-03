@@ -868,16 +868,18 @@ mod tests {
 
     #[tokio::test]
     async fn map_arxiv_atom_falls_back_without_journal_ref() {
+        // Use an arXiv id that cannot resolve in Semantic Scholar, so the venue
+        // lookup yields None whether or not the test runner has network access.
         let xml = r#"<feed>
             <entry>
-                <id>http://arxiv.org/abs/2501.12345</id>
+                <id>http://arxiv.org/abs/9999.00001</id>
                 <published>2025-01-15T00:00:00Z</published>
                 <title>A Recent Preprint</title>
                 <author><name>Jane Doe</name></author>
             </entry>
         </feed>"#;
-        let meta = map_arxiv_atom(xml, "2501.12345").await.expect("map");
-        // Without network the S2 lookup fails silently; publication falls back to "arXiv".
+        let meta = map_arxiv_atom(xml, "9999.00001").await.expect("map");
+        // No journal_ref and no resolvable S2 venue → publication falls back to "arXiv".
         assert_eq!(meta.publication.as_deref(), Some("arXiv"));
     }
 
