@@ -11,6 +11,7 @@ import {
 import { useTranslation } from "react-i18next";
 import {
 	FileTreeActions,
+	FileTreeDisclosureIcon,
 	FileTreeFile,
 	FileTreeFolderRow,
 	FileTreeIcon,
@@ -89,7 +90,7 @@ export function PaperTreeRow({
 							aria-expanded={expanded}
 							aria-label={expandLabel}
 							className={cn(
-								"flex size-5 shrink-0 items-center justify-center rounded-sm",
+								"group/attachment relative flex size-4 shrink-0 items-center justify-center rounded-sm",
 								"text-muted-foreground hover:bg-muted/80",
 								"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
 							)}
@@ -101,11 +102,16 @@ export function PaperTreeRow({
 							onPointerDown={(e) => e.stopPropagation()}
 							onKeyDown={(e) => e.stopPropagation()}
 						>
+							<ScrollText
+								className="size-4 transition-opacity group-hover/attachment:opacity-0 group-focus-visible/attachment:opacity-0"
+								aria-hidden
+							/>
 							<ChevronRight
 								className={cn(
-									"size-4 transition-transform",
+									"pointer-events-none absolute size-4 opacity-0 transition-[opacity,transform] group-hover/attachment:opacity-100 group-focus-visible/attachment:opacity-100",
 									expanded && "rotate-90",
 								)}
+								aria-hidden
 							/>
 						</button>
 					</TooltipTrigger>
@@ -114,11 +120,11 @@ export function PaperTreeRow({
 					</TooltipContent>
 				</Tooltip>
 			) : (
-				<span className="size-4 shrink-0" />
+				<ScrollText
+					className="size-4 shrink-0 text-muted-foreground"
+					aria-hidden
+				/>
 			)}
-			<FileTreeIcon>
-				<ScrollText className="size-4 text-muted-foreground" />
-			</FileTreeIcon>
 			<FileTreeName className="min-w-0 flex-1 truncate" title={label}>
 				{label}
 			</FileTreeName>
@@ -264,7 +270,6 @@ export function LibraryRow({
 	const { t } = useTranslation("sidebar");
 	return (
 		<FileTreeFile path={LIBRARY_VIRTUAL_PATH} name={t("papersLibrary.title")}>
-			<span className="size-4 shrink-0" />
 			<FileTreeIcon>
 				<Library className="size-4 text-muted-foreground" />
 			</FileTreeIcon>
@@ -315,7 +320,6 @@ export function TrashRow() {
 	const { t } = useTranslation("sidebar");
 	return (
 		<FileTreeFile path={TRASH_VIRTUAL_PATH} name={t("recycleBin.title")}>
-			<span className="size-4 shrink-0" />
 			<FileTreeIcon>
 				<Trash2 className="size-4 text-muted-foreground" />
 			</FileTreeIcon>
@@ -335,15 +339,10 @@ export function PlazaRow({ expanded }: { expanded: boolean }) {
 			name={t("plaza.plaza")}
 			aria-expanded={expanded}
 		>
-			<ChevronRight
-				className={cn(
-					"size-4 shrink-0 text-muted-foreground transition-transform",
-					expanded && "rotate-90",
-				)}
+			<FileTreeDisclosureIcon
+				isExpanded={expanded}
+				icon={<Globe className="size-4 text-muted-foreground" aria-hidden />}
 			/>
-			<FileTreeIcon>
-				<Globe className="size-4 text-muted-foreground" />
-			</FileTreeIcon>
 			<FileTreeName className="min-w-0 flex-1 truncate">
 				{t("plaza.plaza")}
 			</FileTreeName>
@@ -356,7 +355,6 @@ export function PlazaSourceRow({ source }: { source: PlazaSource }) {
 	const label = plazaSourceLabel(source);
 	return (
 		<FileTreeFile path={source.path} name={label}>
-			<span className="size-4 shrink-0" />
 			<FileTreeIcon>
 				<Icon className="size-4" />
 			</FileTreeIcon>
