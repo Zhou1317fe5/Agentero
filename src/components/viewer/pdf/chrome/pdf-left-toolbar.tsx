@@ -55,7 +55,7 @@ export function PdfLeftToolbar({
 			<TooltipProvider delayDuration={200}>
 				<div
 					className={cn(
-						"flex h-7 items-center gap-0.5 rounded-lg border border-border/80 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm",
+						"flex h-7 select-none items-center gap-0.5 rounded-lg border border-border/80 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm",
 						visible ? "pointer-events-auto" : "pointer-events-none",
 					)}
 				>

@@ -24,7 +24,7 @@ import { cn } from "@/lib/core/utils";
 import { formatAuthorsShort } from "@/lib/paper";
 
 const COPY_CELL_BASE =
-	"cursor-pointer rounded-sm hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+	"cursor-pointer select-text rounded-sm hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
 
 /** Single-click-to-copy cell control shared by library columns. */
 function CopyCellButton({

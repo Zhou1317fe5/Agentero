@@ -223,7 +223,7 @@ function OnboardingDialog() {
 	const stepDesc = currentCopy?.desc;
 
 	return (
-		<div className="fixed inset-0 z-40 flex items-center justify-center bg-background p-6">
+		<div className="fixed inset-0 z-40 flex select-none items-center justify-center bg-background p-6">
 			<div
 				aria-hidden
 				className="pointer-events-none absolute inset-0 overflow-hidden"

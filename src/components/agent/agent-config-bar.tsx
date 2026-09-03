@@ -75,7 +75,7 @@ export function AgentConfigBar({
 	return (
 		<div
 			role="toolbar"
-			className="flex h-9 min-w-0 shrink-0 items-center gap-1 overflow-hidden border-b bg-muted/15 px-3"
+			className="flex h-9 min-w-0 shrink-0 select-none items-center gap-1 overflow-hidden border-b bg-muted/15 px-3"
 			aria-label={t("configBar.label")}
 		>
 			<div className="flex min-w-0 flex-1 flex-nowrap items-center gap-1 overflow-hidden">

@@ -194,7 +194,7 @@ export function PlazaFeedItemDetail({
 
 	return (
 		<div className="flex h-full min-h-0 flex-col">
-			<div className="flex shrink-0 items-center gap-1 border-b px-2 py-1.5">
+			<div className="flex shrink-0 select-none items-center gap-1 border-b px-2 py-1.5">
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Button
@@ -267,7 +267,7 @@ export function PlazaFeedItemDetail({
 			</div>
 			<div
 				ref={bodyRef}
-				className="agentero-scroll min-h-0 flex-1 overflow-y-auto px-5 py-4"
+				className="agentero-scroll min-h-0 flex-1 select-text overflow-y-auto px-5 py-4"
 			>
 				{markdown ? (
 					<MessageResponse className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed [&_h1]:mt-0 [&_h1]:mb-3 [&_h1]:font-medium [&_h1]:text-base [&_h1]:leading-snug">

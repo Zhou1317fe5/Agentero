@@ -99,7 +99,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger asChild>
-				<thead className="sticky top-0 z-[1] border-b bg-background/95 backdrop-blur-sm">
+				<thead className="sticky top-0 z-[1] select-none border-b bg-background/95 backdrop-blur-sm">
 					<tr className="text-muted-foreground text-xs">
 						{visibleColumns.map((col) => {
 							const meta = COLUMN_META[col.key];

@@ -55,7 +55,7 @@ export function PdfBottomBar({
 	return (
 		<div className="pointer-events-none absolute bottom-3 left-1/2 z-20 max-w-[calc(100%-1rem)] -translate-x-1/2">
 			<TooltipProvider delayDuration={200}>
-				<div className="pointer-events-auto flex max-w-full items-center gap-0.5 rounded-lg border border-border/80 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm">
+				<div className="pointer-events-auto flex max-w-full select-none items-center gap-0.5 rounded-lg border border-border/80 bg-background/95 p-0.5 shadow-sm backdrop-blur-sm">
 					{isRemotePaper ? (
 						<Tooltip>
 							<TooltipTrigger asChild>
