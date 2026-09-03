@@ -45,6 +45,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useImeGuard } from "@/hooks/use-ime-guard";
 import { errorText } from "@/lib/core/error";
 import { formatShortcutById } from "@/lib/shell/shortcuts";
 import { vaultDisplayName } from "@/lib/vault";
@@ -115,6 +116,8 @@ export const VaultSidebarHeader = memo(function VaultSidebarHeader({
 	const [lookupBusy, setLookupBusy] = useState(false);
 	const [lookupError, setLookupError] = useState<string | null>(null);
 	const lookupTextareaRef = useRef<HTMLTextAreaElement>(null);
+	// IME: compositionend can fire before the confirming Enter (see useImeGuard).
+	const { isBlockedByIme, compositionProps } = useImeGuard();
 	const [remoteDialogOpen, setRemoteDialogOpen] = useState(false);
 	const [recentRemotes, setRecentRemotes] = useState<RecentRemoteVault[]>(() =>
 		getRecentRemoteVaults(),
@@ -240,10 +243,13 @@ export const VaultSidebarHeader = memo(function VaultSidebarHeader({
 										}}
 										onKeyDown={(e) => {
 											if (e.key === "Enter" && !e.shiftKey) {
+												// Let the IME confirm its candidate; don't search yet.
+												if (isBlockedByIme(e)) return;
 												e.preventDefault();
 												void runLookup();
 											}
 										}}
+										{...compositionProps}
 										placeholder={t("lookup.placeholder")}
 										disabled={lookupBusy}
 										className="min-h-[2.5rem] max-h-32 resize-none overflow-y-auto text-xs"
