@@ -61,7 +61,6 @@
 		"showRightSidebarHint": "Show right sidebar ({{shortcut}})",
 		"hideRightSidebarHint": "Hide right sidebar ({{shortcut}})",
 		"layout": "Layout",
-		"layoutHint": "Choose layout",
 		"layoutModes": "Window layout",
 		"layoutAgent": "Agent",
 		"layoutNotes": "Notes",

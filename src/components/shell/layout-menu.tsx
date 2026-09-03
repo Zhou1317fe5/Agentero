@@ -1,4 +1,5 @@
 import { PanelsTopLeft } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,11 +10,6 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
 import type { LayoutMode } from "@/lib/shell/ui-store";
 
 type LayoutMenuProps = {
@@ -24,29 +20,42 @@ type LayoutMenuProps = {
 /** Title-bar menu for the three paper-reading workbench presets. */
 export function LayoutMenu({ value, onValueChange }: LayoutMenuProps) {
 	const { t } = useTranslation("app");
+	const [open, setOpen] = useState(false);
+	const closeTimer = useRef<number | undefined>(undefined);
 	const selected = value === "custom" ? "" : value;
 
+	const cancelClose = () => window.clearTimeout(closeTimer.current);
+	const scheduleClose = () => {
+		cancelClose();
+		closeTimer.current = window.setTimeout(() => setOpen(false), 150);
+	};
+
+	useEffect(() => () => window.clearTimeout(closeTimer.current), []);
+
 	return (
-		<DropdownMenu>
-			<Tooltip>
-				<TooltipTrigger asChild>
-					<DropdownMenuTrigger asChild>
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon-xs"
-							aria-label={t("titlebar.layout")}
-							className="aria-expanded:bg-transparent aria-expanded:text-inherit dark:aria-expanded:bg-transparent dark:aria-expanded:text-inherit"
-						>
-							<PanelsTopLeft className="size-3.5" />
-						</Button>
-					</DropdownMenuTrigger>
-				</TooltipTrigger>
-				<TooltipContent side="bottom">
-					{t("titlebar.layoutHint")}
-				</TooltipContent>
-			</Tooltip>
-			<DropdownMenuContent align="end" className="w-48">
+		<DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
+			<DropdownMenuTrigger asChild>
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon-xs"
+					aria-label={t("titlebar.layout")}
+					onMouseEnter={() => {
+						cancelClose();
+						setOpen(true);
+					}}
+					onMouseLeave={scheduleClose}
+					className="hover:bg-transparent hover:text-inherit dark:hover:bg-transparent aria-expanded:bg-transparent aria-expanded:text-inherit dark:aria-expanded:bg-transparent dark:aria-expanded:text-inherit"
+				>
+					<PanelsTopLeft className="size-3.5" />
+				</Button>
+			</DropdownMenuTrigger>
+			<DropdownMenuContent
+				align="end"
+				className="w-48"
+				onMouseEnter={cancelClose}
+				onMouseLeave={scheduleClose}
+			>
 				<DropdownMenuLabel>{t("titlebar.layoutModes")}</DropdownMenuLabel>
 				<DropdownMenuRadioGroup
 					value={selected}
