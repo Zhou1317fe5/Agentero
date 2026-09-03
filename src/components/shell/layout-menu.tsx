@@ -36,7 +36,7 @@ export function LayoutMenu({ value, onValueChange }: LayoutMenuProps) {
 							variant="ghost"
 							size="icon-xs"
 							aria-label={t("titlebar.layout")}
-							aria-pressed={value !== "custom"}
+							className="aria-expanded:bg-transparent aria-expanded:text-inherit dark:aria-expanded:bg-transparent dark:aria-expanded:text-inherit"
 						>
 							<PanelsTopLeft className="size-3.5" />
 						</Button>
