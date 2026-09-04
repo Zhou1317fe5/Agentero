@@ -14,6 +14,8 @@ pub mod background_tasks;
 #[path = "agent/install/mod.rs"]
 pub mod cli_install;
 #[cfg(feature = "desktop")]
+pub mod host_hooks;
+#[cfg(feature = "desktop")]
 pub mod jobs;
 
 pub mod lifecycle;

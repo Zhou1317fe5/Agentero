@@ -217,7 +217,7 @@ impl AgenteroMcp {
         let note_mode = NoteShellMode::parse(&self.ctrl.paper_note_mode());
         let result = if let Some(app) = self.ctrl.app_handle() {
             let cache = app.try_state::<catalog::CapsCache>();
-            let host_app = crate::core::app_handle::wrap(&app);
+            let host_app = crate::features::host_hooks::wrap(&app);
             import::import_by_identifier_with_progress(
                 import_args,
                 Some(&host_app),

@@ -53,7 +53,7 @@ pub fn emit_job_terminal(app: &AppHandle, job: &crate::features::jobs::JobSnapsh
         && job.state == JobState::Succeeded
     {
         if let Some(pid) = paper_id.as_deref() {
-            let host_app = crate::core::app_handle::wrap(app);
+            let host_app = crate::features::host_hooks::wrap(app);
             emit_paper_assets_ready(Some(&host_app), Path::new(&job.vault_path), pid);
         }
     }

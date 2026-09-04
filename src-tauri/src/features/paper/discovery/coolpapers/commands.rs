@@ -60,7 +60,7 @@ pub async fn paper_coolpapers_import(
             return Ok(map_err(err));
         }
     };
-    let host_app = crate::core::app_handle::wrap(&app);
+    let host_app = crate::features::host_hooks::wrap(&app);
     let result = super::page::import_page(super::page::ImportPageArgs {
         vault: &vault,
         parent_dir: &args.parent_dir,

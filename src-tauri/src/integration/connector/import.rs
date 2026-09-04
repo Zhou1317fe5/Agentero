@@ -66,7 +66,7 @@ pub async fn import_connector_item_with_cookies(
     // request must finish within ~15s, so assets stay Deferred.
     let app = ctrl
         .app_handle()
-        .map(|app| crate::core::app_handle::wrap(&app));
+        .map(|app| crate::features::host_hooks::wrap(&app));
     let note_mode = note_mode_from_ctrl(&ctrl);
     let commit = paper_commit(
         meta,
@@ -566,7 +566,7 @@ pub async fn import_standalone_attachment(
     } else {
         let host_app = ctrl
             .app_handle()
-            .map(|app| crate::core::app_handle::wrap(&app));
+            .map(|app| crate::features::host_hooks::wrap(&app));
         import_standalone_local(
             Path::new(&vault_handle),
             &parent_dir,

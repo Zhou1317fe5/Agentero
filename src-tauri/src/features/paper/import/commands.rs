@@ -36,7 +36,7 @@ pub async fn lookup_import_batch(
     let n = args.texts.len();
     let op = OpTimer::start_with("lookup_import_batch", format!("count={n}"));
     let note_mode = crate::features::import::note_mode_from_app(&app);
-    let host_app = crate::core::app_handle::wrap(&app);
+    let host_app = crate::features::host_hooks::wrap(&app);
     if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned) {
         let vault_id = std::path::PathBuf::from(&args.vault_path);
         let result = remote
@@ -114,7 +114,7 @@ pub async fn paper_download_assets(
         return Ok(op.finish_result(remote.download_paper_assets_remote(&session_id, args).await));
     }
     let task_id = args.task_id.clone();
-    let host_app = crate::core::app_handle::wrap(&app);
+    let host_app = crate::features::host_hooks::wrap(&app);
     let result =
         super::download_paper_assets_with_progress(args, Some(&host_app), Some(&cache)).await;
     if let Some(task_id) = task_id.as_deref() {
@@ -135,7 +135,7 @@ pub async fn paper_import_local_pdf(
     let n = args.file_paths.len();
     let op = OpTimer::start_with("paper_import_local_pdf", format!("count={n}"));
     let note_mode = crate::features::import::note_mode_from_app(&app);
-    let host_app = crate::core::app_handle::wrap(&app);
+    let host_app = crate::features::host_hooks::wrap(&app);
     let task_id = args.task_id.clone();
     let result = if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned)
     {

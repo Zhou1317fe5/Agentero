@@ -4,9 +4,10 @@
 //! re-exported here so `crate::core::X` paths stay stable (the CLI depends on
 //! `agentero-core` directly). Modules kept in this crate:
 //!
-//! - [`app_handle`]: bridge around `agentero_core::app_handle` — on desktop it
-//!   wraps `tauri::AppHandle` into the tauri-free [`AppHandle`](app_handle::AppHandle)
-//!   via `TauriHostHooks` (event emit + JobCenter spawns).
+//! - [`app_handle`]: re-export bridge around `agentero_core::app_handle`
+//!   (tauri-free [`AppHandle`](app_handle::AppHandle) / `HostHooks`); the
+//!   desktop `TauriHostHooks` implementation lives in `features::host_hooks`
+//!   to keep `core/` free of `features/` deps.
 //! - [`telemetry`]: PostHog sender — `posthog-rs` (desktop-only optional dep)
 //!   plus `tauri::VERSION` in the payload.
 //! - [`usage::commands`]: `#[tauri::command]` surface over the tauri-free

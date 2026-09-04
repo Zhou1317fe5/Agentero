@@ -88,7 +88,7 @@ fn download_assets_runner(
             path: path.clone(),
             task_id: Some(task_id),
         };
-        let host_app = crate::core::app_handle::wrap(&app);
+        let host_app = crate::features::host_hooks::wrap(&app);
         let result = crate::features::import::download_paper_assets_with_progress(
             args,
             Some(&host_app),
@@ -192,7 +192,7 @@ fn recognize_metadata_runner(
             return RunOutcome::Cancelled;
         }
 
-        let host_app = crate::core::app_handle::wrap(&app);
+        let host_app = crate::features::host_hooks::wrap(&app);
         let outcome = crate::features::import::recognize_apply::apply_probe_result(
             Some(&host_app),
             &vault,
