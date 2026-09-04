@@ -3,14 +3,8 @@
  * Each entry pairs header meta (label / width / min-width) with a per-paper
  * cell renderer; the table body just walks visible columns.
  */
-import {
-	ArrowDown,
-	ArrowUp,
-	ArrowUpDown,
-	Award,
-	FileWarning,
-} from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown, FileWarning } from "lucide-react";
+import type { ReactNode } from "react";
 import {
 	authorsCopyText,
 	type CellCtx,
@@ -26,16 +20,8 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { errorMessage, notifyError, notifySuccess } from "@/lib/core/notify";
 import { cn } from "@/lib/core/utils";
-import {
-	buildEasyScholarTags,
-	fetchEasyScholarRank,
-	isEasyScholarTag,
-} from "@/lib/easyscholar";
-import type { PaperMetadata } from "@/lib/paper";
 import { formatAuthorsShort } from "@/lib/paper";
-import { coercePaperTags } from "@/lib/paper/tags";
 
 const COPY_CELL_BASE =
 	"cursor-pointer select-text rounded-sm hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
@@ -97,67 +83,6 @@ function CopyTd({
 				{children}
 			</CopyCellButton>
 		</td>
-	);
-}
-
-function EasyScholarRankButton({
-	paper,
-	ctx,
-}: {
-	paper: PaperMetadata;
-	ctx: Pick<CellCtx, "t" | "onSetPaperTags">;
-}) {
-	const [busy, setBusy] = useState(false);
-	const setTags = ctx.onSetPaperTags;
-	if (!setTags) return null;
-	const title = paper.publication?.trim();
-	if (!title) return null;
-
-	const fetchRank = async () => {
-		if (busy) return;
-		setBusy(true);
-		try {
-			const response = await fetchEasyScholarRank(title);
-			const data = response.data?.officialRank?.all;
-			if (!data || Object.keys(data).length === 0) {
-				notifyError(ctx.t("papersLibrary.easyScholar.noData"));
-				return;
-			}
-			const newTags = buildEasyScholarTags(title, data).map((name) => ({
-				name,
-			}));
-			const allTags = coercePaperTags(paper.tags);
-			const base = allTags.filter((tag) => !isEasyScholarTag(tag.name));
-			await setTags(paper, [...base, ...newTags]);
-			notifySuccess(
-				ctx.t("papersLibrary.easyScholar.done", { count: newTags.length }),
-			);
-		} catch (err) {
-			notifyError(ctx.t("papersLibrary.easyScholar.fetchFailed"), {
-				description: errorMessage(err),
-			});
-		} finally {
-			setBusy(false);
-		}
-	};
-
-	return (
-		<button
-			type="button"
-			disabled={busy}
-			onClick={() => void fetchRank()}
-			className={cn(
-				"inline-flex size-4 items-center justify-center rounded-full",
-				"bg-background ring-1 ring-border/70 transition-colors",
-				"hover:ring-foreground/30",
-				"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-				"disabled:pointer-events-none disabled:opacity-50",
-			)}
-			aria-label={ctx.t("papersLibrary.easyScholar.fetchRank")}
-			title={ctx.t("papersLibrary.easyScholar.fetchRank")}
-		>
-			<Award className="size-3 text-amber-500" aria-hidden />
-		</button>
 	);
 }
 
@@ -265,16 +190,17 @@ export const COLUMN_META = {
 		labelKey: "papersLibrary.colTags",
 		widthWeight: 18,
 		headerClassName: "min-w-[120px]",
-		render: (p, ctx) => (
+		render: (_p, { tags }) => (
 			<td className="min-w-0 max-w-0 overflow-hidden px-3 py-2.5">
-				<div className="flex flex-wrap items-center gap-1">
-					{ctx.tags.length ? (
-						ctx.tags.map((tag) => <PaperTagChip key={tag.name} tag={tag} />)
-					) : (
-						<span className="text-muted-foreground text-xs">—</span>
-					)}
-					<EasyScholarRankButton paper={p} ctx={ctx} />
-				</div>
+				{tags.length ? (
+					<div className="flex flex-wrap gap-1">
+						{tags.map((tag) => (
+							<PaperTagChip key={tag.name} tag={tag} />
+						))}
+					</div>
+				) : (
+					<span className="text-muted-foreground text-xs">—</span>
+				)}
 			</td>
 		),
 	},

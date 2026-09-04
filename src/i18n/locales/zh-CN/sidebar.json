@@ -129,10 +129,9 @@
 		"filterTagsEmpty": "当前库中还没有标签。",
 		"clearTagFilter": "清除标签筛选",
 		"easyScholar": {
-			"fetchRank": "获取 EasyScholar 分区/影响因子标签",
-			"noData": "EasyScholar 未返回该期刊数据。",
+			"fetchRank": "为全部论文获取 EasyScholar 分区/影响因子标签",
 			"fetchFailed": "获取 EasyScholar 数据失败。",
-			"done": "已添加 {{count}} 个 EasyScholar 标签"
+			"batchDone": "已更新 {{updated}} 篇 · 失败 {{failed}} · 无数据 {{empty}}"
 		},
 		"noMatch": "没有匹配的论文。",
 		"columnsMenuLabel": "列",

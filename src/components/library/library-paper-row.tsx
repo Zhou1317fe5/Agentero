@@ -41,8 +41,8 @@ type LibraryPaperRowProps = {
 	row: PaperRow;
 	heat: ReadingHeatmap | undefined;
 	visibleColumns: LibraryColumnPref[];
-	/** Stable `t` + `onCellCopy` + optional `onSetPaperTags` shared by all rows (memo friendly). */
-	ctx: Pick<CellCtx, "t" | "onCellCopy" | "onSetPaperTags">;
+	/** Stable `t` + `onCellCopy` pair shared by all rows (memo friendly). */
+	ctx: Pick<CellCtx, "t" | "onCellCopy">;
 	paperAbsPath: string | null;
 	canEditMeta: boolean;
 	onOpenPaper: (paper: PaperMetadata) => void;
@@ -67,7 +67,6 @@ export const LibraryPaperRow = memo(function LibraryPaperRow({
 	const cellCtx: CellCtx = {
 		t: ctx.t,
 		onCellCopy: ctx.onCellCopy,
-		onSetPaperTags: ctx.onSetPaperTags,
 		heat,
 		tags: row.tags,
 	};

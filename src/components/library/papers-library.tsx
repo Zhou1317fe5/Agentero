@@ -36,13 +36,8 @@ import {
 	refreshLibraryMetadata,
 	refreshPaperMetadata,
 } from "@/lib/paper/library-actions";
-import { setLibraryPaperTags } from "@/lib/paper/library-store";
 import { heatmapCacheKey } from "@/lib/paper/reading-heatmap";
-import {
-	type PaperTag,
-	type PaperTagInput,
-	visiblePaperTags,
-} from "@/lib/paper/tags";
+import { type PaperTag, visiblePaperTags } from "@/lib/paper/tags";
 import {
 	DEFAULT_LIBRARY_COLUMNS,
 	type LibraryColumnPref,
@@ -208,14 +203,6 @@ export function PapersLibrary({
 		[vaultPath],
 	);
 
-	const handleSetPaperTags = useCallback(
-		async (paper: PaperMetadata, tags: PaperTagInput[]) => {
-			if (!vaultPath || !paper.path) return;
-			await setLibraryPaperTags(vaultPath, paper.path, tags);
-		},
-		[vaultPath],
-	);
-
 	const normalizedQuery = (inputValue ?? "").trim().toLocaleLowerCase();
 	const tagFilterSet = useMemo(() => new Set(tagFilter), [tagFilter]);
 
@@ -305,10 +292,10 @@ export function PapersLibrary({
 		virtualRows,
 	});
 
-	/** Stable t + onCellCopy + onSetPaperTags shared by every memoized row. */
-	const cellCtx = useMemo<Pick<CellCtx, "t" | "onCellCopy" | "onSetPaperTags">>(
-		() => ({ t, onCellCopy, onSetPaperTags: handleSetPaperTags }),
-		[t, onCellCopy, handleSetPaperTags],
+	/** Stable t + onCellCopy pair shared by every memoized row. */
+	const cellCtx = useMemo<Pick<CellCtx, "t" | "onCellCopy">>(
+		() => ({ t, onCellCopy }),
+		[t, onCellCopy],
 	);
 
 	const filtering = normalizedQuery.length > 0 || tagFilterSet.size > 0;
@@ -365,6 +352,8 @@ export function PapersLibrary({
 							onToggleColumn={toggleColumn}
 							onResetColumns={resetColumns}
 							onColumnReorder={handleColumnReorder}
+							vaultPath={vaultPath}
+							papers={scopedPapers}
 						/>
 						{/* key={reorderKey} remounts the tbody to replay the fade animation. */}
 						<tbody
