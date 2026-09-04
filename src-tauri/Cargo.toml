@@ -64,6 +64,8 @@ tauri-plugin-dialog = { version = "2.7.1", optional = true }
 tauri-plugin-deep-link = { version = "2.4.9", optional = true }
 agent-client-protocol = { version = "1.2.0", features = ["unstable_elicitation"], optional = true }
 tokio = { version = "1", features = ["sync", "rt", "rt-multi-thread", "macros", "time", "process", "io-util", "net"] }
+# Per-job CancellationToken for the JobCenter cancel path (no global flag state).
+tokio-util = { version = "0.7", default-features = false }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "query", "tokio"], optional = true }
 # Streamable HTTP MCP server (Settings toggle; loopback only).
 rmcp = { version = "3.1", optional = true, default-features = false, features = [

@@ -37,6 +37,7 @@ fn parse_body_runner(
             paper_path: path,
             force,
             task_id,
+            ..
         } = started;
         let task_id = task_id.unwrap_or_else(|| snapshot.id.clone());
         let cache = app.state::<CapsCache>();

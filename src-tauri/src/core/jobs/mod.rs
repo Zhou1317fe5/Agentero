@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tauri::{Emitter, Manager};
 use tokio::sync::Mutex;
+use tokio_util::sync::CancellationToken;
 
 pub const JOB_CHANGED_EVENT: &str = "job:changed";
 pub const JOB_OFFER_EVENT: &str = "job:offer";
@@ -127,6 +128,12 @@ pub struct StartedJob {
     pub paper_path: String,
     pub force: bool,
     pub task_id: Option<String>,
+    /// Per-job cancellation signal, fired by [`JobCenter::cancel`]. Fresh for
+    /// every started job and dropped when the job settles, so cancel state can
+    /// neither leak from a crashed job nor poison a later job reusing the same
+    /// task id. Deep cooperative pollers (`background_tasks::is_cancelled`)
+    /// see it through the task-id bridge registered by `run_started`.
+    pub cancel_token: CancellationToken,
 }
 
 /// Outcome of `JobCenter::try_start`: whether a `Queued` job could actually
@@ -278,6 +285,11 @@ struct JobCenterInner {
     /// Number of currently `Running` jobs per kind, used to enforce the
     /// per-kind concurrency caps from paper-pipeline-orchestration.md §7.3.
     running_by_kind: HashMap<JobKind, usize>,
+    /// Live cancellation tokens of `Running` jobs, keyed by the unique job id.
+    /// Created by `mark_running_locked`, fired and removed by `cancel`, and
+    /// removed on every other terminal transition — cancel state therefore
+    /// cannot leak from a crashed job or poison a later job.
+    cancel_tokens: HashMap<JobId, CancellationToken>,
     /// `LayoutAnalyze` cap: 1 for local ONNX, unlimited for the remote API.
     layout_analyze_cap: LayoutAnalyzeCap,
     /// Per-kind runners registered by business domains at app startup.
@@ -295,6 +307,10 @@ impl std::fmt::Debug for JobCenterInner {
             .field("active_keys", &self.active_keys)
             .field("lanes", &self.lanes)
             .field("running_by_kind", &self.running_by_kind)
+            .field(
+                "cancel_tokens",
+                &self.cancel_tokens.keys().collect::<Vec<_>>(),
+            )
             .field("layout_analyze_cap", &self.layout_analyze_cap)
             .field("runners", &self.runners.keys().collect::<Vec<_>>())
             .field(
@@ -425,12 +441,15 @@ fn mark_running_locked(inner: &mut JobCenterInner, id: &JobId) -> Option<Started
     let kind = job.kind;
     inner.lanes.remove(id);
     *inner.running_by_kind.entry(kind).or_insert(0) += 1;
+    let cancel_token = CancellationToken::new();
+    inner.cancel_tokens.insert(id.clone(), cancel_token.clone());
     Some(StartedJob {
         snapshot,
         vault_path,
         paper_path,
         force,
         task_id,
+        cancel_token,
     })
 }
 
@@ -680,12 +699,18 @@ impl JobCenter {
                 job.progress = None;
                 job.phase = Some("cancelled".into());
                 let kind = job.kind;
-                // Signal the executing worker / renderer to stop. ParseBody's
-                // liteparse worker polls this flag; the layout executor aborts
-                // on the `job:changed(cancelled)` event emitted by the caller.
-                let task_id = job.task_id.clone().unwrap_or_else(|| job.id.0.clone());
                 release_running_slot(&mut inner, kind);
-                crate::core::background_tasks::cancel(&task_id);
+                // Signal the executing runner through the job's own token and
+                // drop the registry entry in the same step: cancel state dies
+                // with the job instead of leaking into a global flag set.
+                // `run_started` bridges the token to the task-id polling
+                // surface (`background_tasks::is_cancelled`) used by the
+                // ParseBody liteparse worker; the layout renderer executor
+                // aborts on the `job:changed(cancelled)` event emitted by the
+                // caller.
+                if let Some(token) = inner.cancel_tokens.remove(&id) {
+                    token.cancel();
+                }
                 release_active_key(&mut inner, &id);
                 true
             }
@@ -890,17 +915,62 @@ impl JobCenter {
         })
     }
 
-    /// Run the registered runner for a job `try_start` just moved to
-    /// `Running`, inline in the caller's task. Kinds without a registered
+    /// Run the registered runner for a job `try_start` just moved to `Running`
+    /// and supervise it to completion. The runner executes in a child task so
+    /// a panic inside it surfaces here as a join error instead of silently
+    /// skipping the finish bookkeeping — an unsupervised crash would hold the
+    /// kind's concurrency slot and dedupe key forever, wedging every later job
+    /// of that kind in `Queued`. On crash the job is marked `Failed`,
+    /// `job:changed` is emitted and freed slots drain the queue. The job's
+    /// cancel token is bridged to the task-id polling surface for the runner's
+    /// lifetime and cleaned up on every exit path. Kinds without a registered
     /// runner are no-ops (they never start backend-side).
     pub async fn run_started(&self, app: &tauri::AppHandle, started: StartedJob) {
         let runner = {
             let inner = self.inner.lock().await;
             inner.runners.get(&started.snapshot.kind).cloned()
         };
-        if let Some(runner) = runner {
-            runner(self.handle(), app.clone(), started).await;
+        let Some(runner) = runner else {
+            return;
+        };
+        let job_id = started.snapshot.id.clone();
+        let bridge = CancelTokenBridge::new(&started);
+        let center = self.handle();
+        let runner_app = app.clone();
+        let join = tauri::async_runtime::spawn(async move {
+            runner(center, runner_app, started).await;
+        })
+        .await;
+        // Drop the bridge before settling: a successor reusing the task id may
+        // register its own token as soon as the freed slot drains the queue.
+        drop(bridge);
+        if let Err(err) = join {
+            if let Some(snapshot) = self.settle_crashed_runner(&job_id, &err).await {
+                emit_job_changed(app, snapshot);
+            }
+            // The crashed runner never reached its own wake/drain tail.
+            self.wake_and_spawn_dependents(app, &job_id).await;
         }
+    }
+
+    /// Crash half of the `run_started` supervisor: mark the job `Failed`
+    /// (which releases its concurrency slot and dedupe key) so the queue for
+    /// that kind keeps moving. Returns the terminal snapshot to emit, or
+    /// `None` when the job already settled (e.g. cancelled mid-run), in which
+    /// case `finish` keeps the earlier terminal state.
+    async fn settle_crashed_runner(&self, job_id: &str, err: &tauri::Error) -> Option<JobSnapshot> {
+        log::error!(
+            target: "agentero::jobs",
+            "job runner crashed: id={job_id} error={err}"
+        );
+        self.finish(
+            job_id,
+            JobState::Failed,
+            None,
+            Some("failed"),
+            Some(format!("job runner crashed: {err}")),
+        )
+        .await
     }
 
     /// Spawn the runner for a job `try_start` just moved to `Running`.
@@ -997,6 +1067,7 @@ impl JobCenter {
         job.error = error;
         let snapshot = job.snapshot();
         release_active_key(&mut inner, &id);
+        inner.cancel_tokens.remove(&id);
         if was_running {
             release_running_slot(&mut inner, kind);
         }
@@ -1049,6 +1120,7 @@ impl JobCenter {
         };
         if let Some(kind) = terminal_kind {
             release_active_key(&mut inner, &id);
+            inner.cancel_tokens.remove(&id);
             release_running_slot(&mut inner, kind);
         }
         Some(snapshot)
@@ -1150,6 +1222,11 @@ impl JobCenter {
             .get(&kind)
             .copied()
             .unwrap_or(0)
+    }
+
+    #[cfg(test)]
+    async fn cancel_token_count_for_test(&self) -> usize {
+        self.inner.lock().await.cancel_tokens.len()
     }
 }
 
@@ -1265,6 +1342,36 @@ pub fn spawn_recognize_metadata(app: Option<&tauri::AppHandle>, vault: &Path, pa
             StartOutcome::Waiting => {}
         }
     });
+}
+
+/// RAII bridge between a job's own [`CancellationToken`] and the task-id
+/// keyed cooperative polling surface ([`crate::core::background_tasks`]) that
+/// deep business code (pdf parse engines, asset downloaders, recognizer
+/// probes) polls via `is_cancelled(task_id)`. Registration replaces any stale
+/// entry for the id; the drop cleanup runs on every runner exit path (success
+/// / failure / panic / dropped future) and also clears a legacy flag that may
+/// have been set for the id before the token was registered, so cancel state
+/// can neither leak nor poison a later task reusing the same id.
+struct CancelTokenBridge {
+    task_id: String,
+}
+
+impl CancelTokenBridge {
+    fn new(started: &StartedJob) -> Self {
+        let task_id = started
+            .task_id
+            .clone()
+            .unwrap_or_else(|| started.snapshot.id.clone());
+        crate::core::background_tasks::register_token(&task_id, started.cancel_token.clone());
+        Self { task_id }
+    }
+}
+
+impl Drop for CancelTokenBridge {
+    fn drop(&mut self) {
+        crate::core::background_tasks::unregister_token(&self.task_id);
+        crate::core::background_tasks::finish(&self.task_id);
+    }
 }
 
 fn release_active_key(inner: &mut JobCenterInner, job_id: &JobId) {
@@ -2058,5 +2165,153 @@ mod tests {
         assert_eq!(first.kind, JobKind::DownloadAssets);
         assert_eq!(first.fingerprint, "downloadAssets:v1:force:false");
         assert_eq!(center.list(None, None).await.len(), 1);
+    }
+
+    /// A panicked runner task surfaces as a join error, exactly how the
+    /// `run_started` supervisor detects it; the crash path must settle the job
+    /// `Failed`, free the per-kind slot and the dedupe key, and drop the
+    /// cancel-token entry.
+    #[tokio::test]
+    async fn crashed_runner_settles_failed_and_frees_slot_and_key() {
+        let center = JobCenter::new();
+        let job = center
+            .enqueue_parse_refs(vault("panic-settle"), "papers/a", JobLane::Normal, false)
+            .await;
+        match center.try_start(&job.id).await {
+            StartOutcome::Started(..) => {}
+            other => panic!("expected Started, got {other:?}"),
+        }
+        assert_eq!(center.running_count_for_test(JobKind::ParseRefs).await, 1);
+        assert_eq!(center.cancel_token_count_for_test().await, 1);
+
+        let join = tauri::async_runtime::spawn(async { panic!("runner boom") }).await;
+        let err = match join {
+            Err(err) => err,
+            Ok(()) => panic!("expected the spawned panic to surface as a join error"),
+        };
+        let snapshot = center
+            .settle_crashed_runner(&job.id, &err)
+            .await
+            .expect("crash settle returned the terminal snapshot");
+
+        assert_eq!(snapshot.state, JobState::Failed);
+        assert!(snapshot
+            .error
+            .as_deref()
+            .is_some_and(|error| error.contains("job runner crashed")));
+        assert_eq!(center.running_count_for_test(JobKind::ParseRefs).await, 0);
+        assert_eq!(center.cancel_token_count_for_test().await, 0);
+
+        // Dedupe key released: re-enqueue creates a fresh job (not the ghost
+        // snapshot of the crashed one) and the freed slot lets it start.
+        let next = center
+            .enqueue_parse_refs(vault("panic-settle"), "papers/a", JobLane::Normal, false)
+            .await;
+        assert_ne!(next.id, job.id);
+        assert_eq!(next.state, JobState::Queued);
+        match center.try_start(&next.id).await {
+            StartOutcome::Started(..) => {}
+            other => panic!("expected the successor to start, got {other:?}"),
+        }
+    }
+
+    /// Cancel of a running job must signal the runner through the job's own
+    /// token — including the task-id polling surface the deep business code
+    /// uses — and leave no cancel state behind once the runner exits.
+    #[tokio::test]
+    async fn cancel_running_job_signals_token_and_cleans_up_on_exit() {
+        let center = JobCenter::new();
+        let task_id = "cancel-bridge-task";
+        let job = center
+            .enqueue_parse_body(
+                vault("cancel-token"),
+                "papers/a",
+                JobLane::Normal,
+                false,
+                Some(task_id.to_string()),
+            )
+            .await;
+        let started = match center.try_start(&job.id).await {
+            StartOutcome::Started(started) => started,
+            other => panic!("expected Started, got {other:?}"),
+        };
+        let token = started.cancel_token.clone();
+        // Mirror `run_started`: bridge the job token to the task-id surface.
+        let bridge = CancelTokenBridge::new(&started);
+        assert!(!token.is_cancelled());
+        assert!(!crate::core::background_tasks::is_cancelled(task_id));
+
+        assert!(center.cancel(&job.id).await);
+
+        // The runner sees the cancellation on both surfaces; the JobCenter
+        // keeps no cancel entry once the job settled.
+        assert!(token.is_cancelled());
+        assert!(crate::core::background_tasks::is_cancelled(task_id));
+        assert_eq!(center.cancel_token_count_for_test().await, 0);
+
+        // Runner exit drops the bridge: all cancel state for the id is gone.
+        drop(bridge);
+        assert!(!crate::core::background_tasks::is_cancelled(task_id));
+    }
+
+    /// A job reusing the task id (and even the same dedupe key) of a
+    /// cancelled/crashed predecessor must start with a fresh, uncancelled
+    /// token and a clean polling surface.
+    #[tokio::test]
+    async fn reused_task_id_is_not_poisoned_by_cancelled_or_crashed_job() {
+        let center = JobCenter::new();
+        let vault = vault("reuse-id");
+        let task_id = "shared-task-id";
+
+        // First run: cancelled mid-flight, then the runner exits (bridge drop).
+        let first = center
+            .enqueue_parse_body(
+                vault.clone(),
+                "papers/a",
+                JobLane::Normal,
+                false,
+                Some(task_id.to_string()),
+            )
+            .await;
+        let started_first = match center.try_start(&first.id).await {
+            StartOutcome::Started(started) => started,
+            other => panic!("expected Started, got {other:?}"),
+        };
+        let bridge_first = CancelTokenBridge::new(&started_first);
+        assert!(center.cancel(&first.id).await);
+        assert!(crate::core::background_tasks::is_cancelled(task_id));
+        drop(bridge_first);
+
+        // Second run reuses the task id and the dedupe key of the cancelled
+        // job: it must get a new id and a fresh, uncancelled token.
+        let second = center
+            .enqueue_parse_body(
+                vault.clone(),
+                "papers/a",
+                JobLane::Normal,
+                false,
+                Some(task_id.to_string()),
+            )
+            .await;
+        assert_ne!(second.id, first.id);
+        let started_second = match center.try_start(&second.id).await {
+            StartOutcome::Started(started) => started,
+            other => panic!("expected Started, got {other:?}"),
+        };
+        assert!(!started_second.cancel_token.is_cancelled());
+        let bridge_second = CancelTokenBridge::new(&started_second);
+        assert!(!crate::core::background_tasks::is_cancelled(task_id));
+
+        // A crash of the second runner also leaves no cancel state behind.
+        let join = tauri::async_runtime::spawn(async { panic!("runner boom") }).await;
+        let err = join.expect_err("spawned panic surfaces as a join error");
+        let snapshot = center
+            .settle_crashed_runner(&second.id, &err)
+            .await
+            .expect("crash settle returned the terminal snapshot");
+        assert_eq!(snapshot.state, JobState::Failed);
+        drop(bridge_second);
+        assert!(!crate::core::background_tasks::is_cancelled(task_id));
+        assert_eq!(center.cancel_token_count_for_test().await, 0);
     }
 }
