@@ -6,10 +6,10 @@
 #[cfg(feature = "desktop")]
 pub mod agent;
 #[cfg(feature = "desktop")]
+pub mod background_tasks;
+#[cfg(feature = "desktop")]
 #[path = "agent/install/mod.rs"]
 pub mod cli_install;
-#[cfg(feature = "desktop")]
-pub mod jobs;
 
 pub mod lifecycle;
 
