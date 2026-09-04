@@ -130,9 +130,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 						empty += 1;
 						continue;
 					}
-					const newTags = buildEasyScholarTags(title, data).map((name) => ({
-						name,
-					}));
+					const newTags = buildEasyScholarTags(title, data);
 					const allTags = coercePaperTags(paper.tags);
 					const base = allTags.filter((tag) => !isEasyScholarTag(tag.name));
 					await setLibraryPaperTags(vaultPath, paper.path, [

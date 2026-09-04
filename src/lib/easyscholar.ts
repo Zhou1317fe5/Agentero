@@ -7,7 +7,8 @@
 
 import { invokeApi } from "@/lib/core/ipc";
 import { isTauri } from "@/lib/core/tauri";
-import type { PaperTag } from "@/lib/paper/tags";
+import type { PaperTag, PaperTagInput } from "@/lib/paper/tags";
+import type { TagColorId } from "@/lib/ui/tag-colors";
 
 export const EASY_SCHOLAR_TAG_PREFIX = "#easyscholar:";
 
@@ -39,21 +40,14 @@ const EASY_SCHOLAR_FIELD_NAMES: Record<string, string> = {
 	ccf: "CCF",
 };
 
+/** Color for IF / 5-year IF tags; everything else uses the "other" color. */
+const EASY_SCHOLAR_IF_COLOR: TagColorId = "green";
+const EASY_SCHOLAR_OTHER_COLOR: TagColorId = "blue";
+
 function tagValue(value: unknown): string {
 	return String(value ?? "")
 		.replace(/[\r\n]+/g, " ")
 		.trim();
-}
-
-function addUniqueTag(tags: string[], tag: string) {
-	if (
-		tag &&
-		!tags.some(
-			(existing) => existing.toLocaleLowerCase() === tag.toLocaleLowerCase(),
-		)
-	) {
-		tags.push(tag);
-	}
 }
 
 /**
@@ -69,11 +63,14 @@ function addUniqueTag(tags: string[], tag: string) {
 export function buildEasyScholarTags(
 	publicationTitle: string,
 	data: EasyScholarRankData,
-): string[] {
-	const tags: string[] = [];
+): PaperTagInput[] {
+	const tags: PaperTagInput[] = [];
 	const title = tagValue(publicationTitle);
 	if (title) {
-		addUniqueTag(tags, `${EASY_SCHOLAR_TAG_PREFIX}journal=${title}`);
+		tags.push({
+			name: `${EASY_SCHOLAR_TAG_PREFIX}journal=${title}`,
+			color: EASY_SCHOLAR_OTHER_COLOR,
+		});
 	}
 
 	for (const [field, rawValue] of Object.entries(data)) {
@@ -82,29 +79,38 @@ export function buildEasyScholarTags(
 
 		if (field === "sciif") {
 			if (Number.isFinite(Number(value))) {
-				addUniqueTag(tags, `${EASY_SCHOLAR_TAG_PREFIX}if=${value}`);
+				tags.push({
+					name: `${EASY_SCHOLAR_TAG_PREFIX}if=${value}`,
+					color: EASY_SCHOLAR_IF_COLOR,
+				});
 			}
 			continue;
 		}
 		if (field === "sciif5") {
 			if (Number.isFinite(Number(value))) {
-				addUniqueTag(tags, `${EASY_SCHOLAR_TAG_PREFIX}if5=${value}`);
+				tags.push({
+					name: `${EASY_SCHOLAR_TAG_PREFIX}if5=${value}`,
+					color: EASY_SCHOLAR_IF_COLOR,
+				});
 			}
 			continue;
 		}
 		if (field === "jci") {
 			if (Number.isFinite(Number(value))) {
-				addUniqueTag(tags, `${EASY_SCHOLAR_TAG_PREFIX}jci=${value}`);
+				tags.push({
+					name: `${EASY_SCHOLAR_TAG_PREFIX}jci=${value}`,
+					color: EASY_SCHOLAR_OTHER_COLOR,
+				});
 			}
 			continue;
 		}
 
 		const key = EASY_SCHOLAR_FIELD_NAMES[field];
 		if (!key) continue;
-		addUniqueTag(
-			tags,
-			`${EASY_SCHOLAR_TAG_PREFIX}rank=${key}${value ? `=${value}` : ""}`,
-		);
+		tags.push({
+			name: `${EASY_SCHOLAR_TAG_PREFIX}rank=${key}${value ? `=${value}` : ""}`,
+			color: EASY_SCHOLAR_OTHER_COLOR,
+		});
 	}
 
 	return tags;
