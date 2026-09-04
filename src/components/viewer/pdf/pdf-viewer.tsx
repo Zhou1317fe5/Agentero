@@ -961,13 +961,21 @@ function PdfViewerInner({
 		paperAbsPath,
 	});
 
+	const autoTranslatedSelectionRef = useRef<typeof selectionMenu>(null);
+
 	// When enabled, translate as soon as text extraction has produced a usable
-	// selection anchor. Keep the setting subscription narrow so unrelated
-	// settings changes do not re-render the PDF viewer.
+	// selection anchor. Keep the toolbar open so the other selection actions stay
+	// available while the result card streams beside it.
 	useEffect(() => {
-		if (!autoTranslateSelection || !selectionMenu?.anchor.quote?.trim()) return;
-		handleMenuTranslate();
-	}, [autoTranslateSelection, selectionMenu, handleMenuTranslate]);
+		const quote = selectionMenu?.anchor.quote?.trim();
+		if (!selectionMenu || !autoTranslateSelection || !quote) {
+			autoTranslatedSelectionRef.current = null;
+			return;
+		}
+		if (autoTranslatedSelectionRef.current === selectionMenu) return;
+		autoTranslatedSelectionRef.current = selectionMenu;
+		translateSelection(selectionMenu.anchor);
+	}, [autoTranslateSelection, selectionMenu, translateSelection]);
 
 	// ---- In-PDF highlight selection menu ----
 
