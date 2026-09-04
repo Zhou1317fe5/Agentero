@@ -7,7 +7,13 @@
 
 use crate::core::error::{map_err, ApiResult};
 use crate::features::settings::{AppSettings, AppSettingsStore, SettingsGetResult};
-use tauri::{AppHandle, Emitter, State};
+use serde_json::Value;
+use std::time::Duration;
+use tauri::{AppHandle, Emitter, Manager, State};
+
+const EASYSCHOLAR_PROBE_URL: &str = "https://easyscholar.cc/open/getPublicationRank";
+const EASYSCHOLAR_PROBE_JOURNAL: &str = "Nature";
+const EASYSCHOLAR_PROBE_TIMEOUT: Duration = Duration::from_secs(8);
 
 #[tauri::command]
 pub fn settings_get(store: State<'_, AppSettingsStore>) -> ApiResult<SettingsGetResult> {
@@ -92,4 +98,35 @@ pub fn settings_set(
         }
         Err(e) => map_err(e),
     }
+}
+
+/// Probe the configured EasyScholar key by querying a stable journal.
+/// Returns false when no key is configured, the request fails, or the API
+/// rejects the key (non-200 / non-200 code).
+#[tauri::command]
+pub async fn easy_scholar_probe(app: AppHandle) -> ApiResult<bool> {
+    let store = app.state::<AppSettingsStore>();
+    let Some(key) = store.easy_scholar_key() else {
+        return ApiResult::ok(false);
+    };
+    let client = match crate::core::http::client(EASYSCHOLAR_PROBE_TIMEOUT) {
+        Ok(c) => c,
+        Err(e) => return map_err(e),
+    };
+    let url = format!(
+        "{}?secretKey={}&publicationName={}",
+        EASYSCHOLAR_PROBE_URL,
+        urlencoding::encode(&key),
+        urlencoding::encode(EASYSCHOLAR_PROBE_JOURNAL),
+    );
+    let ok = match client.get(&url).send().await {
+        Ok(resp) if resp.status().is_success() => resp
+            .json::<Value>()
+            .await
+            .ok()
+            .and_then(|json| json.get("code").and_then(|v| v.as_i64()))
+            .is_some_and(|code| code == 200),
+        _ => false,
+    };
+    ApiResult::ok(ok)
 }

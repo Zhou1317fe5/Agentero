@@ -50,6 +50,9 @@ pub fn mask_translate_api_key(key: &str) -> String {
 pub struct AppSettings {
     #[serde(default = "default_translator_base_url")]
     pub translator_base_url: String,
+    /// EasyScholar key for journal ranking and impact-factor lookups.
+    #[serde(default)]
+    pub easy_scholar_key: String,
     #[serde(default)]
     pub network_proxy_enabled: bool,
     #[serde(default = "default_network_proxy_url")]
@@ -277,6 +280,7 @@ impl Default for AppSettings {
     fn default() -> Self {
         Self {
             translator_base_url: DEFAULT_TRANSLATOR_BASE_URL.to_string(),
+            easy_scholar_key: String::new(),
             network_proxy_enabled: false,
             network_proxy_url: default_network_proxy_url(),
             paper_tree_label_mode: default_paper_tree_label_mode(),
@@ -655,6 +659,18 @@ impl AppSettingsStore {
         }
         Some((id, key.to_string()))
     }
+
+    /// Resolve the configured EasyScholar key. Returns None when unset or when
+    /// the stored value is a UI mask (`*`-only), so probes never send masks.
+    pub fn easy_scholar_key(&self) -> Option<String> {
+        let guard = self.inner.lock().ok()?;
+        let key = guard.easy_scholar_key.trim();
+        if key.is_empty() || is_translate_api_key_mask(key) {
+            None
+        } else {
+            Some(key.to_string())
+        }
+    }
 }
 
 fn read_file(path: &PathBuf) -> (AppSettings, bool) {
@@ -733,6 +749,9 @@ fn redact_secrets(mut settings: AppSettings) -> AppSettings {
     if !settings.mcp_tunnel_api_key.trim().is_empty() {
         settings.mcp_tunnel_api_key = mask_translate_api_key(&settings.mcp_tunnel_api_key);
     }
+    if !settings.easy_scholar_key.trim().is_empty() {
+        settings.easy_scholar_key = mask_translate_api_key(&settings.easy_scholar_key);
+    }
     settings
 }
 
@@ -763,6 +782,9 @@ fn merge_secrets(incoming: &mut AppSettings, previous: &AppSettings) {
     if is_translate_api_key_mask(&incoming.mcp_tunnel_api_key) {
         incoming.mcp_tunnel_api_key = previous.mcp_tunnel_api_key.clone();
     }
+    if is_translate_api_key_mask(&incoming.easy_scholar_key) {
+        incoming.easy_scholar_key = previous.easy_scholar_key.clone();
+    }
 }
 
 fn normalize(s: &mut AppSettings) {
@@ -778,6 +800,7 @@ fn normalize(s: &mut AppSettings) {
         .collect::<String>()
         .to_ascii_lowercase();
     s.mcp_tunnel_api_key = s.mcp_tunnel_api_key.trim().to_string();
+    s.easy_scholar_key = s.easy_scholar_key.trim().to_string();
     if s.batch_import_concurrency < 1 || s.batch_import_concurrency > 10 {
         s.batch_import_concurrency = default_batch_import_concurrency();
     }

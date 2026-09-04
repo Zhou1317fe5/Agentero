@@ -12,6 +12,7 @@ macro_rules! common_commands {
             crate::features::settings::commands::settings_set,
             crate::features::settings::commands::network_system_proxy,
             crate::features::settings::commands::list_system_fonts,
+            crate::features::settings::commands::easy_scholar_probe,
             crate::features::layout_model::commands::layout_model_status,
             crate::features::layout_model::commands::layout_model_ensure,
             crate::features::layout_remote::commands::layout_remote_analyze_pdf,

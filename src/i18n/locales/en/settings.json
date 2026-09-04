@@ -99,6 +99,16 @@
 			"label": "Network proxy",
 			"systemDetected": "System proxy detected ({{url}}) — used automatically while this switch is off."
 		},
+		"easyScholar": {
+			"section": "EasyScholar",
+			"keyLabel": "Key",
+			"placeholder": "Enter EasyScholar key",
+			"confirm": "Confirm",
+			"probeIdle": "Not configured",
+			"probeOk": "Available",
+			"probeFail": "Unavailable",
+			"probeProbing": "Checking…"
+		},
 		"plaza": {
 			"label": "Plaza"
 		},

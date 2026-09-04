@@ -99,6 +99,16 @@
 			"label": "网络代理",
 			"systemDetected": "检测到系统代理（{{url}}）——开关关闭时将自动使用。"
 		},
+		"easyScholar": {
+			"section": "EasyScholar",
+			"keyLabel": "Key",
+			"placeholder": "填写 EasyScholar Key",
+			"confirm": "确定",
+			"probeIdle": "未配置",
+			"probeOk": "可用",
+			"probeFail": "不可用",
+			"probeProbing": "检测中…"
+		},
 		"plaza": {
 			"label": "广场"
 		},

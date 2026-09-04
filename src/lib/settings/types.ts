@@ -111,6 +111,8 @@ export type AppSettings = {
 	 * Default: hosted poco-ai service.
 	 */
 	translatorBaseUrl: string;
+	/** EasyScholar key for journal ranking and impact-factor lookups. */
+	easyScholarKey: string;
 	/** Process-wide HTTP(S)/SOCKS proxy for Host requests and Agent traffic. */
 	networkProxyEnabled: boolean;
 	networkProxyUrl: string;

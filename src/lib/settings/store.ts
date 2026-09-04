@@ -302,6 +302,11 @@ function normalizePartial(
 			.trim()
 			.replace(/\/+$/, "");
 	}
+	if (typeof parsed.easyScholarKey !== "string") {
+		merged.easyScholarKey = DEFAULT_SETTINGS.easyScholarKey;
+	} else {
+		merged.easyScholarKey = parsed.easyScholarKey.trim();
+	}
 	if (typeof parsed.networkProxyEnabled !== "boolean") {
 		merged.networkProxyEnabled = DEFAULT_SETTINGS.networkProxyEnabled;
 	}
