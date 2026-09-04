@@ -174,15 +174,28 @@ pub async fn parse_paper_refs(
     online_enabled: bool,
     force: bool,
 ) -> Result<CiteSidecar, AppError> {
-    let prepared = prepare_parse_refs(vault, path_raw, online_enabled)?;
-    if !force {
-        if let Some(existing) = read_sidecar(&prepared.sidecar_path) {
-            if existing.schema_version == SCHEMA_VERSION
-                && existing.source.fingerprint == prepared.fingerprint
-            {
-                return Ok(existing);
-            }
-        }
+    // Preparation touches the catalog (rusqlite) and the filesystem (directory
+    // walk + per-file metadata + cached-sidecar read). Run it on the blocking
+    // pool so a slow catalog lock or disk never stalls a tokio worker.
+    let vault_owned = vault.to_path_buf();
+    let path_owned = path_raw.to_string();
+    let (prepared, cached) = tokio::task::spawn_blocking(move || {
+        let prepared = prepare_parse_refs(&vault_owned, &path_owned, online_enabled)?;
+        let cached = if force {
+            None
+        } else {
+            read_sidecar(&prepared.sidecar_path).filter(|existing| {
+                existing.schema_version == SCHEMA_VERSION
+                    && existing.source.fingerprint == prepared.fingerprint
+            })
+        };
+        Ok::<_, AppError>((prepared, cached))
+    })
+    .await
+    .map_err(|e| AppError::message(format!("blocking task failed: {e}")))??;
+
+    if let Some(existing) = cached {
+        return Ok(existing);
     }
 
     let key = ParseRefsKey {
@@ -272,15 +285,32 @@ async fn parse_paper_refs_prepared(
     prepared: PreparedParseRefs,
     online_enabled: bool,
 ) -> Result<CiteSidecar, AppError> {
-    let mut messages = Vec::new();
-    let (mut drafts, local_mode, numbered) = parse_local(&prepared.files, &mut messages);
+    let PreparedParseRefs {
+        vault,
+        path_rel,
+        doi,
+        arxiv,
+        files,
+        fingerprint,
+        sidecar_path,
+    } = prepared;
 
+    // Local `.bbl` / `.bib` / `thebibliography` parsing: synchronous file reads
+    // plus CPU-heavy TeX/BibTeX parsing. Keep it off the tokio worker.
+    let (mut drafts, local_mode, numbered, mut messages) = tokio::task::spawn_blocking(move || {
+        let mut messages = Vec::new();
+        let (drafts, local_mode, numbered) = parse_local(&files, &mut messages);
+        (drafts, local_mode, numbered, messages)
+    })
+    .await
+    .map_err(|e| AppError::message(format!("blocking task failed: {e}")))?;
+
+    // Online structured-reference lookup stays on the worker: it is async I/O.
     let mut provider: Option<&'static str> = None;
     let mut enriched: Vec<usize> = Vec::new();
     let mut online_only = false;
-    if online_enabled && (prepared.doi.is_some() || prepared.arxiv.is_some()) {
-        let outcome =
-            online::fetch_references(prepared.doi.as_deref(), prepared.arxiv.as_deref()).await;
+    if online_enabled && (doi.is_some() || arxiv.is_some()) {
+        let outcome = online::fetch_references(doi.as_deref(), arxiv.as_deref()).await;
         messages.extend(outcome.messages);
         if let Some(p) = outcome.provider {
             provider = Some(p);
@@ -298,43 +328,49 @@ async fn parse_paper_refs_prepared(
         }
     }
 
-    let mode = match (local_mode, provider) {
-        (_, Some(p)) if online_only => p.to_string(),
-        (Some(l), Some(p)) if !enriched.is_empty() => format!("{l}+{p}"),
-        (Some(l), _) => l.to_string(),
-        (None, Some(p)) => p.to_string(),
-        (None, None) => "none".to_string(),
-    };
+    // Tail: catalog read (rusqlite `list_all`) + local-match CPU + synchronous
+    // sidecar write (fs::write). All blocking — run them off the worker.
+    tokio::task::spawn_blocking(move || {
+        let mode = match (local_mode, provider) {
+            (_, Some(p)) if online_only => p.to_string(),
+            (Some(l), Some(p)) if !enriched.is_empty() => format!("{l}+{p}"),
+            (Some(l), _) => l.to_string(),
+            (None, Some(p)) => p.to_string(),
+            (None, None) => "none".to_string(),
+        };
 
-    let enriched_set: std::collections::HashSet<usize> = enriched.into_iter().collect();
-    let mut citations: Vec<Citation> = drafts
-        .iter()
-        .enumerate()
-        .map(|(i, d)| {
-            let source = if enriched_set.contains(&i) {
-                format!("{}+{}", d.source, provider.unwrap_or("online"))
-            } else {
-                d.source.to_string()
-            };
-            citation_from_draft(d, i, numbered, source)
-        })
-        .collect();
+        let enriched_set: std::collections::HashSet<usize> = enriched.into_iter().collect();
+        let mut citations: Vec<Citation> = drafts
+            .iter()
+            .enumerate()
+            .map(|(i, d)| {
+                let source = if enriched_set.contains(&i) {
+                    format!("{}+{}", d.source, provider.unwrap_or("online"))
+                } else {
+                    d.source.to_string()
+                };
+                citation_from_draft(d, i, numbered, source)
+            })
+            .collect();
 
-    let catalog = papers::list_all(&prepared.vault).unwrap_or_default();
-    attach_local_matches(&mut citations, &catalog, &prepared.path_rel);
+        let catalog = papers::list_all(&vault).unwrap_or_default();
+        attach_local_matches(&mut citations, &catalog, &path_rel);
 
-    let sidecar = CiteSidecar {
-        schema_version: SCHEMA_VERSION,
-        source: CiteSource {
-            mode,
-            generated_at: crate::core::time::now_rfc3339_millis(),
-            fingerprint: prepared.fingerprint,
-        },
-        citations,
-        messages,
-    };
-    write_sidecar(&prepared.sidecar_path, &sidecar)?;
-    Ok(sidecar)
+        let sidecar = CiteSidecar {
+            schema_version: SCHEMA_VERSION,
+            source: CiteSource {
+                mode,
+                generated_at: crate::core::time::now_rfc3339_millis(),
+                fingerprint,
+            },
+            citations,
+            messages,
+        };
+        write_sidecar(&sidecar_path, &sidecar)?;
+        Ok(sidecar)
+    })
+    .await
+    .map_err(|e| AppError::message(format!("blocking task failed: {e}")))?
 }
 
 /// Register the refs job runner + backfill probe with the JobCenter at app
@@ -968,6 +1004,25 @@ K.~He.
         );
         assert_eq!(first.status, "resolved");
         assert_eq!(sidecar.citations[1].status, "unresolved");
+        let _ = fs::remove_dir_all(&vault);
+    }
+
+    #[tokio::test]
+    async fn parses_no_local_refs_to_none_mode_and_writes_sidecar() {
+        // No `.bib` / `.bbl` / `.tex` under the paper folder and online lookup
+        // disabled: the sidecar is empty but valid (`mode = "none"`). Guards
+        // that the blocking refactor still writes an empty sidecar unchanged.
+        let vault = temp_vault("none");
+
+        let sidecar = parse_paper_refs(&vault, "papers/demo", false, false)
+            .await
+            .unwrap();
+        assert_eq!(sidecar.source.mode, "none");
+        assert!(sidecar.citations.is_empty());
+        assert!(vault
+            .join("papers/demo/source")
+            .join(SIDECAR_FILE)
+            .is_file());
         let _ = fs::remove_dir_all(&vault);
     }
 

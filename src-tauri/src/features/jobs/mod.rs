@@ -612,7 +612,21 @@ impl JobCenter {
         force: bool,
         task_id: Option<String>,
     ) -> JobSnapshot {
-        let vault_path = normalize_vault_path(vault.into());
+        // `normalize_vault_path` does a synchronous `fs::canonicalize`; run it on
+        // the blocking pool so a slow filesystem never stalls a tokio worker.
+        // This happens before the center lock is taken, so no lock is held
+        // across the await. On the (practically impossible) blocking join error
+        // fall back to the raw path, mirroring `normalize_vault_path`'s own
+        // `unwrap_or(path)`.
+        let raw_vault = vault.into();
+        let vault_for_blocking = raw_vault.clone();
+        let vault_path =
+            match tokio::task::spawn_blocking(move || normalize_vault_path(vault_for_blocking))
+                .await
+            {
+                Ok(normalized) => normalized,
+                Err(_) => raw_vault,
+            };
         let paper_path = path.into();
         let fingerprint = kind.fingerprint(force);
         let key = JobKey {

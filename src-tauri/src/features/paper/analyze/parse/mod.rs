@@ -270,20 +270,48 @@ async fn parse_paper_body_inner(
                 out.fail("liteparse returned empty text".into());
                 return out;
             }
-            match fs::write(paper_dir.join(PAPER_MD), &markdown) {
-                Ok(()) => {
+            // Writing PAPER.md (fs) and updating the catalog body fields
+            // (rusqlite, which acquires the process-wide catalog lock) are both
+            // blocking. Run them on the blocking pool so a held catalog lock or
+            // slow disk never stalls a tokio worker.
+            let paper_dir_owned = paper_dir.to_path_buf();
+            let vault_owned = vault.to_path_buf();
+            let path_owned = path_rel.to_string();
+            let catalog_source = body_source.clone();
+            let catalog_quality = body_quality.clone();
+            let write_outcome = tokio::task::spawn_blocking(move || {
+                match fs::write(paper_dir_owned.join(PAPER_MD), &markdown) {
+                    Ok(()) => {
+                        let catalog_error = update_catalog_body(
+                            &vault_owned,
+                            &path_owned,
+                            &catalog_source,
+                            &catalog_quality,
+                        )
+                        .err()
+                        .map(|e| e.to_string());
+                        Ok(catalog_error)
+                    }
+                    Err(e) => Err(e.to_string()),
+                }
+            })
+            .await;
+
+            match write_outcome {
+                Ok(Ok(catalog_error)) => {
                     out.paper_md = true;
-                    out.body_source = Some(body_source.clone());
-                    out.body_quality = Some(body_quality.clone());
+                    out.body_source = Some(body_source);
+                    out.body_quality = Some(body_quality);
                     out.messages.push("PAPER.md written".into());
-                    if let Err(e) =
-                        update_catalog_body(vault, path_rel, &body_source, &body_quality)
-                    {
+                    if let Some(e) = catalog_error {
                         out.messages
                             .push(format!("catalog body fields update failed: {e}"));
                     }
                 }
-                Err(e) => out.fail(format!("write PAPER.md failed: {e}")),
+                Ok(Err(write_err)) => out.fail(format!("write PAPER.md failed: {write_err}")),
+                Err(join_err) => out.fail(format!(
+                    "write PAPER.md failed: blocking task failed: {join_err}"
+                )),
             }
         }
         Err(e) => out.fail(format!("liteparse failed: {e}")),

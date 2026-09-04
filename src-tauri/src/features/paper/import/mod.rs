@@ -604,30 +604,60 @@ pub async fn download_paper_assets_with_progress(
     app: Option<&AppHandle>,
     cache: Option<&CapsCache>,
 ) -> Result<AssetDownloadResult, AppError> {
-    let vault = crate::core::fs::resolve_vault(&args.vault_path)?;
-    let (paper_dir, path_rel) = crate::core::fs::resolve_paper_dir(&vault, &args.path)?;
+    // Resolve the vault/paper folder (fs::canonicalize) and read the catalog
+    // row (rusqlite, which acquires the process-wide catalog lock) on the
+    // blocking pool so neither a slow filesystem nor a held catalog lock stalls
+    // a tokio worker.
+    let vault_arg = args.vault_path.clone();
+    let path_arg = args.path.clone();
+    let (vault, paper_dir, path_rel, id, arxiv_id, pdf_url, doi, rebuilt_row) =
+        tokio::task::spawn_blocking(move || {
+            let vault = crate::core::fs::resolve_vault(&vault_arg)?;
+            let (paper_dir, path_rel) = crate::core::fs::resolve_paper_dir(&vault, &path_arg)?;
 
-    let (id, arxiv_id, pdf_url, doi) = if let Ok(Some(row)) = papers::get_by_path(&vault, &path_rel)
-    {
-        (row.id, row.arxiv_id, row.pdf_url, row.doi)
-    } else if let Ok(Some(row)) = papers::ensure_row_for_path(&vault, &path_rel) {
-        // Orphaned folder (import failed after shell + folder were written but
-        // before the catalog row landed): rebuild the row so the Library sees it.
-        crate::features::lifecycle::emit_paper_imported(app, &vault, &row.id);
-        (row.id, row.arxiv_id, row.pdf_url, row.doi)
-    } else {
-        // Fallback: folder name as id; treat as arXiv if it looks like one
-        let name = paper_dir
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("paper")
-            .to_string();
-        let arxiv = parse::extract_arxiv_id(&name);
-        let pdf = arxiv
-            .as_ref()
-            .map(|a| format!("https://arxiv.org/pdf/{}", a));
-        (name, arxiv, pdf, None)
-    };
+            let resolved = if let Ok(Some(row)) = papers::get_by_path(&vault, &path_rel) {
+                (row.id, row.arxiv_id, row.pdf_url, row.doi, None)
+            } else if let Ok(Some(row)) = papers::ensure_row_for_path(&vault, &path_rel) {
+                // Orphaned folder (import failed after shell + folder were written but
+                // before the catalog row landed): rebuild the row so the Library sees it.
+                (
+                    row.id.clone(),
+                    row.arxiv_id,
+                    row.pdf_url,
+                    row.doi,
+                    Some(row.id),
+                )
+            } else {
+                // Fallback: folder name as id; treat as arXiv if it looks like one
+                let name = paper_dir
+                    .file_name()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("paper")
+                    .to_string();
+                let arxiv = parse::extract_arxiv_id(&name);
+                let pdf = arxiv
+                    .as_ref()
+                    .map(|a| format!("https://arxiv.org/pdf/{}", a));
+                (name, arxiv, pdf, None, None)
+            };
+            let (id, arxiv_id, pdf_url, doi, rebuilt_row) = resolved;
+            Ok::<_, AppError>((
+                vault,
+                paper_dir,
+                path_rel,
+                id,
+                arxiv_id,
+                pdf_url,
+                doi,
+                rebuilt_row,
+            ))
+        })
+        .await
+        .map_err(|e| AppError::message(format!("blocking task failed: {e}")))??;
+
+    if let Some(row_id) = rebuilt_row {
+        crate::features::lifecycle::emit_paper_imported(app, &vault, &row_id);
+    }
 
     let result = ensure_paper_assets_with_progress(
         &paper_dir,
@@ -649,16 +679,23 @@ pub async fn download_paper_assets_with_progress(
 
     // When TeX was downloaded into source/, record body_source = "latex" in catalog
     // so the frontend doesn't show "download TeX" even though source/ is lazy‑loaded.
+    // The catalog read/write acquires the process-wide catalog lock, so run it on
+    // the blocking pool. Errors were already ignored; a blocking join error is too.
     if result.tex {
-        if let Ok(Some(mut row)) = papers::get_by_path(&vault, &path_rel) {
-            let changed = row.body_source.as_deref() != Some("latex");
-            if changed {
-                row.body_source = Some("latex".to_string());
-                row.body_quality = Some("high".to_string());
-                row.updated_at = crate::core::time::now_rfc3339_millis();
-                let _ = papers::upsert_paper(&vault, &row);
+        let vault_owned = vault.clone();
+        let path_owned = path_rel.clone();
+        let _ = tokio::task::spawn_blocking(move || {
+            if let Ok(Some(mut row)) = papers::get_by_path(&vault_owned, &path_owned) {
+                let changed = row.body_source.as_deref() != Some("latex");
+                if changed {
+                    row.body_source = Some("latex".to_string());
+                    row.body_quality = Some("high".to_string());
+                    row.updated_at = crate::core::time::now_rfc3339_millis();
+                    let _ = papers::upsert_paper(&vault_owned, &row);
+                }
             }
-        }
+        })
+        .await;
     }
 
     if result.pdf && !result.tex && !result.paper_md {
