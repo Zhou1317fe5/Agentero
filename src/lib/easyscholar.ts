@@ -32,42 +32,11 @@ export type EasyScholarRankResponse = {
  */
 const EASY_SCHOLAR_FIELD_NAMES: Record<string, string> = {
 	sci: "SCI",
-	sciBase: "SCI基础版",
-	sciUp: "SCI升级版",
-	sciif: "SCIIF",
-	sciif5: "SCIIF(5)",
 	ssci: "SSCI",
 	eii: "EI检索",
 	cssci: "CSSCI",
-	nju: "NJU",
 	pku: "北大中文核心",
-	xju: "XJU",
 	ccf: "CCF",
-	ahci: "A&HCI 检索",
-	ajg: "AJG",
-	cqu: "CQU",
-	cscd: "CSCD",
-	cufe: "CUFE",
-	cug: "CUG",
-	fdu: "FDU",
-	hhu: "HHU",
-	ruc: "RUC",
-	jci: "JCI",
-	sdufe: "SDUFE",
-	sjtu: "SJTU",
-	swjtu: "SWJTU",
-	uibe: "UIBE",
-	xmu: "XMU",
-	xdu: "XDU",
-	zhongguokejihexin: "中国科技核心期刊",
-	fms: "FMS",
-	scu: "SCU",
-	sciwarn: "SCIWARN",
-	zju: "ZJU",
-	cju: "YangtzeU",
-	ft50: "FT50",
-	utd24: "UTD24",
-	CPU: "CPU",
 };
 
 function tagValue(value: unknown): string {
@@ -130,7 +99,8 @@ export function buildEasyScholarTags(
 			continue;
 		}
 
-		const key = EASY_SCHOLAR_FIELD_NAMES[field] ?? field;
+		const key = EASY_SCHOLAR_FIELD_NAMES[field];
+		if (!key) continue;
 		addUniqueTag(
 			tags,
 			`${EASY_SCHOLAR_TAG_PREFIX}rank=${key}${value ? `=${value}` : ""}`,
