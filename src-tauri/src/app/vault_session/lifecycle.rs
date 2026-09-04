@@ -2,9 +2,9 @@
 
 use crate::app::vault_session::vault_path_arg;
 use crate::core::error::{map_err, ApiResult};
-use crate::core::jobs::{emit_job_changed, JobCenter};
 use crate::core::log_util::{trunc, OpTimer};
 use crate::features::catalog::CapsCache;
+use crate::features::jobs::{emit_job_changed, JobCenter};
 use tauri::Manager;
 
 /// Release Host-side resources held for a vault the app switched away from.

@@ -13,14 +13,30 @@
 mod device;
 
 use crate::core::usage::{record_events, usage_db_path, ActivityProjection, UsageRecord};
-use crate::features::agent::AgentTelemetrySummary;
-use crate::features::settings::AppSettings;
 use device::{collect_device_info, install_id, timezone_offset};
 use serde_json::json;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// Startup inputs for [`Telemetry::start`], assembled by the app layer.
+///
+/// Dependency injection keeps `core::telemetry` free of upward edges into
+/// `features::settings` / `features::agent`: the app layer reads the
+/// settings snapshot and the anonymous agent registry summary, then hands
+/// over only these plain values.
+pub struct TelemetryStartContext {
+    /// User opt-out from app settings (`telemetry_enabled`; next-launch
+    /// semantics). Gates only the PostHog leg, never local usage records.
+    pub telemetry_enabled: bool,
+    /// UI locale from app settings.
+    pub locale: String,
+    /// Anonymous kebab-case template ids of installed agents.
+    pub installed_agents: Vec<String>,
+    /// Count of registered custom agents (no names/commands).
+    pub custom_agent_count: usize,
+}
 
 /// Build-time PostHog project API key; `None` disables telemetry entirely.
 fn posthog_key() -> Option<&'static str> {
@@ -31,8 +47,8 @@ fn posthog_key() -> Option<&'static str> {
 
 /// True when a key is compiled in, this is a release build, and the user
 /// has not opted out.
-fn enabled(settings: &AppSettings) -> bool {
-    posthog_key().is_some() && !cfg!(debug_assertions) && settings.telemetry_enabled
+fn enabled(telemetry_enabled: bool) -> bool {
+    posthog_key().is_some() && !cfg!(debug_assertions) && telemetry_enabled
 }
 
 fn now_ms() -> u64 {
@@ -65,21 +81,21 @@ impl Telemetry {
     /// product analytics is enabled. Local activity recording is always on;
     /// only the PostHog leg is gated by [`enabled`].
     /// Never fails the launch: every error is only logged.
-    pub fn start(&self, settings: &AppSettings, agents: AgentTelemetrySummary) {
-        let posthog_enabled = enabled(settings);
+    pub fn start(&self, ctx: TelemetryStartContext) {
+        let posthog_enabled = enabled(ctx.telemetry_enabled);
 
         let distinct_id = install_id();
         let session_id = uuid::Uuid::new_v4().to_string();
         let device = collect_device_info();
-        let installed_agents = agents.templates;
-        let custom_agent_count = agents.custom_count;
+        let installed_agents = ctx.installed_agents;
+        let custom_agent_count = ctx.custom_agent_count;
         let extra = json!({
             "app_version": APP_VERSION,
             "os_name": device.os_name,
             "os_version": device.os_version,
             "arch": device.arch,
             "device_model": device.device_model,
-            "locale": settings.locale,
+            "locale": ctx.locale,
             "timezone": timezone_offset(),
             "tauri_version": tauri::VERSION,
             "session_id": session_id,

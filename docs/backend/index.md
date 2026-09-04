@@ -29,7 +29,7 @@ src-tauri/src/
     markdown/   # wiki、search
     system/     # settings
     layout/     # model_assets、hosted providers
-    agent/ background_tasks/ translate/
+    agent/ jobs/ background_tasks/ translate/
   core/usage/    # XDG usage.sqlite 本地活动日志
   lib.rs
   main.rs

@@ -1,6 +1,6 @@
 # 遥测（PostHog）
 
-匿名产品分析：仅上报应用版本与设备级信息，用于版本采用率、平台分布、会话时长统计。代码在 `src-tauri/src/core/telemetry/`，仅桌面端编译。
+匿名产品分析：仅上报应用版本与设备级信息，用于版本采用率、平台分布、会话时长统计。代码在 `src-tauri/src/core/telemetry/`，仅桌面端编译。启动载荷由 app 层组装为 `TelemetryStartContext`（settings 快照 + `AgentRegistry::telemetry_summary()` 匿名摘要）注入 `Telemetry::start`，`core::telemetry` 不反向依赖 features 层。
 
 ## 开关语义
 

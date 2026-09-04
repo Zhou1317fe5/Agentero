@@ -107,7 +107,7 @@ pub fn run() {
         .manage(crate::features::agent::AskUserGate::new())
         .manage(crate::integration::bridge::BridgeController::new())
         .manage(crate::integration::bridge::BridgeClientController::new())
-        .manage(crate::core::jobs::JobCenter::with_layout_backend(
+        .manage(crate::features::jobs::JobCenter::with_layout_backend(
             &layout_backend,
         ))
         .manage(crate::features::catalog::CapsCache::new())
@@ -152,10 +152,11 @@ pub fn run() {
 
     builder = builder.setup(|app| {
         // JobCenter runner registry: business domains own their executors and
-        // register them here, so jobs stays a pure scheduler with no edges
-        // into import/refs/settings/agent (P2 runner-registry refactor).
+        // register them here at assembly time (P2 runner-registry refactor).
+        // JobCenter itself lives in features/jobs, alongside the domains it
+        // schedules.
         {
-            let center = app.state::<crate::core::jobs::JobCenter>();
+            let center = app.state::<crate::features::jobs::JobCenter>();
             crate::features::refs::register_job_runners(&center);
             crate::features::import::job_runners::register_job_runners(&center);
             let handle = app.handle().clone();
@@ -251,7 +252,7 @@ pub fn run() {
                 let handle = app.handle().clone();
                 settings_store.subscribe(move |s| {
                     let center = handle
-                        .state::<crate::core::jobs::JobCenter>()
+                        .state::<crate::features::jobs::JobCenter>()
                         .inner()
                         .clone();
                     let backend = s.layout.backend.clone();
@@ -318,11 +319,18 @@ pub fn run() {
                 app.state::<Arc<crate::core::telemetry::Telemetry>>()
                     .inner(),
             );
-            let telemetry_settings = settings.clone();
             // Registry-only read (no PATH probing), safe on the setup path.
             let agent_summary = agents.telemetry_summary();
+            // Assemble the start context here so core::telemetry stays free
+            // of upward edges into features (settings / agent).
+            let start_ctx = crate::core::telemetry::TelemetryStartContext {
+                telemetry_enabled: settings.telemetry_enabled,
+                locale: settings.locale.clone(),
+                installed_agents: agent_summary.templates,
+                custom_agent_count: agent_summary.custom_count,
+            };
             tauri::async_runtime::spawn_blocking(move || {
-                telemetry.start(&telemetry_settings, agent_summary);
+                telemetry.start(start_ctx);
             });
         }
 
