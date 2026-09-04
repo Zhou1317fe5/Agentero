@@ -42,6 +42,8 @@ macro_rules! common_commands {
             crate::features::jobs::commands::job_cancel,
             crate::features::jobs::commands::job_report,
             crate::features::jobs::commands::job_list,
+            crate::features::jobs::commands::clear_parse_results,
+            crate::features::jobs::commands::clear_and_reparse,
             crate::features::agent::commands::agent_respond_permission,
             crate::features::agent::commands::agent_respond_elicitation,
             crate::features::agent::commands::agent_respond_ask_user,

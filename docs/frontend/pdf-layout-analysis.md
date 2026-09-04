@@ -155,6 +155,8 @@ type LayoutSidecar = {
 
 **重新分析按钮**（Figures header）：`force: false`。有 `source/layout.json` 时只重跑 JSON→侧栏（`mergeCaptionsIntoHosts` + NMS），**不**再跑 PP-DocLayoutV3，也**不**覆盖 raw sidecar；**会**刷新 `layout-index.json`。无缓存时才走完整 PDF→JSON。需要强制刷新模型输出时由调用方显式传 `force: true`（当前 UI 不暴露）。
 
+**全库重置**（设置 →「版面解析」底部两个按钮）：Host 命令 `clear_parse_results` / `clear_and_reparse`（`src-tauri/src/features/jobs/commands.rs`）按 catalog 逐篇删除所选 scope 的解析产物——`layout`（`source/layout.json` + `layout-index.json`）、`paper`（`PAPER.md`）或 `all`（默认）。删除前先取消该 Vault 下相关 queued/running 的 `layoutAnalyze` / `parseBody` job（防止晚到的 runner 把旧结果写回），删除后清空 `CapsCache`。「清除并重新解析」再对全部论文 enqueue `force: true` 的重新解析 job（idle lane，沿用 per-kind 并发上限）。仅支持本地 Vault；前端入口 `src/lib/paper/reparse.ts` + `layout-pane.tsx`（确认弹窗内选 scope）。
+
 ---
 
 ## 规则清单（现行，共 **17** 条核心规则）

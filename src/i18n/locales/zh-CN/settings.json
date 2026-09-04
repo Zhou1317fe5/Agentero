@@ -490,6 +490,26 @@
 			"probeOk": "可用",
 			"probeFail": "不可用",
 			"probeProbing": "正在检测可用性…"
+		},
+		"clearResults": {
+			"clear": "清除解析结果",
+			"clearAndReparse": "清除并重新解析",
+			"clearing": "正在清除…",
+			"reparsing": "正在重新解析…",
+			"confirmClear": "清除",
+			"confirmReparse": "清除并重新解析",
+			"clearDone": "已在 {{scanned}} 篇论文中清除 {{removed}} 个文件。",
+			"reparseDone": "已清除 {{removed}} 个文件，并排队 {{layout}} 个版面 / {{paper}} 个正文任务。",
+			"scope": {
+				"layout": "版面解析结果",
+				"paper": "正文解析结果",
+				"all": "全部（包括正文与版面解析结果）"
+			},
+			"dialog": {
+				"clearTitle": "清除解析结果？",
+				"reparseTitle": "清除并重新解析？",
+				"scopeLabel": "选择范围"
+			}
 		}
 	},
 	"doctor": {

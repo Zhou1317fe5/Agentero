@@ -1,6 +1,7 @@
-use crate::core::error::{map_err, ApiResult};
-use serde::Deserialize;
-use std::path::PathBuf;
+use crate::core::error::{map_err, ApiResult, AppError};
+use serde::{Deserialize, Serialize};
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
 use tauri::State;
 
 use super::{
@@ -392,4 +393,201 @@ pub async fn job_list(
     Ok(ApiResult::ok(
         center.list(vault.as_deref(), args.path.as_deref()).await,
     ))
+}
+
+/// Which generated parse artifacts a bulk clear/reparse command touches.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum ParseResultScope {
+    Layout,
+    Paper,
+    All,
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ClearParseResultsArgs {
+    pub vault_path: String,
+    pub scope: ParseResultScope,
+}
+
+#[derive(Debug, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ClearParseResultsResult {
+    pub papers_scanned: u32,
+    pub files_removed: u32,
+}
+
+#[derive(Debug, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ClearAndReparseResult {
+    pub papers_scanned: u32,
+    pub files_removed: u32,
+    pub layout_enqueued: u32,
+    pub paper_enqueued: u32,
+}
+
+const LAYOUT_SIDECAR_FILES: &[&str] = &["layout.json", "layout-index.json"];
+const PAPER_MD_FILE: &str = "PAPER.md";
+
+fn remove_file_best_effort(path: &Path) -> Result<bool, AppError> {
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(true),
+        Err(e) if e.kind() == ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(AppError::from(e)),
+    }
+}
+
+/// Cancel queued/running jobs whose output files we are about to delete, so the
+/// deletion is not immediately undone by a late runner write.
+async fn cancel_related_parse_jobs(
+    app: &tauri::AppHandle,
+    center: &JobCenter,
+    vault: &Path,
+    scope: ParseResultScope,
+) {
+    let relevant_kinds: &[JobKind] = match scope {
+        ParseResultScope::Layout => &[JobKind::LayoutAnalyze],
+        ParseResultScope::Paper => &[JobKind::ParseBody],
+        ParseResultScope::All => &[JobKind::LayoutAnalyze, JobKind::ParseBody],
+    };
+    let jobs = center.list(Some(vault), None).await;
+    for job in jobs {
+        if !matches!(job.state, JobState::Queued | JobState::Running) {
+            continue;
+        }
+        if !relevant_kinds.contains(&job.kind) {
+            continue;
+        }
+        if center.cancel(&job.id).await {
+            if let Some(snapshot) = center.snapshot(&job.id).await {
+                emit_job_changed(app, snapshot);
+            }
+        }
+    }
+}
+
+/// Shared core: scan the catalog, delete the requested artifacts, invalidate
+/// the capability cache, and return the affected paper paths for reparse.
+async fn clear_parse_results_core(
+    vault_path: &str,
+    scope: ParseResultScope,
+    caps: &crate::features::catalog::CapsCache,
+    app: &tauri::AppHandle,
+    center: &JobCenter,
+) -> Result<(u32, u32, Vec<String>), AppError> {
+    if crate::features::remote::parse_remote_handle(vault_path).is_some() {
+        return Err(AppError::message(
+            "clearing parse results is only supported for local vaults",
+        ));
+    }
+
+    let vault = crate::core::fs::resolve_vault(vault_path)?;
+    center.refresh_layout_backend().await;
+    cancel_related_parse_jobs(app, center, &vault, scope).await;
+
+    let scan_vault = vault.clone();
+    let papers = tauri::async_runtime::spawn_blocking(move || {
+        crate::features::catalog::papers::list_all(&scan_vault)
+    })
+    .await
+    .unwrap_or_else(|_| Ok(Vec::new()))
+    .unwrap_or_default();
+
+    let papers_scanned = papers.len() as u32;
+    let mut files_removed = 0u32;
+    let mut affected_paths = Vec::with_capacity(papers.len());
+
+    for paper in papers {
+        let paper_dir = vault.join(&paper.path);
+        if !paper_dir.is_dir() {
+            continue;
+        }
+        affected_paths.push(paper.path);
+
+        if matches!(scope, ParseResultScope::Layout | ParseResultScope::All) {
+            let source_dir = paper_dir.join("source");
+            for file in LAYOUT_SIDECAR_FILES {
+                if remove_file_best_effort(&source_dir.join(file))? {
+                    files_removed += 1;
+                }
+            }
+        }
+
+        if matches!(scope, ParseResultScope::Paper | ParseResultScope::All)
+            && remove_file_best_effort(&paper_dir.join(PAPER_MD_FILE))?
+        {
+            files_removed += 1;
+        }
+    }
+
+    caps.clear();
+    Ok((papers_scanned, files_removed, affected_paths))
+}
+
+/// Delete generated layout/paper parse artifacts for every paper in the vault.
+#[tauri::command]
+#[specta::specta]
+pub async fn clear_parse_results(
+    app: tauri::AppHandle,
+    center: State<'_, JobCenter>,
+    caps: State<'_, crate::features::catalog::CapsCache>,
+    args: ClearParseResultsArgs,
+) -> Result<ApiResult<ClearParseResultsResult>, String> {
+    match clear_parse_results_core(&args.vault_path, args.scope, &caps, &app, &center).await {
+        Ok((papers_scanned, files_removed, _)) => Ok(ApiResult::ok(ClearParseResultsResult {
+            papers_scanned,
+            files_removed,
+        })),
+        Err(e) => Ok(map_err(e)),
+    }
+}
+
+/// Delete generated parse artifacts and enqueue force reparse jobs for the
+/// affected papers. Uses the idle lane so the bulk work does not starve focus.
+#[tauri::command]
+#[specta::specta]
+pub async fn clear_and_reparse(
+    app: tauri::AppHandle,
+    center: State<'_, JobCenter>,
+    caps: State<'_, crate::features::catalog::CapsCache>,
+    args: ClearParseResultsArgs,
+) -> Result<ApiResult<ClearAndReparseResult>, String> {
+    let vault = match crate::core::fs::resolve_vault(&args.vault_path) {
+        Ok(vault) => vault,
+        Err(err) => return Ok(map_err(err)),
+    };
+
+    let (papers_scanned, files_removed, affected_paths) =
+        match clear_parse_results_core(&args.vault_path, args.scope, &caps, &app, &center).await {
+            Ok(result) => result,
+            Err(e) => return Ok(map_err(e)),
+        };
+
+    let mut layout_enqueued = 0u32;
+    let mut paper_enqueued = 0u32;
+
+    for path in affected_paths {
+        if matches!(args.scope, ParseResultScope::Layout | ParseResultScope::All) {
+            enqueue_backfill(&app, &center, JobLane::Idle, |lane| {
+                center.enqueue_layout_analyze(&vault, &path, lane, true)
+            })
+            .await;
+            layout_enqueued += 1;
+        }
+        if matches!(args.scope, ParseResultScope::Paper | ParseResultScope::All) {
+            enqueue_backfill(&app, &center, JobLane::Idle, |lane| {
+                center.enqueue_parse_body(&vault, &path, lane, true, None)
+            })
+            .await;
+            paper_enqueued += 1;
+        }
+    }
+
+    Ok(ApiResult::ok(ClearAndReparseResult {
+        papers_scanned,
+        files_removed,
+        layout_enqueued,
+        paper_enqueued,
+    }))
 }
