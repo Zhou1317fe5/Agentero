@@ -62,7 +62,6 @@ import { usePdfAskThreads } from "@/components/viewer/pdf/hooks/use-pdf-ask-thre
 import { usePdfCards } from "@/components/viewer/pdf/hooks/use-pdf-cards";
 import { usePdfChromeVisibility } from "@/components/viewer/pdf/hooks/use-pdf-chrome-visibility";
 import { usePdfCitations } from "@/components/viewer/pdf/hooks/use-pdf-citations";
-import { usePdfColorScheme } from "@/components/viewer/pdf/hooks/use-pdf-color-scheme";
 import { usePdfCrossrefPreview } from "@/components/viewer/pdf/hooks/use-pdf-crossref-preview";
 import { usePdfFind } from "@/components/viewer/pdf/hooks/use-pdf-find";
 import { usePdfHighlights } from "@/components/viewer/pdf/hooks/use-pdf-highlights";
@@ -76,6 +75,7 @@ import {
 } from "@/components/viewer/pdf/hooks/use-pdf-note-editor";
 import { usePdfOutline } from "@/components/viewer/pdf/hooks/use-pdf-outline";
 import { usePdfPageText } from "@/components/viewer/pdf/hooks/use-pdf-page-text";
+import { usePdfPaperTone } from "@/components/viewer/pdf/hooks/use-pdf-paper-tone";
 import { usePdfPinAnchors } from "@/components/viewer/pdf/hooks/use-pdf-pin-anchors";
 import { usePdfRegionFraming } from "@/components/viewer/pdf/hooks/use-pdf-region-framing";
 import { usePdfSelectionActions } from "@/components/viewer/pdf/hooks/use-pdf-selection-actions";
@@ -353,7 +353,7 @@ function PdfViewerInner({
 	});
 	const zoomLevel = zoomState.currentZoomLevel || 1;
 
-	const { pdfDark, togglePdfColorScheme } = usePdfColorScheme();
+	const { pdfTone, setPdfTone } = usePdfPaperTone();
 	const {
 		zoomField,
 		setZoomField,
@@ -1190,7 +1190,7 @@ function PdfViewerInner({
 				pageIndex={pageIndex}
 				width={width}
 				height={height}
-				pdfDark={pdfDark}
+				tone={pdfTone}
 				zoomRef={zoomRef}
 				marks={pageMarks}
 				layout={pageLayout}
@@ -1198,7 +1198,7 @@ function PdfViewerInner({
 				handlers={pageHandlers}
 			/>
 		),
-		[docId, pdfDark, zoomRef, pageMarks, pageLayout, pageMode, pageHandlers],
+		[docId, pdfTone, zoomRef, pageMarks, pageLayout, pageMode, pageHandlers],
 	);
 
 	// ---- Top toolbar auto show/hide (#400) ----
@@ -1379,8 +1379,8 @@ function PdfViewerInner({
 				onPageFieldChange={setPageField}
 				pageFocusedRef={pageFocusedRef}
 				onCommitPageField={commitPageField}
-				pdfDark={pdfDark}
-				onTogglePdfColorScheme={togglePdfColorScheme}
+				pdfTone={pdfTone}
+				onSetPdfTone={setPdfTone}
 				onFitWidth={() => zoom?.requestZoom(ZoomMode.FitWidth)}
 				onFitPage={() => zoom?.requestZoom(ZoomMode.FitPage)}
 				isRemotePaper={isRemotePaper}

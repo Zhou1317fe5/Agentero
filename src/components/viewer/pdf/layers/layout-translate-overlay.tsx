@@ -8,7 +8,11 @@ import { memo } from "react";
 import { cn } from "@/lib/core/utils";
 import { isLayoutTranslateHeadingKind } from "@/lib/pdf/layout/labels";
 import type { LayoutTranslateItem } from "@/lib/pdf/layout/layout-translate";
-import { PDF_PAGE_RASTER_DARK_CLASS } from "@/lib/pdf/page-theme";
+import {
+	PDF_PAGE_RASTER_DARK_CLASS,
+	PDF_PAPER_BLOCK_CLASS,
+	type PdfPaperTone,
+} from "@/lib/pdf/page-theme";
 
 type LayoutTranslateOverlayProps = {
 	/** Items already bucketed for this one page (groupLayoutTranslateItemsByPage). */
@@ -16,8 +20,8 @@ type LayoutTranslateOverlayProps = {
 	/** Page pixel size (for font-size heuristic). */
 	pageWidthPx: number;
 	pageHeightPx: number;
-	/** Match PDF page theme (not app chrome). */
-	pdfDark?: boolean;
+	/** Match PDF page paper (not app chrome). */
+	tone?: PdfPaperTone;
 };
 
 const LINE_HEIGHT = 1.25;
@@ -207,7 +211,7 @@ export const LayoutTranslateOverlay = memo(function LayoutTranslateOverlay({
 	items,
 	pageWidthPx,
 	pageHeightPx,
-	pdfDark = false,
+	tone = "white",
 }: LayoutTranslateOverlayProps) {
 	const onPage = items.filter(
 		(it) =>
@@ -236,10 +240,11 @@ export const LayoutTranslateOverlay = memo(function LayoutTranslateOverlay({
 						key={`layout-tr-${item.id}`}
 						className={cn(
 							"pointer-events-none absolute z-[3] overflow-hidden rounded-[1px]",
-							// Always paint as light paper; in PDF dark mode apply the same
-							// invert as page rasters so cover blocks match inverted paper.
-							"bg-white text-zinc-900",
-							pdfDark && PDF_PAGE_RASTER_DARK_CLASS,
+							// Blocks are opaque paper: paint the active tone, and invert in
+							// dark mode exactly like the page rasters so they still match.
+							PDF_PAPER_BLOCK_CLASS[tone],
+							"text-zinc-900",
+							tone === "dark" && PDF_PAGE_RASTER_DARK_CLASS,
 							item.status === "running" && "opacity-90",
 						)}
 						style={{

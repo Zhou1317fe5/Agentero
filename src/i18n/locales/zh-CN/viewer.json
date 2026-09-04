@@ -19,8 +19,13 @@
 		"zoomFitPage": "适应整页",
 		"outline": "目录",
 		"linkAria": "PDF 链接",
-		"useDarkMode": "使用暗色模式",
-		"useLightMode": "使用亮色模式",
+		"paperTone": "页面背景",
+		"paperToneOption": {
+			"white": "白纸",
+			"sepia": "米色",
+			"green": "护眼绿",
+			"dark": "暗色"
+		},
 		"remoteMode": "远程模式",
 		"importToLibrary": "导入本地库",
 		"findPlaceholder": "在文档中查找",

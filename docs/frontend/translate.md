@@ -31,7 +31,7 @@ Settings → **翻译**：
   - 译文按论文写入 `{paper}/source/layout-translate.json`。缓存命中需匹配 provider / 源语言 / 目标语言 / 非密钥服务配置，并逐块校验 region id + 原文（存的是归一化后的原文，归一化规则变化时旧缓存会 miss 一次并重译）；版面或目标语言变化时只复用仍匹配的块。
   - 单页翻译写缓存时按同一 cache key 增量合并，避免只翻译一页时覆盖其它页已经落盘的译文。
   - 运行中再点=停止；有译文再点=清除。实现：`layout-translate.ts` + `layout-translate-source.ts` + `layout-translate-overlay.tsx`。
-  - 覆盖层按浅色纸面绘制（白底深字）；PDF 暗色模式下套用与页面栅格相同的 invert filter（`PDF_PAGE_RASTER_DARK_CLASS`），使盖住原文的底色与反转后的纸面一致。
+  - 覆盖层按当前 PDF 页面背景 tone 绘制纸面底色（深字）；暗色下套用与页面栅格相同的 invert filter（`PDF_PAGE_RASTER_DARK_CLASS`），使盖住原文的底色与反转后的纸面一致。
 - API：`runTranslate(task)`（`src/lib/translate/`）。
 
 ## Prompt
