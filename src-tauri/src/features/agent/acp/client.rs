@@ -164,31 +164,12 @@ pub(crate) fn to_acp_agent_local(
 pub(crate) fn to_acp_agent(
     desc: &AgentDescriptor,
     cwd: Option<&Path>,
-    remote: Option<&crate::integration::remote::RemoteAgentTarget>,
+    remote: Option<&dyn crate::features::agent::remote_host::RemoteAgentLaunch>,
 ) -> Result<AcpAgent, AppError> {
     if let Some(r) = remote {
         if r.is_ssh() {
-            use crate::integration::remote::agent_exec::remote_agent_shell_command;
-            if r.destination.is_empty() {
-                return Err(AppError::message("remote SSH destination is empty"));
-            }
-            use crate::integration::remote::agent_exec::proxy_env_from_map;
-            let proxy_pairs = proxy_env_from_map(&desc.env);
-            let env_refs: Vec<(&str, &str)> = proxy_pairs
-                .iter()
-                .map(|(k, v)| (k.as_str(), v.as_str()))
-                .collect();
-            let shell =
-                remote_agent_shell_command(&r.remote_cwd, &desc.command, &desc.args, &env_refs);
-            let stdio = McpServerStdio::new(desc.name.clone(), PathBuf::from("ssh")).args(vec![
-                "-T".to_string(),
-                "-o".to_string(),
-                "BatchMode=yes".to_string(),
-                "-o".to_string(),
-                "ConnectTimeout=30".to_string(),
-                r.destination.clone(),
-                shell,
-            ]);
+            let (program, args) = r.ssh_stdio(&desc.command, &desc.args, &desc.env)?;
+            let stdio = McpServerStdio::new(desc.name.clone(), program).args(args);
             return Ok(AcpAgent::new(McpServer::Stdio(stdio)));
         }
         // local-sim: local binary, cwd set via NewSessionRequest to remote_cwd

@@ -56,7 +56,7 @@ pub async fn list_acp_sessions(
     desc: &AgentDescriptor,
     cwd: PathBuf,
     cursor: Option<String>,
-    remote: Option<&crate::integration::remote::RemoteAgentTarget>,
+    remote: Option<&dyn crate::features::agent::remote_host::RemoteAgentLaunch>,
 ) -> Result<AcpListSessionsResult, AppError> {
     let acp = to_acp_agent(desc, Some(&cwd), remote)?;
     let terminals = Arc::new(tokio::sync::Mutex::new(AcpTerminalManager::new()));
@@ -385,7 +385,7 @@ pub async fn load_acp_session(
     desc: &AgentDescriptor,
     session_id: String,
     cwd: PathBuf,
-    remote: Option<&crate::integration::remote::RemoteAgentTarget>,
+    remote: Option<&dyn crate::features::agent::remote_host::RemoteAgentLaunch>,
 ) -> Result<AcpLoadSessionResult, AppError> {
     let acp = to_acp_agent(desc, Some(&cwd), remote)?;
 

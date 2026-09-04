@@ -12,6 +12,7 @@ pub mod install_dirs;
 pub mod log_util;
 pub mod paths;
 pub mod process;
+pub mod remote;
 pub mod sqlite;
 #[cfg(feature = "desktop")]
 pub mod telemetry;

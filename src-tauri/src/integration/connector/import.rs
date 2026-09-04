@@ -48,7 +48,7 @@ pub async fn import_connector_item_with_cookies(
     page_uri: Option<&str>,
     _cookies: Option<&str>,
 ) -> Result<ConnectorImportResult, AppError> {
-    use crate::features::import::paper_import::{
+    use crate::features::import::{
         paper_commit, AssetsPolicy, CommitStatus, DedupePolicy, PaperCommitOptions,
     };
 
@@ -607,7 +607,7 @@ async fn import_standalone_local(
     app: Option<&tauri::AppHandle>,
     note_mode: NoteShellMode,
 ) -> Result<ConnectorImportResult, AppError> {
-    use crate::features::import::paper_import::{
+    use crate::features::import::{
         paper_commit, AssetsPolicy, CommitStatus, DedupePolicy, PaperCommitOptions,
     };
 

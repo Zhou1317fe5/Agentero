@@ -1,62 +1,114 @@
 //! Resolve how to launch BYOA when the active vault is remote.
+//!
+//! Implements the agent feature's inversion traits
+//! ([`RemoteAgentLaunch`] / [`RemoteAgentHosts`]) so `features::agent` can
+//! drive remote launches without importing `integration::remote`.
 
+use super::agent_exec;
 use super::session::{parse_remote_handle, RemoteRegistry, RemoteSession, LOCAL_SIM_HOST};
 use crate::core::error::AppError;
 use crate::core::fs::WriteOpts;
+use crate::core::remote::proxy_env_from_map;
+use crate::features::agent::remote_host::{RemoteAgentHosts, RemoteAgentLaunch};
 use crate::features::vault::{self, CreateVaultResult};
-use std::path::PathBuf;
+use async_trait::async_trait;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-/// Where the agent process should run and what cwd to advertise over ACP/Codex.
-/// Clone is cheap: `session` is an `Arc`.
-#[derive(Clone)]
-pub struct RemoteAgentTarget {
-    pub kind: String,
-    /// SSH destination (`host` or `user@host`). Empty for local-sim.
-    pub destination: String,
-    /// Absolute path on the machine where the agent runs.
-    pub remote_cwd: String,
-    /// Ephemeral local work root (catalog + optional skill mirror).
-    pub work_root: PathBuf,
-    pub session: Arc<RemoteSession>,
-}
-
-impl RemoteAgentTarget {
-    pub fn is_ssh(&self) -> bool {
+#[async_trait]
+impl RemoteAgentLaunch for RemoteSession {
+    fn is_ssh(&self) -> bool {
         self.kind == "ssh"
     }
 
+    fn is_local_sim(&self) -> bool {
+        self.kind == "local-sim" || self.host == LOCAL_SIM_HOST
+    }
+
+    fn host(&self) -> &str {
+        &self.host
+    }
+
     /// Path string passed to ACP `new_session` / Codex as cwd (remote absolute path).
-    pub fn agent_cwd(&self) -> PathBuf {
-        PathBuf::from(&self.remote_cwd)
+    fn agent_cwd(&self) -> PathBuf {
+        PathBuf::from(&self.remote_path)
+    }
+
+    fn work_root(&self) -> &Path {
+        &self.work_root
+    }
+
+    fn ssh_stdio(
+        &self,
+        command: &str,
+        args: &[String],
+        env: &HashMap<String, String>,
+    ) -> Result<(PathBuf, Vec<String>), AppError> {
+        // Prefer host as stored (may already be `user@host` from connect UI).
+        let destination = self.host.clone();
+        if destination.is_empty() {
+            return Err(AppError::message("remote SSH destination is empty"));
+        }
+        let proxy_pairs = proxy_env_from_map(env);
+        let env_refs: Vec<(&str, &str)> = proxy_pairs
+            .iter()
+            .map(|(k, v)| (k.as_str(), v.as_str()))
+            .collect();
+        let shell =
+            agent_exec::remote_agent_shell_command(&self.remote_path, command, args, &env_refs);
+        Ok((
+            PathBuf::from("ssh"),
+            vec![
+                "-T".to_string(),
+                "-o".to_string(),
+                "BatchMode=yes".to_string(),
+                "-o".to_string(),
+                "ConnectTimeout=30".to_string(),
+                destination,
+                shell,
+            ],
+        ))
+    }
+
+    async fn which(&self, bin: &str) -> Result<Option<String>, AppError> {
+        if self.is_local_sim() {
+            return Ok(which::which(bin).ok().map(|p| p.display().to_string()));
+        }
+        agent_exec::remote_which(&self.host, bin).await
+    }
+
+    async fn materialize_skills(&self) -> Result<(), AppError> {
+        materialize_skills_to_work(self).await
+    }
+
+    async fn ensure_vault_skills(
+        &self,
+        locale: Option<&str>,
+    ) -> Result<CreateVaultResult, AppError> {
+        ensure_remote_vault_skills(self, locale).await
     }
 }
 
-/// If `vault_path` is `remote:<sessionId>`, resolve launch target; else `None` (local vault).
-pub async fn resolve_remote_target(
-    registry: &RemoteRegistry,
-    vault_path: Option<&str>,
-) -> Result<Option<RemoteAgentTarget>, AppError> {
-    let Some(raw) = vault_path.map(str::trim).filter(|s| !s.is_empty()) else {
-        return Ok(None);
-    };
-    let Some(session_id) = parse_remote_handle(raw) else {
-        return Ok(None);
-    };
-    let session = registry.get(session_id).await?;
-    let destination = if session.kind == "local-sim" || session.host == LOCAL_SIM_HOST {
-        String::new()
-    } else {
-        // Prefer host as stored (may already be `user@host` from connect UI).
-        session.host.clone()
-    };
-    Ok(Some(RemoteAgentTarget {
-        kind: session.kind.clone(),
-        destination,
-        remote_cwd: session.remote_path.clone(),
-        work_root: session.work_root.clone(),
-        session,
-    }))
+#[async_trait]
+impl RemoteAgentHosts for RemoteRegistry {
+    /// If `vault_path` is `remote:<sessionId>`, resolve launch target; else `None` (local vault).
+    async fn resolve_target(
+        &self,
+        vault_path: Option<&str>,
+    ) -> Result<Option<Arc<dyn RemoteAgentLaunch>>, AppError> {
+        let Some(raw) = vault_path.map(str::trim).filter(|s| !s.is_empty()) else {
+            return Ok(None);
+        };
+        let Some(session_id) = parse_remote_handle(raw) else {
+            return Ok(None);
+        };
+        Ok(Some(self.get(session_id).await?))
+    }
+
+    async fn get_session(&self, session_id: &str) -> Result<Arc<dyn RemoteAgentLaunch>, AppError> {
+        Ok(self.get(session_id).await?)
+    }
 }
 
 /// Seed or safely upgrade bundled skills (and optionally onboarding notes) in

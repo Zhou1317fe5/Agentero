@@ -30,7 +30,7 @@ pub async fn warm_agent(
     vault_path: Option<String>,
     preferred_model_id: Option<String>,
     preferred_collaboration_mode_id: Option<String>,
-    remote: Option<crate::integration::remote::RemoteAgentTarget>,
+    remote: Option<Arc<dyn crate::features::agent::remote_host::RemoteAgentLaunch>>,
 ) -> WarmResult {
     let agent_id = desc.id.clone();
     let session_id = Uuid::new_v4().to_string();
@@ -43,7 +43,7 @@ pub async fn warm_agent(
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")))
     };
 
-    let acp = match to_acp_agent(&desc, Some(&cwd), remote.as_ref()) {
+    let acp = match to_acp_agent(&desc, Some(&cwd), remote.as_deref()) {
         Ok(a) => a,
         Err(e) => {
             return WarmResult {

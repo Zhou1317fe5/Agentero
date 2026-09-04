@@ -4,10 +4,11 @@
 //! `manifest.json` with catalog snapshots. Files move via rename (copy+remove
 //! fallback). Catalog mutations hit the session work mirror then PUT.
 
-use super::session::RemoteSession;
+use super::session::{RemoteRegistry, RemoteSession};
 use crate::core::error::AppError;
 use crate::core::fs::{VaultFs, WriteOpts};
 use crate::features::catalog::papers::{self, PaperRecord};
+use crate::features::trash::remote_ops::RemoteTrashOps;
 use crate::features::trash::{TrashEntry, TrashResult};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -367,6 +368,48 @@ async fn copy_tree(fs: &dyn VaultFs, from: &str, to: &str) -> Result<(), AppErro
             },
         )
         .await
+    }
+}
+
+#[async_trait::async_trait]
+impl RemoteTrashOps for RemoteRegistry {
+    async fn trash_paths_remote(
+        &self,
+        session_id: &str,
+        rels: &[String],
+    ) -> Result<TrashResult, AppError> {
+        let session = self.get(session_id).await?;
+        trash_paths(&session, rels).await
+    }
+
+    async fn list_trash_remote(&self, session_id: &str) -> Result<Vec<TrashEntry>, AppError> {
+        let session = self.get(session_id).await?;
+        list_trash(&session).await
+    }
+
+    async fn purge_all_remote(&self, session_id: &str) -> Result<(), AppError> {
+        let session = self.get(session_id).await?;
+        purge_all(&session).await
+    }
+
+    async fn restore_item_remote(
+        &self,
+        session_id: &str,
+        batch_id: &str,
+        stored: &str,
+    ) -> Result<String, AppError> {
+        let session = self.get(session_id).await?;
+        restore_item(&session, batch_id, stored).await
+    }
+
+    async fn purge_item_remote(
+        &self,
+        session_id: &str,
+        batch_id: &str,
+        stored: &str,
+    ) -> Result<(), AppError> {
+        let session = self.get(session_id).await?;
+        purge_item(&session, batch_id, stored).await
     }
 }
 

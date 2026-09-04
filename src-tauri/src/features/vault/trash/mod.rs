@@ -457,3 +457,7 @@ mod tests {
 /// Tauri command shells for this feature.
 #[cfg(feature = "desktop")]
 pub mod commands;
+
+/// Remote-vault inversion trait (implemented by `integration::remote`).
+#[cfg(feature = "desktop")]
+pub mod remote_ops;

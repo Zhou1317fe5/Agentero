@@ -65,7 +65,7 @@ pub struct RunOnceParams {
     pub response_language: Option<String>,
     pub personal_prompt: Option<String>,
     pub cancellation: watch::Receiver<bool>,
-    pub remote: Option<crate::integration::remote::RemoteAgentTarget>,
+    pub remote: Option<Arc<dyn crate::features::agent::remote_host::RemoteAgentLaunch>>,
     pub resume_session_id: Option<String>,
 }
 
@@ -124,11 +124,10 @@ async fn prepare_run_turn(params: &RunOnceParams) -> Result<RunTurnPrep, AppErro
     } else {
         // Skills: local vault path, or remote work_root after materializing SKILL.md from SFTP.
         let skill_vault = if let Some(ref r) = params.remote {
-            if let Err(e) = crate::integration::remote::materialize_skills_to_work(&r.session).await
-            {
+            if let Err(e) = r.materialize_skills().await {
                 log::warn!(target: "agentero::agent", "materialize remote skills: {e}");
             }
-            Some(r.work_root.to_string_lossy().into_owned())
+            Some(r.work_root().to_string_lossy().into_owned())
         } else {
             params.vault_path.clone()
         };
@@ -815,7 +814,7 @@ pub async fn run_once(params: RunOnceParams) -> Result<AgentResultPayload, AppEr
     let prep = prepare_run_turn(&params).await?;
 
     // Phase 2 — spawn the ACP agent process (local, or SSH wrapper for remote).
-    let acp = match to_acp_agent(&params.desc, Some(&prep.cwd), params.remote.as_ref()) {
+    let acp = match to_acp_agent(&params.desc, Some(&prep.cwd), params.remote.as_deref()) {
         Ok(agent) => agent,
         Err(error) => {
             emit_run_failed(&params.app, &params.session_id, &error);

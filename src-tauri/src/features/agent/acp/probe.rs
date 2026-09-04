@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 /// When `remote` is set, the agent process is launched on the remote host (SSH).
 pub async fn probe_agent(
     desc: &AgentDescriptor,
-    remote: Option<&crate::integration::remote::RemoteAgentTarget>,
+    remote: Option<&dyn crate::features::agent::remote_host::RemoteAgentLaunch>,
 ) -> ProbeResult {
     let agent_id = desc.id.clone();
     let acp = match to_acp_agent(desc, None, remote) {

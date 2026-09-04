@@ -92,36 +92,9 @@ pub fn remote_agent_shell_command(
     format!("bash -lc {}", shell_quote(&inner))
 }
 
-/// Env keys mirrored into the remote agent process (proxy + Codex UA / config).
-pub const REMOTE_PROXY_ENV_KEYS: &[&str] = &[
-    "HTTP_PROXY",
-    "HTTPS_PROXY",
-    "ALL_PROXY",
-    "http_proxy",
-    "https_proxy",
-    "all_proxy",
-    // Custom User-Agent for Codex/Claude / mid-station affinity (#207).
-    "AGENTERO_USER_AGENT",
-    "CODEX_CONFIG",
-    "MODEL_PROVIDER",
-    "ANTHROPIC_CUSTOM_HEADERS",
-];
-
-/// Collect proxy / Codex UA env pairs from an agent descriptor (after registry apply).
-pub fn proxy_env_from_map(
-    env: &std::collections::HashMap<String, String>,
-) -> Vec<(String, String)> {
-    let mut out = Vec::new();
-    for key in REMOTE_PROXY_ENV_KEYS {
-        if let Some(v) = env.get(*key) {
-            let t = v.trim();
-            if !t.is_empty() {
-                out.push(((*key).to_string(), t.to_string()));
-            }
-        }
-    }
-    out
-}
+/// Env keys mirrored into the remote agent process, and the collector for
+/// proxy / Codex UA env pairs (pure helpers; implementation lives in core).
+pub use crate::core::remote::{proxy_env_from_map, REMOTE_PROXY_ENV_KEYS};
 
 fn shell_quote(s: &str) -> String {
     // Single-quote POSIX style

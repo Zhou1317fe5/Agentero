@@ -4,20 +4,20 @@ use super::{
     BridgeMessage, BridgeOffer, E2eeHandshake, RelayControlMessage, RelayEndpoint, RelayFrame,
     RelayOffer, RpcError, SessionCipher, DEFAULT_RELAY_ENDPOINT,
 };
-#[cfg(not(target_os = "ios"))]
-use crate::core::error::ApiResult;
 use crate::core::error::AppError;
 #[cfg(not(target_os = "ios"))]
-use crate::features::agent::commands::PermissionResponseRequest;
+use crate::core::error::{map_err, ApiResult};
 #[cfg(not(target_os = "ios"))]
-use crate::features::agent::models::RunOnceRequest;
+use crate::features::agent::models::{
+    AskUserResponseRequest, ElicitationResponseRequest, PermissionResponseRequest, RunOnceRequest,
+};
 #[cfg(not(target_os = "ios"))]
-use crate::features::agent::{AgentRegistry, AgentRunController, PermissionGate};
+use crate::features::agent::{
+    service as agent_service, AgentRegistry, AgentRunController, PermissionGate, RemoteAgentHosts,
+};
 use crate::features::catalog::papers;
 use crate::features::search::{self, VaultSearchArgs};
 use crate::features::vault::tree;
-#[cfg(not(target_os = "ios"))]
-use crate::integration::remote::RemoteRegistry;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use chrono::Utc;
@@ -875,6 +875,16 @@ async fn dispatch_rpc(
     }
 }
 
+/// Map a service `Result` through the same `ApiResult` envelope the command
+/// shells use, so bridge RPC responses keep their exact shape.
+#[cfg(not(target_os = "ios"))]
+fn api_service_data<T: Serialize>(result: Result<T, AppError>) -> Result<Value, AppError> {
+    api_result_data(match result {
+        Ok(value) => ApiResult::ok(value),
+        Err(err) => map_err(err),
+    })
+}
+
 #[cfg(not(target_os = "ios"))]
 async fn dispatch_agent_rpc(
     app: &AppHandle,
@@ -884,12 +894,12 @@ async fn dispatch_agent_rpc(
 ) -> Result<Value, AppError> {
     let vault_path = Some(vault_root.to_string_lossy().into_owned());
     match method {
-        "agent_list_agents" => api_result_data(
-            crate::features::agent::commands::agent_list_agents(app.state::<AgentRegistry>()),
-        ),
-        "agent_scan_catalog" => api_result_data(
-            crate::features::agent::commands::agent_scan_catalog(app.state::<AgentRegistry>()),
-        ),
+        "agent_list_agents" => api_service_data(agent_service::list_agents(
+            app.state::<AgentRegistry>().inner(),
+        )),
+        "agent_scan_catalog" => api_service_data(agent_service::scan_catalog(
+            app.state::<AgentRegistry>().inner(),
+        )),
         "agent_ensure_catalog" => {
             #[derive(Deserialize)]
             #[serde(rename_all = "camelCase")]
@@ -899,10 +909,10 @@ async fn dispatch_agent_rpc(
                 set_default: bool,
             }
             let args: Params = serde_json::from_value(params)?;
-            api_result_data(crate::features::agent::commands::agent_ensure_catalog(
-                app.clone(),
-                app.state::<AgentRegistry>(),
-                args.template_id,
+            api_service_data(agent_service::ensure_catalog(
+                app,
+                app.state::<AgentRegistry>().inner(),
+                &args.template_id,
                 args.set_default,
             ))
         }
@@ -913,14 +923,13 @@ async fn dispatch_agent_rpc(
                 template_id: String,
             }
             let args: Params = serde_json::from_value(params)?;
-            let result = crate::features::agent::commands::agent_probe_catalog(
-                app.clone(),
-                app.state::<AgentRegistry>(),
-                args.template_id,
+            let result = agent_service::probe_catalog(
+                app,
+                app.state::<AgentRegistry>().inner(),
+                &args.template_id,
             )
-            .await
-            .map_err(AppError::message)?;
-            api_result_data(result)
+            .await;
+            api_service_data(result)
         }
         "agent_run_once" => {
             let mut request: RunOnceRequest = serde_json::from_value(params)?;
@@ -930,75 +939,75 @@ async fn dispatch_agent_rpc(
                 .get_webview_window("main")
                 .or_else(|| app.webview_windows().into_values().next())
                 .ok_or_else(|| AppError::message("No desktop window is available for Agent"))?;
-            let result = crate::features::agent::commands::agent_run_once(
-                window,
-                app.state::<AgentRegistry>(),
-                app.state::<AgentRunController>(),
-                app.state::<PermissionGate>(),
-                app.state::<crate::features::agent::ElicitationGate>(),
-                app.state::<crate::features::agent::AskUserGate>(),
-                app.state::<std::sync::Arc<RemoteRegistry>>(),
+            let remote_hosts = app.state::<std::sync::Arc<dyn RemoteAgentHosts>>();
+            let result = agent_service::accept_run_once(
+                &window,
+                app.state::<AgentRegistry>().inner(),
+                app.state::<AgentRunController>().inner(),
+                app.state::<PermissionGate>().inner(),
+                app.state::<crate::features::agent::ElicitationGate>()
+                    .inner(),
+                app.state::<crate::features::agent::AskUserGate>().inner(),
+                remote_hosts.inner().as_ref(),
                 request,
             )
-            .await
-            .map_err(AppError::message)?;
-            api_result_data(result)
+            .await;
+            api_service_data(result)
         }
         "agent_cancel_run" => {
             let session_id = required_string(&params, "sessionId")?;
-            api_result_data(crate::features::agent::commands::agent_cancel_run(
-                app.state::<AgentRunController>(),
-                session_id,
+            api_service_data(agent_service::cancel_run(
+                app.state::<AgentRunController>().inner(),
+                &session_id,
             ))
         }
         "agent_respond_permission" => {
             let request: PermissionResponseRequest = serde_json::from_value(params)?;
-            api_result_data(crate::features::agent::commands::agent_respond_permission(
-                app.state::<PermissionGate>(),
+            api_result_data(ApiResult::ok(agent_service::respond_permission(
+                app.state::<PermissionGate>().inner(),
                 request,
-            ))
+            )))
         }
         "agent_respond_elicitation" => {
-            let request: crate::features::agent::commands::ElicitationResponseRequest =
-                serde_json::from_value(params)?;
-            api_result_data(crate::features::agent::commands::agent_respond_elicitation(
-                app.state::<crate::features::agent::ElicitationGate>(),
+            let request: ElicitationResponseRequest = serde_json::from_value(params)?;
+            api_result_data(ApiResult::ok(agent_service::respond_elicitation(
+                app.state::<crate::features::agent::ElicitationGate>()
+                    .inner(),
                 request,
-            ))
+            )))
         }
         "agent_respond_ask_user" => {
-            let request: crate::features::agent::commands::AskUserResponseRequest =
-                serde_json::from_value(params)?;
-            api_result_data(crate::features::agent::commands::agent_respond_ask_user(
-                app.state::<crate::features::agent::AskUserGate>(),
+            let request: AskUserResponseRequest = serde_json::from_value(params)?;
+            api_result_data(ApiResult::ok(agent_service::respond_ask_user(
+                app.state::<crate::features::agent::AskUserGate>().inner(),
                 request,
-            ))
+            )))
         }
         "agent_list_sessions" => {
-            let result = crate::features::agent::commands::agent_list_sessions(
-                app.state::<AgentRegistry>(),
-                app.state::<std::sync::Arc<RemoteRegistry>>(),
-                app.state::<crate::features::agent::AgentWarmGate>(),
+            let remote_hosts = app.state::<std::sync::Arc<dyn RemoteAgentHosts>>();
+            let result = agent_service::list_sessions(
+                app.state::<AgentRegistry>().inner(),
+                remote_hosts.inner().as_ref(),
+                app.state::<crate::features::agent::AgentWarmGate>().inner(),
                 optional_string(&params, "agentId"),
                 vault_path,
                 optional_string(&params, "cursor"),
             )
-            .await
-            .map_err(AppError::message)?;
-            api_result_data(result)
+            .await;
+            api_service_data(result)
         }
         "agent_load_session" => {
             let session_id = required_string(&params, "sessionId")?;
-            let result = crate::features::agent::commands::agent_load_session(
-                app.state::<AgentRegistry>(),
-                app.state::<std::sync::Arc<RemoteRegistry>>(),
+            let remote_hosts = app.state::<std::sync::Arc<dyn RemoteAgentHosts>>();
+            let result = agent_service::load_session(
+                app.state::<AgentRegistry>().inner(),
+                remote_hosts.inner().as_ref(),
                 optional_string(&params, "agentId"),
                 session_id,
                 vault_path,
             )
-            .await
-            .map_err(AppError::message)?;
-            api_result_data(result)
+            .await;
+            api_service_data(result)
         }
         _ => Err(AppError::message("Bridge Agent RPC method is not allowed")),
     }

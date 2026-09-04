@@ -173,11 +173,8 @@ impl RemoteRegistry {
     }
 }
 
-/// Resolve vault handle `remote:<id>` → session id.
-pub fn parse_remote_handle(vault_handle: &str) -> Option<&str> {
-    let h = vault_handle.trim();
-    h.strip_prefix("remote:").filter(|id| !id.is_empty())
-}
+/// Resolve vault handle `remote:<id>` → session id (pure parsing lives in core).
+pub use crate::core::remote::parse_remote_handle;
 
 #[cfg(test)]
 mod tests {

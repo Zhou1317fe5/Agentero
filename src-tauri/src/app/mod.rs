@@ -119,12 +119,20 @@ pub fn run() {
 
     #[cfg(not(target_os = "ios"))]
     {
+        // Remote vault sessions are consumed by features (agent / import /
+        // trash) through inversion traits defined in the features themselves;
+        // register the registry both concretely (integration commands) and as
+        // each trait object (feature commands).
+        let remote_registry = Arc::new(RemoteRegistry::new());
         builder = builder
             .manage(FsWatchController::new())
             .manage(Arc::new(ConnectorController::new()))
             .manage(Arc::new(McpController::new()))
             .manage(Arc::new(McpTunnelController::new()))
-            .manage(Arc::new(RemoteRegistry::new()));
+            .manage(remote_registry.clone())
+            .manage(remote_registry.clone() as Arc<dyn crate::features::agent::RemoteAgentHosts>)
+            .manage(remote_registry.clone() as Arc<dyn crate::features::import::RemoteImportOps>)
+            .manage(remote_registry as Arc<dyn crate::features::trash::remote_ops::RemoteTrashOps>);
     }
 
     #[cfg(not(any(target_os = "android", target_os = "ios")))]

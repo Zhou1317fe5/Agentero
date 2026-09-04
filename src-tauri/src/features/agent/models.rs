@@ -670,3 +670,51 @@ pub struct AcpSessionCapabilities {
     pub load: bool,
     pub delete: bool,
 }
+
+/// Wrapper response for commands that return a single agent.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentOnly {
+    pub agent: AgentDescriptor,
+}
+
+/// Request payload for `agent_respond_permission`.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionResponseRequest {
+    pub request_id: String,
+    /// Chosen option id; `None` cancels the request.
+    #[serde(default)]
+    pub option_id: Option<String>,
+}
+
+/// Shared response for the permission / elicitation / ask-user gates.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PermissionResponded {
+    pub resolved: bool,
+}
+
+/// Request payload for `agent_respond_elicitation`.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ElicitationResponseRequest {
+    pub request_id: String,
+    /// accept | decline | cancel
+    pub action: String,
+    /// Field id → string value (accept only).
+    #[serde(default)]
+    pub content: Option<std::collections::BTreeMap<String, String>>,
+}
+
+/// Request payload for `agent_respond_ask_user`.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AskUserResponseRequest {
+    pub request_id: String,
+    /// accept | cancel
+    pub action: String,
+    /// Parallel answer strings (multi-select joined with ", ").
+    #[serde(default)]
+    pub answers: Option<Vec<String>>,
+}

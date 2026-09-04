@@ -7,8 +7,8 @@ use crate::core::error::{map_err, ApiResult, AppError};
 use crate::core::log_util::{trunc, OpTimer};
 use crate::features::agent::models::ProbeResult;
 use crate::features::agent::registry::remote::{self as remote_catalog, RemoteAgentScanResponse};
+use crate::features::agent::remote_host::RemoteAgentHosts;
 use crate::features::agent::AgentRegistry;
-use crate::integration::remote::RemoteRegistry;
 use serde::Deserialize;
 use std::sync::Arc;
 use tauri::State;
@@ -29,14 +29,14 @@ pub struct RemoteAgentProbeArgs {
 /// Catalog-style scan of common agents on the remote host (`command -v`).
 #[tauri::command]
 pub async fn remote_agent_scan(
-    registry: State<'_, Arc<RemoteRegistry>>,
+    registry: State<'_, Arc<dyn RemoteAgentHosts>>,
     args: RemoteAgentScanArgs,
 ) -> Result<ApiResult<RemoteAgentScanResponse>, String> {
     let op = OpTimer::start_with(
         "remote_agent_scan",
         format!("session={}", trunc(&args.session_id, 40)),
     );
-    match remote_catalog::scan_remote_agents(registry.inner(), &args.session_id).await {
+    match remote_catalog::scan_remote_agents(registry.inner().as_ref(), &args.session_id).await {
         Ok(r) => {
             op.finish_ok_extra(format!("entries={}", r.entries.len()));
             Ok(ApiResult::ok(r))
@@ -51,7 +51,7 @@ pub async fn remote_agent_scan(
 /// ACP initialize probe for one catalog template on the remote vault host.
 #[tauri::command]
 pub async fn remote_agent_probe(
-    registry: State<'_, Arc<RemoteRegistry>>,
+    registry: State<'_, Arc<dyn RemoteAgentHosts>>,
     agent_registry: State<'_, AgentRegistry>,
     args: RemoteAgentProbeArgs,
 ) -> Result<ApiResult<ProbeResult>, String> {
@@ -65,7 +65,7 @@ pub async fn remote_agent_probe(
     );
     let (proxy_enabled, proxy_url) = agent_registry.proxy_settings().unwrap_or_default();
     match remote_catalog::probe_remote_template(
-        registry.inner(),
+        registry.inner().as_ref(),
         &args.session_id,
         &args.template_id,
         proxy_enabled,
@@ -102,7 +102,7 @@ pub struct RemoteAgentInstallArgs {
 /// install command after the user presses Enter (same confirm UX as local install).
 #[tauri::command]
 pub async fn remote_agent_open_install_terminal(
-    registry: State<'_, Arc<RemoteRegistry>>,
+    registry: State<'_, Arc<dyn RemoteAgentHosts>>,
     args: RemoteAgentInstallArgs,
 ) -> Result<ApiResult<serde_json::Value>, String> {
     use crate::app::terminal;
@@ -126,17 +126,17 @@ pub async fn remote_agent_open_install_terminal(
             ))));
         }
     };
-    let session = match registry.get(&args.session_id).await {
+    let session = match registry.get_session(&args.session_id).await {
         Ok(s) => s,
         Err(e) => return Ok(map_err(e)),
     };
-    if session.kind == "local-sim" {
+    if session.is_local_sim() {
         return Ok(match terminal::open_terminal_confirm_command(&install) {
             Ok(()) => ApiResult::ok(serde_json::Value::Null),
             Err(e) => map_err(e),
         });
     }
-    let destination = session.host.clone();
+    let destination = session.host().to_string();
     match terminal::open_terminal_confirm_remote_install(&destination, &install) {
         Ok(()) => Ok(ApiResult::ok(serde_json::Value::Null)),
         Err(e) => Ok(map_err(e)),

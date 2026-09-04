@@ -8,8 +8,9 @@ use super::{
 };
 use crate::core::blocking::run_blocking;
 use crate::core::error::ApiResult;
+use crate::core::remote::parse_remote_handle;
+use crate::features::import::RemoteImportOps;
 use crate::features::import::{PaperImportArgs, PaperImportResult};
-use crate::integration::remote::{import_bridge, parse_remote_handle, RemoteRegistry};
 use std::sync::Arc;
 use tauri::ipc::Channel;
 use tauri::State;
@@ -71,23 +72,18 @@ pub async fn paper_export(args: PaperExportArgs) -> ApiResult<PaperExportResult>
 #[tauri::command]
 pub async fn paper_import(
     app: tauri::AppHandle,
-    registry: State<'_, Arc<RemoteRegistry>>,
+    remote: State<'_, Arc<dyn RemoteImportOps>>,
     args: PaperImportArgs,
 ) -> Result<ApiResult<PaperImportResult>, String> {
     use crate::core::log_util::OpTimer;
 
     let op = OpTimer::start("paper_import");
     let note_mode = crate::features::import::note_mode_from_app(&app);
-    if let Some(session_id) = parse_remote_handle(&args.vault_path) {
-        let session = match registry.get(session_id).await {
-            Ok(s) => s,
-            Err(e) => {
-                op.finish_err(&e);
-                return Ok(crate::core::error::map_err(e));
-            }
-        };
+    if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned) {
         return Ok(op.finish_result_ok_extra(
-            import_bridge::import_catalog_remote(session, args, note_mode).await,
+            remote
+                .import_catalog_remote(&session_id, args, note_mode)
+                .await,
             |r| format!("imported={} skipped={}", r.imported, r.skipped),
         ));
     }

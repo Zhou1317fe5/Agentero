@@ -8,6 +8,8 @@ pub mod commands;
 #[cfg(feature = "desktop")]
 pub mod job_runners;
 pub mod paper_import;
+#[cfg(feature = "desktop")]
+pub mod remote_ops;
 pub mod sources;
 pub use crate::features::paper::analyze::parse as pdf_parse;
 
@@ -37,6 +39,14 @@ pub use assets::{
     AssetDownloadResult, AssetProgressContext,
 };
 pub use map::{enrich_remote_urls, map_zotero_item, PaperMeta};
+// Stable top-level API for the desktop connector (`integration/connector`):
+// commit pipeline entry point + policies. Consumers must not reach into the
+// `paper_import` internals.
+pub use paper_import::{
+    paper_commit, AssetsPolicy, CommitStatus, DedupePolicy, PaperCommitOptions,
+};
+#[cfg(feature = "desktop")]
+pub use remote_ops::RemoteImportOps;
 pub use skill_import::{
     discard_skill_discovery, discover_skill_source, install_discovered_skills, SkillCandidate,
     SkillDiscovery, SkillImportResult,

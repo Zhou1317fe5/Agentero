@@ -1,47 +1,41 @@
 //! Registry / catalog / lifecycle Tauri commands.
 
-use super::{
-    emit_registry_changed, list_from_state, AgentOnly, AgentUserAgentResponse, EnabledResponse,
-};
+use super::{AgentUserAgentResponse, EnabledResponse};
 use crate::core::error::{map_err, ApiResult, AppError};
 use crate::features::agent::models::{
-    AgentListResponse, AgentSkill, CatalogScanResponse, ProbeResult, UpsertAgentRequest,
+    AgentListResponse, AgentOnly, AgentSkill, CatalogScanResponse, ProbeResult, UpsertAgentRequest,
 };
+use crate::features::agent::remote_host::RemoteAgentHosts;
+use crate::features::agent::service::{self, emit_registry_changed};
 use crate::features::agent::{list_agent_skills, probe_agent, AgentRegistry};
-use crate::integration::remote::{
-    materialize_skills_to_work, resolve_remote_target, RemoteRegistry,
-};
 use std::sync::Arc;
 use tauri::{AppHandle, State};
 
 #[tauri::command]
 pub fn agent_list_agents(registry: State<'_, AgentRegistry>) -> ApiResult<AgentListResponse> {
-    match registry.snapshot() {
-        Ok(s) => ApiResult::ok(list_from_state(s)),
+    match service::list_agents(registry.inner()) {
+        Ok(s) => ApiResult::ok(s),
         Err(e) => map_err(e),
     }
 }
 
 #[tauri::command]
 pub async fn agent_list_skills(
-    remote_registry: State<'_, Arc<RemoteRegistry>>,
+    remote_registry: State<'_, Arc<dyn RemoteAgentHosts>>,
     vault_path: Option<String>,
 ) -> Result<ApiResult<Vec<AgentSkill>>, String> {
-    let remote_target =
-        match resolve_remote_target(remote_registry.inner(), vault_path.as_deref()).await {
-            Ok(target) => target,
-            Err(e) => return Ok(map_err(e)),
-        };
+    let remote_target = match remote_registry.resolve_target(vault_path.as_deref()).await {
+        Ok(target) => target,
+        Err(e) => return Ok(map_err(e)),
+    };
     if let Some(remote) = remote_target {
-        if let Err(e) =
-            crate::integration::remote::ensure_remote_vault_skills(&remote.session, None).await
-        {
+        if let Err(e) = remote.ensure_vault_skills(None).await {
             return Ok(map_err(e));
         }
-        if let Err(e) = materialize_skills_to_work(&remote.session).await {
+        if let Err(e) = remote.materialize_skills().await {
             return Ok(map_err(e));
         }
-        let work_root = remote.work_root.to_string_lossy().to_string();
+        let work_root = remote.work_root().to_string_lossy().to_string();
         return Ok(ApiResult::ok(list_agent_skills(Some(&work_root))));
     }
     Ok(ApiResult::ok(list_agent_skills(vault_path.as_deref())))
@@ -49,7 +43,7 @@ pub async fn agent_list_skills(
 
 #[tauri::command]
 pub fn agent_scan_catalog(registry: State<'_, AgentRegistry>) -> ApiResult<CatalogScanResponse> {
-    match registry.scan_catalog() {
+    match service::scan_catalog(registry.inner()) {
         Ok(s) => ApiResult::ok(s),
         Err(e) => map_err(e),
     }
@@ -77,11 +71,8 @@ pub fn agent_ensure_catalog(
     template_id: String,
     set_default: bool,
 ) -> ApiResult<AgentOnly> {
-    match registry.ensure_catalog_agent(&template_id, set_default) {
-        Ok(agent) => {
-            emit_registry_changed(&app);
-            ApiResult::ok(AgentOnly { agent })
-        }
+    match service::ensure_catalog(&app, registry.inner(), &template_id, set_default) {
+        Ok(agent) => ApiResult::ok(agent),
         Err(e) => map_err(e),
     }
 }
@@ -110,7 +101,7 @@ pub fn agent_set_default(
     match registry.set_default(id) {
         Ok(s) => {
             emit_registry_changed(&app);
-            ApiResult::ok(list_from_state(s))
+            ApiResult::ok(service::list_from_state(s))
         }
         Err(e) => map_err(e),
     }
@@ -264,27 +255,8 @@ pub async fn agent_probe_catalog(
     registry: State<'_, AgentRegistry>,
     template_id: String,
 ) -> Result<ApiResult<ProbeResult>, String> {
-    let desc = match registry.ensure_catalog_agent(&template_id, false) {
-        Ok(d) => d,
-        Err(e) => return Ok(map_err(e)),
-    };
-    if !desc.available {
-        let result = ProbeResult {
-            agent_id: desc.id.clone(),
-            available: false,
-            agent_name: None,
-            protocol_version: None,
-            error: desc
-                .last_error
-                .or_else(|| Some(format!("command `{}` not found on PATH", desc.command))),
-            session_capabilities: None,
-        };
-        let _ = registry.apply_probe_result(&desc.id, &result);
-        emit_registry_changed(&app);
-        return Ok(ApiResult::ok(result));
+    match service::probe_catalog(&app, registry.inner(), &template_id).await {
+        Ok(result) => Ok(ApiResult::ok(result)),
+        Err(e) => Ok(map_err(e)),
     }
-    let result = probe_agent(&desc, None).await;
-    let _ = registry.apply_probe_result(&desc.id, &result);
-    emit_registry_changed(&app);
-    Ok(ApiResult::ok(result))
 }

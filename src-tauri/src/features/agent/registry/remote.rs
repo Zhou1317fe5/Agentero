@@ -1,6 +1,7 @@
 //! Discover and ACP-probe agents on a remote vault host (SSH).
 
 use crate::core::error::AppError;
+use crate::core::remote::REMOTE_PROXY_ENV_KEYS;
 use crate::features::agent::models::{
     AgentDescriptor, CatalogAcpStatus, CatalogEntry, ProbeResult,
 };
@@ -9,12 +10,9 @@ use crate::features::agent::registry::lifecycle as tool_lifecycle;
 use crate::features::agent::registry::templates::{
     catalog_templates, template_from_id, template_info,
 };
-use crate::integration::remote::agent_exec;
-use crate::integration::remote::launch::resolve_remote_target;
-use crate::integration::remote::session::{RemoteRegistry, RemoteSession, LOCAL_SIM_HOST};
+use crate::features::agent::remote_host::{RemoteAgentHosts, RemoteAgentLaunch};
 use serde::Serialize;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -26,11 +24,11 @@ pub struct RemoteAgentScanResponse {
 
 /// List catalog templates with remote PATH presence (`command -v` / local which for sim).
 pub async fn scan_remote_agents(
-    registry: &RemoteRegistry,
+    registry: &dyn RemoteAgentHosts,
     session_id: &str,
 ) -> Result<RemoteAgentScanResponse, AppError> {
-    let session = registry.get(session_id).await?;
-    let destination = session_destination(&session);
+    let session = registry.get_session(session_id).await?;
+    let destination = session_destination(session.as_ref());
     let mut entries = Vec::new();
 
     for tmpl in catalog_templates() {
@@ -38,11 +36,11 @@ pub async fn scan_remote_agents(
             .detect_command
             .as_deref()
             .unwrap_or(tmpl.command.as_str());
-        let detect_path = remote_or_local_which(&session, &destination, detect).await?;
+        let detect_path = session.which(detect).await?;
         let acp_path = if tmpl.command == detect {
             detect_path.clone()
         } else {
-            remote_or_local_which(&session, &destination, &tmpl.command).await?
+            session.which(&tmpl.command).await?
         };
 
         let binary_available = detect_path.is_some();
@@ -99,7 +97,7 @@ pub async fn scan_remote_agents(
 /// Settings → General → Network proxy as local; the proxy must be reachable
 /// **from the server**).
 pub async fn probe_remote_template(
-    registry: &RemoteRegistry,
+    registry: &dyn RemoteAgentHosts,
     session_id: &str,
     template_id: &str,
     proxy_enabled: bool,
@@ -108,10 +106,7 @@ pub async fn probe_remote_template(
     let info = template_info(template_id)
         .ok_or_else(|| AppError::message(format!("unknown catalog template: {template_id}")))?;
 
-    let handle = format!("remote:{session_id}");
-    let remote = resolve_remote_target(registry, Some(&handle))
-        .await?
-        .ok_or_else(|| AppError::message("remote session not found"))?;
+    let remote = registry.get_session(session_id).await?;
 
     let mut desc = descriptor_from_template(&info.id, &info.name, &info.command, &info.args);
     apply_proxy_env(&mut desc, proxy_enabled, proxy_url);
@@ -123,21 +118,12 @@ pub async fn probe_remote_template(
         .filter(|s| !s.is_empty())
         .unwrap_or(info.command.as_str());
     let acp_bin = info.command.as_str();
-    let destination = if remote.is_ssh() {
-        remote.destination.clone()
-    } else {
-        String::new()
-    };
     if remote.is_ssh() {
-        let detect_ok = agent_exec::remote_which(&destination, detect_bin)
-            .await?
-            .is_some();
+        let detect_ok = remote.which(detect_bin).await?.is_some();
         let acp_ok = if acp_bin == detect_bin {
             detect_ok
         } else {
-            agent_exec::remote_which(&destination, acp_bin)
-                .await?
-                .is_some()
+            remote.which(acp_bin).await?.is_some()
         };
         if !detect_ok && !acp_ok {
             return Ok(ProbeResult {
@@ -180,11 +166,11 @@ pub async fn probe_remote_template(
         });
     }
 
-    Ok(probe_agent(&desc, Some(&remote)).await)
+    Ok(probe_agent(&desc, Some(remote.as_ref())).await)
 }
 
 fn apply_proxy_env(desc: &mut AgentDescriptor, proxy_enabled: bool, proxy_url: &str) {
-    for key in agent_exec::REMOTE_PROXY_ENV_KEYS {
+    for key in REMOTE_PROXY_ENV_KEYS {
         desc.env.remove(*key);
     }
     if !proxy_enabled {
@@ -221,21 +207,10 @@ fn descriptor_from_template(
     }
 }
 
-fn session_destination(session: &RemoteSession) -> String {
-    if session.kind == "local-sim" || session.host == LOCAL_SIM_HOST {
+fn session_destination(session: &dyn RemoteAgentLaunch) -> String {
+    if session.is_local_sim() {
         "local-sim".into()
     } else {
-        session.host.clone()
+        session.host().to_string()
     }
-}
-
-async fn remote_or_local_which(
-    session: &Arc<RemoteSession>,
-    destination: &str,
-    bin: &str,
-) -> Result<Option<String>, AppError> {
-    if session.kind == "local-sim" || session.host == LOCAL_SIM_HOST {
-        return Ok(which::which(bin).ok().map(|p| p.display().to_string()));
-    }
-    agent_exec::remote_which(destination, bin).await
 }

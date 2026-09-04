@@ -2,12 +2,14 @@
 
 use crate::core::blocking::run_blocking;
 use crate::core::error::{map_err, ApiResult, AppError};
-use crate::core::fs::{resolve_vault, WriteOpts};
+use crate::core::fs::resolve_vault;
 use crate::core::log_util::{trunc, OpTimer};
+use crate::core::remote::parse_remote_handle;
 use crate::features::catalog::CapsCache;
 use crate::features::import::pdf_parse::{PaperParseBodyArgs, PaperParseResult};
 use crate::features::import::resolver::{fetch_arxiv_metadata, fetch_crossref_metadata};
 use crate::features::import::title_search::{needs_s2_venue_enrichment, search_papers};
+use crate::features::import::RemoteImportOps;
 use crate::features::import::{
     AssetDownloadResult, ImportLocalPdfArgs, ImportLocalPdfResult, LookupImportBatchArgs,
     LookupImportBatchResult, PaperDownloadAssetsArgs, SkillImportResult, StageImportFileArgs,
@@ -16,7 +18,6 @@ use crate::features::import::{
 use crate::features::scholar_api::sources::semantic_scholar::{
     better_publication, is_usable_publication, SemanticScholarApi,
 };
-use crate::integration::remote::{import_bridge, parse_remote_handle, RemoteRegistry};
 use futures_util::stream::{self, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -27,24 +28,18 @@ use tauri::State;
 #[tauri::command]
 pub async fn lookup_import_batch(
     app: tauri::AppHandle,
-    registry: State<'_, Arc<RemoteRegistry>>,
+    remote: State<'_, Arc<dyn RemoteImportOps>>,
     cache: State<'_, CapsCache>,
     args: LookupImportBatchArgs,
 ) -> Result<ApiResult<LookupImportBatchResult>, String> {
     let n = args.texts.len();
     let op = OpTimer::start_with("lookup_import_batch", format!("count={n}"));
     let note_mode = crate::features::import::note_mode_from_app(&app);
-    if let Some(session_id) = parse_remote_handle(&args.vault_path) {
-        let session = match registry.get(session_id).await {
-            Ok(s) => s,
-            Err(e) => {
-                op.finish_err(&e);
-                return Ok(crate::core::error::map_err(e));
-            }
-        };
+    if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned) {
         let vault_id = std::path::PathBuf::from(&args.vault_path);
-        let result =
-            import_bridge::import_by_identifier_batch_remote(session, args, note_mode).await;
+        let result = remote
+            .import_by_identifier_batch_remote(&session_id, args, note_mode)
+            .await;
         if let Ok(r) = &result {
             for paper in &r.imported {
                 crate::features::lifecycle::emit_paper_imported(Some(&app), &vault_id, &paper.id);
@@ -99,23 +94,14 @@ pub fn skill_discard(discovery_id: String) -> ApiResult<()> {
 #[tauri::command]
 pub async fn paper_download_assets(
     app: tauri::AppHandle,
-    registry: State<'_, Arc<RemoteRegistry>>,
+    remote: State<'_, Arc<dyn RemoteImportOps>>,
     cache: State<'_, CapsCache>,
     args: PaperDownloadAssetsArgs,
 ) -> Result<ApiResult<AssetDownloadResult>, String> {
     let path = trunc(&args.path, 120);
     let op = OpTimer::start_with("paper_download_assets", format!("path={path}"));
-    if let Some(session_id) = parse_remote_handle(&args.vault_path) {
-        let session = match registry.get(session_id).await {
-            Ok(s) => s,
-            Err(e) => {
-                op.finish_err(&e);
-                return Ok(crate::core::error::map_err(e));
-            }
-        };
-        return Ok(
-            op.finish_result(import_bridge::download_paper_assets_remote(session, args).await)
-        );
+    if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned) {
+        return Ok(op.finish_result(remote.download_paper_assets_remote(&session_id, args).await));
     }
     let task_id = args.task_id.clone();
     let result = super::download_paper_assets_with_progress(args, Some(&app), Some(&cache)).await;
@@ -129,7 +115,7 @@ pub async fn paper_download_assets(
 #[tauri::command]
 pub async fn paper_import_local_pdf(
     app: tauri::AppHandle,
-    registry: State<'_, Arc<RemoteRegistry>>,
+    remote: State<'_, Arc<dyn RemoteImportOps>>,
     cache: State<'_, CapsCache>,
     args: ImportLocalPdfArgs,
 ) -> Result<ApiResult<ImportLocalPdfResult>, String> {
@@ -137,19 +123,12 @@ pub async fn paper_import_local_pdf(
     let op = OpTimer::start_with("paper_import_local_pdf", format!("count={n}"));
     let note_mode = crate::features::import::note_mode_from_app(&app);
     let task_id = args.task_id.clone();
-    let result = if let Some(session_id) = parse_remote_handle(&args.vault_path) {
-        let session = match registry.get(session_id).await {
-            Ok(s) => s,
-            Err(e) => {
-                if let Some(task_id) = task_id.as_deref() {
-                    crate::core::background_tasks::finish(task_id);
-                }
-                op.finish_err(&e);
-                return Ok(crate::core::error::map_err(e));
-            }
-        };
+    let result = if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned)
+    {
         let vault_id = std::path::PathBuf::from(&args.vault_path);
-        let result = import_bridge::import_local_pdfs_remote(session, args, note_mode).await;
+        let result = remote
+            .import_local_pdfs_remote(&session_id, args, note_mode)
+            .await;
         if let Ok(r) = &result {
             for paper in &r.papers {
                 crate::features::lifecycle::emit_paper_imported(Some(&app), &vault_id, &paper.id);
@@ -171,26 +150,16 @@ pub async fn paper_import_local_pdf(
 /// Runs as a standalone background task; `task_id` is used for cancellation.
 #[tauri::command]
 pub async fn paper_parse_body(
-    registry: State<'_, Arc<RemoteRegistry>>,
+    remote: State<'_, Arc<dyn RemoteImportOps>>,
     cache: State<'_, CapsCache>,
     args: PaperParseBodyArgs,
 ) -> Result<ApiResult<PaperParseResult>, String> {
     let path = trunc(&args.path, 120);
     let op = OpTimer::start_with("paper_parse_body", format!("path={path}"));
 
-    if let Some(session_id) = parse_remote_handle(&args.vault_path) {
-        let session = match registry.get(session_id).await {
-            Ok(s) => s,
-            Err(e) => {
-                if let Some(task_id) = args.task_id.as_deref() {
-                    crate::core::background_tasks::finish(task_id);
-                }
-                op.finish_err(&e);
-                return Ok(crate::core::error::map_err(e));
-            }
-        };
+    if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned) {
         let task_id = args.task_id.clone();
-        let result = parse_remote_body(session, args).await;
+        let result = remote.parse_paper_body_remote(&session_id, args).await;
         if let Some(task_id) = task_id.as_deref() {
             crate::core::background_tasks::finish(task_id);
         }
@@ -203,47 +172,6 @@ pub async fn paper_parse_body(
         crate::core::background_tasks::finish(task_id);
     }
     Ok(op.finish_result(result))
-}
-
-async fn parse_remote_body(
-    session: Arc<crate::integration::remote::session::RemoteSession>,
-    args: PaperParseBodyArgs,
-) -> Result<PaperParseResult, crate::core::error::AppError> {
-    let path_rel = crate::core::fs::sanitize_vault_rel(&args.path)
-        .map_err(|_| crate::core::error::AppError::message("invalid paper path"))?;
-    let staging = session.work_root.join(&path_rel);
-
-    let local_args = PaperParseBodyArgs {
-        vault_path: session.work_root.to_string_lossy().to_string(),
-        path: path_rel.clone(),
-        force: args.force,
-        task_id: args.task_id.clone(),
-    };
-
-    let result = crate::features::import::pdf_parse::parse_paper_body(local_args, None).await?;
-
-    if result.paper_md {
-        let paper_md_local = staging.join("PAPER.md");
-        if paper_md_local.is_file() {
-            let bytes = std::fs::read(&paper_md_local).map_err(|e| {
-                crate::core::error::AppError::message(format!("read staged PAPER.md: {e}"))
-            })?;
-            session
-                .fs
-                .write(
-                    &format!("{path_rel}/PAPER.md"),
-                    &bytes,
-                    WriteOpts {
-                        create_parents: true,
-                    },
-                )
-                .await?;
-        }
-        let mut cat = session.catalog.lock().await;
-        cat.push(session.fs.clone()).await?;
-    }
-
-    Ok(result)
 }
 
 /// Stage a path-less OS drop (File bytes as base64) into `~/.agentero/import-tmp/`.
