@@ -113,6 +113,7 @@ Host 通过 Tauri event 向前端推送事件。文件系统、任务和菜单�
 - **前端调用形态（迁移说明）**：bindings 导出 `commands`（camelCase 命令函数）与 `events`（`events.jobChanged.listen(cb)` 等，payload 已按事件名类型化）。返回值有两种信封：
   - 命令返回 `ApiResult<T>`（如 `commands.settingsGet()`）：Promise 直接 resolve 信封，判错看 `r.ok === false` 时读 `r.error`（`{ code, message, details? }`）；`r.data` 类型为 `T | null`。
   - 命令返回 `Result<ApiResult<T>, String>`（如 `commands.jobReport(args)`）：bindings 包了一层 `typedError`，resolve 为 `{ status: "ok", data: ApiResult<T> } | { status: "error", error: string }`；先判 `status`（外层 IPC 级错误，对应 Rust `Err(String)`），再判 `data.ok`（业务错误信封）。
+- **前端 helper（`src/lib/core/ipc.ts`）**：`callApi` / `callApiResult` / `callResult` 分别按上述信封形态解包并保留旧的 throw 语义（Host 错误抛出 `Error & { details }`，`fallback` / `desktopOnly` 可定制文案），返回类型由命令函数推断。旧的 `invokeApi` 与 app 命令的裸 `invoke` 已全部迁移删除：新调用点一律 `commands.*` + helper；事件订阅一律 `events.*.listen`（React 侧用 `useTauriEvent(events.x, cb)`，非 UI 模块用 `listenEventSafe(events.x, cb)`）。保留字符串形态的仅限：前端窗口间广播（`workspace:*`、`agent:attach-context` 等）与 iOS bridge client 事件（`bridge:status` / `bridge:progress` / `bridge:pair-pending` / `bridge:event:*`），以及 `src/lib/bridge/client.ts` 中 iOS bridge client **命令**（`bridge_connect` / `bridge_disconnect` / `bridge_resume` / `bridge_status` / `bridge_rpc`，mobile-gated，未进桌面 bindings）的裸 `invoke`。
 
 ## 3. Host 层 Tauri invoke API
 

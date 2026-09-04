@@ -4,13 +4,13 @@
  * API when Rust emits `job:offer` for a `layoutAnalyze` job.
  */
 
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import i18n from "@/i18n";
+import { commands, events } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
-import { invokeApi } from "@/lib/core/ipc";
+import { callApiResult } from "@/lib/core/ipc";
 import {
 	type JobOfferPayload,
-	type JobState,
 	jobReport,
 	registerJobExecutor,
 	startJobCenterExecutorListener,
@@ -23,8 +23,6 @@ import { analyzePaperLayoutHeadless } from "@/lib/pdf/layout/headless-analyze";
 import { readLayoutSidecar } from "@/lib/pdf/layout/io";
 import { layoutAnalysisStore } from "@/lib/pdf/layout/store";
 import { getVaultPath } from "@/lib/vault/store";
-
-const JOB_CHANGED_EVENT = "job:changed";
 
 const queuedPapers = new Set<string>();
 
@@ -63,15 +61,12 @@ async function runLayoutAnalyzeExecutor(offer: JobOfferPayload): Promise<void> {
 		});
 
 	try {
-		cancelledUnlisten = await listen<{ job: { id: string; state: JobState } }>(
-			JOB_CHANGED_EVENT,
-			(event) => {
-				if (event.payload.job.id !== offer.jobId) return;
-				if (event.payload.job.state === "cancelled") {
-					abortController.abort();
-				}
-			},
-		);
+		cancelledUnlisten = await events.jobChanged.listen((event) => {
+			if (event.payload.job.id !== offer.jobId) return;
+			if (event.payload.job.state === "cancelled") {
+				abortController.abort();
+			}
+		});
 
 		const unsub = layoutAnalysisStore.subscribe((state) => {
 			const { ui, activeDocumentId } = state;
@@ -142,16 +137,14 @@ export function enqueuePaperLayoutAnalysis(opts: {
 		try {
 			const cached = await readLayoutSidecar(paperAbsPath);
 			if (cached?.regions?.length) return;
-			await invokeApi(
-				"job_layout_analyze_enqueue",
-				{
-					args: {
+			await callApiResult(
+				() =>
+					commands.jobLayoutAnalyzeEnqueue({
 						vaultPath,
 						path: paperRelPath,
 						lane: "normal",
 						force: false,
-					},
-				},
+					}),
 				{ fallback: "layout analysis enqueue failed" },
 			);
 		} catch (e) {

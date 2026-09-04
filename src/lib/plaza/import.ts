@@ -15,8 +15,9 @@
 
 import i18n from "@/i18n";
 import { enqueueBackgroundTask } from "@/lib/core/background-tasks";
+import { commands, type PaperCommitResult } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
-import { invokeApi } from "@/lib/core/ipc";
+import { callApiResult } from "@/lib/core/ipc";
 import { notifyError, notifySuccess, notifyWarning } from "@/lib/core/notify";
 import { lookupSubmit } from "@/lib/paper/import-actions";
 import { currentLookupParentDir } from "@/lib/paper/library-actions";
@@ -33,16 +34,8 @@ export type PlazaImportRequest = {
 	title: string | null;
 };
 
-type PaperCommitResult = {
-	/** A genuine failure throws through `invokeApi`; these are the only states. */
-	status: "created" | "deduped" | "skipped";
-	id: string;
-	path: string;
-	title: string;
-	pdf: boolean;
-	/** Non-fatal asset problems, e.g. the publisher PDF could not be fetched. */
-	assetMessages: string[];
-};
+/** A genuine failure throws through the IPC helper; `status` covers the rest. */
+export type { PaperCommitResult };
 
 /**
  * The 魔棒 import runs inside a background task that `lookupSubmit` does not
@@ -94,17 +87,15 @@ async function importViaPage(
 			detail: label,
 		},
 		({ id }) =>
-			invokeApi<PaperCommitResult>(
-				"paper_coolpapers_import",
-				{
-					args: {
+			callApiResult(
+				() =>
+					commands.paperCoolpapersImport({
 						vaultPath,
 						parentDir: currentLookupParentDir(),
 						branch: request.branch || "venue",
 						id: request.id,
 						taskId: id,
-					},
-				},
+					}),
 				{ fallback: i18n.t("app:plazaImport.failed") },
 			),
 	);

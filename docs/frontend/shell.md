@@ -82,6 +82,6 @@
 - 操作型 Chrome（按钮、导航、标题栏、工具栏、可点击卡片）默认禁用浏览器文字选择；正文、可复制 metadata、编辑器、PDF 文字层和输入控件必须保持可选。不要在应用根节点统一设置 `user-select: none`，避免误伤第三方内容层和移动端长按选择。
 - 基础组件 shadcn/ui；Chat/树 AI UI 用 AI Elements（[components.md](components.md)）。
 - **启动种子放 `boot()`**（`src/main.tsx`），不要在 render 期做副作用。`initSettingsStore` / `initVaultStore` / `initWorkspaceStore` 在 `createRoot` 前调用：既保证首帧前完成，又不依赖 `useState` 初始化器（StrictMode 下可能跑两次）。
-- **订阅 Host 事件一律用 `listenSafe()`（`src/lib/core/tauri-events.ts`）或 `useTauriEvent()`**；非 Tauri wire 的 promise 式订阅（bridge、workspace-broadcast）用 `toSafeDisposer()`。手写 `let off; void (async () => { off = await listen(...) })(); return () => off?.()` 会在 `listen` resolve 前 dispose 时泄漏监听器 —— StrictMode 每次开发挂载都会命中。
+- **订阅 Host 事件一律用类型化事件绑定（`src/lib/core/bindings.ts` 的 `events.*`）：组件内 `useTauriEvent(events.x, cb)`，非 UI 模块 `listenEventSafe(events.x, cb)`（`src/lib/core/tauri-events.ts`）**；字符串事件名仅限前端窗口间广播（`workspace:*`、`agent:attach-context` 等）与 iOS bridge client 事件，非 Tauri wire 的 promise 式订阅（bridge、workspace-broadcast）用 `toSafeDisposer()`。手写 `let off; void (async () => { off = await listen(...) })(); return () => off?.()` 会在 `listen` resolve 前 dispose 时泄漏监听器 —— StrictMode 每次开发挂载都会命中。
 - **注册全局订阅的 `init*` / `start*` 必须返回 disposer**，并由调用方 effect 返回。
 - 每个 vault 的副作用挂在 `vault:opened` 作用域上，清理写在同一 handler 的 teardown 里，见 [../development/lifecycle-events.md](../development/lifecycle-events.md)。

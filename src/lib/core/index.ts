@@ -43,7 +43,14 @@ export {
 	IME_COMPOSITION_END_GRACE_MS,
 	isImeKeyboardEvent,
 } from "@/lib/core/ime";
-export { type ApiResult, invokeApi } from "@/lib/core/ipc";
+export {
+	type ApiError,
+	type CallApiOptions,
+	callApi,
+	callApiResult,
+	callResult,
+	type TypedResult,
+} from "@/lib/core/ipc";
 export {
 	type JobChangedSnapshot,
 	type JobKind,
@@ -100,8 +107,9 @@ export {
 } from "@/lib/core/tauri";
 export {
 	broadcastSafe,
-	listenSafe,
+	listenEventSafe,
 	type TauriEventHandler,
+	type TypedEventBinding,
 	toSafeDisposer,
 } from "@/lib/core/tauri-events";
 export { cn, mapLimit } from "@/lib/core/utils";

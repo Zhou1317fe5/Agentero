@@ -6,7 +6,14 @@
  */
 import { open } from "@tauri-apps/plugin-dialog";
 import i18n from "@/i18n";
-import { invokeApi } from "@/lib/core/ipc";
+import {
+	commands,
+	type LookupImportResult_Serialize,
+	type SkillCandidate,
+	type SkillDiscovery,
+	type SkillImportResult,
+} from "@/lib/core/bindings";
+import { callApi, callApiResult } from "@/lib/core/ipc";
 import { isTauri } from "@/lib/core/tauri";
 import { type AppSettings, DEFAULT_TRANSLATOR_BASE_URL } from "@/lib/settings";
 
@@ -30,27 +37,7 @@ export type LookupAddResult = {
 	recognizePending?: boolean;
 };
 
-export type SkillImportResult = {
-	name: string;
-	description: string;
-	path: string;
-	source: string;
-	skipped: boolean;
-};
-
-export type SkillCandidate = {
-	name: string;
-	description: string;
-	source: string;
-	relativePath: string;
-	alreadyInstalled: boolean;
-};
-
-export type SkillDiscovery = {
-	discoveryId: string;
-	source: string;
-	candidates: SkillCandidate[];
-};
+export type { SkillCandidate, SkillDiscovery, SkillImportResult };
 
 /** One importable hit from a magic-wand title search. */
 export type PaperSearchCandidate = {
@@ -122,21 +109,6 @@ export type PaperAssetsDownloadResult = {
 	messages: string[];
 };
 
-type HostLookupResult = {
-	paperDir: string;
-	path: string;
-	id: string;
-	title: string;
-	usedTranslator: boolean;
-	translatorBaseUrl: string;
-	pdf?: boolean;
-	tex?: boolean;
-	paperMd?: boolean;
-	assetMessages?: string[];
-	status?: "created" | "deduped" | "skipped";
-	recognizePending?: boolean;
-};
-
 function resolveTranslatorBaseUrl(
 	settings: AppSettings | undefined,
 	override?: string,
@@ -148,7 +120,7 @@ function resolveTranslatorBaseUrl(
 	return raw.replace(/\/+$/, "");
 }
 
-function toLookupAddResult(d: HostLookupResult): LookupAddResult {
+function toLookupAddResult(d: LookupImportResult_Serialize): LookupAddResult {
 	return {
 		paperDir: d.paperDir,
 		path: d.path,
@@ -160,7 +132,7 @@ function toLookupAddResult(d: HostLookupResult): LookupAddResult {
 		tex: d.tex,
 		paperMd: d.paperMd,
 		assetMessages: d.assetMessages,
-		status: d.status,
+		status: d.status ?? undefined,
 		recognizePending: d.recognizePending,
 	};
 }
@@ -202,18 +174,16 @@ export async function addPapersByIdentifiers(opts: {
 		opts.translatorBaseUrl,
 	);
 
-	const result = await invokeApi<LookupBatchAddResult>(
-		"lookup_import_batch",
-		{
-			args: {
+	const result = await callApiResult(
+		() =>
+			commands.lookupImportBatch({
 				vaultPath: opts.vaultRoot,
 				parentDir: opts.parentDir.replace(/\\/g, "/"),
 				texts,
 				translatorBaseUrl,
-				taskId: opts.progressTaskId,
-				concurrency: opts.settings.batchImportConcurrency,
-			},
-		},
+				taskId: opts.progressTaskId ?? null,
+				concurrency: opts.settings.batchImportConcurrency ?? null,
+			}),
 		{ fallback: i18n.t("sidebar:lookup.fetchFailed") },
 	);
 
@@ -221,7 +191,9 @@ export async function addPapersByIdentifiers(opts: {
 		imported: result.imported.map(toLookupAddResult),
 		skills: result.skills ?? [],
 		skillCandidates: result.skillCandidates ?? [],
-		searchCandidates: result.searchCandidates ?? [],
+		// Wire candidates carry serde `null` on absent optionals and a plain
+		// string `source`; domain readers treat them as absent / "s2" | "arxiv".
+		searchCandidates: (result.searchCandidates ?? []) as PaperSearchGroup[],
 		skipped: result.skipped,
 		errors: result.errors,
 	};
@@ -235,15 +207,13 @@ export async function installDiscoveredSkills(opts: {
 	if (!isTauri()) {
 		throw new Error(i18n.t("sidebar:lookup.desktopOnly"));
 	}
-	return invokeApi<SkillImportResult[]>(
-		"skill_install",
-		{
-			args: {
+	return callApi(
+		() =>
+			commands.skillInstall({
 				vaultPath: opts.vaultRoot,
 				discoveryId: opts.discoveryId,
 				selectedNames: opts.selectedNames,
-			},
-		},
+			}),
 		{ fallback: i18n.t("sidebar:lookup.fetchFailed") },
 	);
 }
@@ -252,11 +222,9 @@ export async function discardSkillDiscovery(
 	discoveryId: string,
 ): Promise<void> {
 	if (!isTauri()) return;
-	await invokeApi<void>(
-		"skill_discard",
-		{ discoveryId },
-		{ fallback: i18n.t("sidebar:lookup.fetchFailed"), allowVoid: true },
-	);
+	await callApi(() => commands.skillDiscard(discoveryId), {
+		fallback: i18n.t("sidebar:lookup.fetchFailed"),
+	});
 }
 
 /**
@@ -271,23 +239,16 @@ export async function downloadPaperAssets(opts: {
 	if (!isTauri()) {
 		throw new Error(i18n.t("sidebar:lookup.desktopOnly"));
 	}
-	return invokeApi<PaperAssetsDownloadResult>(
-		"paper_download_assets",
-		{
-			args: {
+	return callApiResult(
+		() =>
+			commands.paperDownloadAssets({
 				vaultPath: opts.vaultRoot,
 				path: opts.paperPath.replace(/\\/g, "/").replace(/^\/+|\/+$/g, ""),
-				taskId: opts.progressTaskId,
-			},
-		},
+				taskId: opts.progressTaskId ?? null,
+			}),
 		{ fallback: i18n.t("sidebar:fileTree.downloadFailed") },
 	);
 }
-
-type HostLocalPdfImportResult = {
-	papers: HostLookupResult[];
-	errors?: string[];
-};
 
 export type LocalPdfImportResult = {
 	papers: LookupAddResult[];
@@ -359,18 +320,16 @@ export async function importLocalPdfs(opts: {
 	}
 	if (!entries.length) return null;
 
-	const result = await invokeApi<HostLocalPdfImportResult>(
-		"paper_import_local_pdf",
-		{
-			args: {
+	const result = await callApiResult(
+		() =>
+			commands.paperImportLocalPdf({
 				vaultPath: opts.vaultRoot,
 				parentDir: opts.parentDir.replace(/\\/g, "/"),
 				filePaths: [],
 				entries,
-				taskId: opts.progressTaskId,
+				taskId: opts.progressTaskId ?? null,
 				translatorBaseUrl: resolveTranslatorBaseUrl(opts.settings),
-			},
-		},
+			}),
 		{ fallback: i18n.t("sidebar:lookup.fetchFailed") },
 	);
 	return {

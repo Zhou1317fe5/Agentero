@@ -10,8 +10,9 @@ import {
 	enqueueBackgroundTask,
 	isBackgroundTaskCancelledError,
 } from "@/lib/core/background-tasks";
+import { commands } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
-import { invokeApi } from "@/lib/core/ipc";
+import { callApiResult } from "@/lib/core/ipc";
 import { logger } from "@/lib/core/logger";
 import { notifyError, notifySuccess, notifyWarning } from "@/lib/core/notify";
 import { currentLookupParentDir } from "@/lib/paper/library-actions";
@@ -184,15 +185,13 @@ export async function lookupSubmit(
 							const rel = toVaultRelative(vaultPath, abs)
 								.replace(/\\/g, "/")
 								.replace(/^\/+|\/+$/g, "");
-							void invokeApi(
-								"job_layout_analyze_enqueue",
-								{
-									args: {
+							void callApiResult(
+								() =>
+									commands.jobLayoutAnalyzeEnqueue({
 										vaultPath,
 										path: rel,
 										force: false,
-									},
-								},
+									}),
 								{ fallback: "layout analysis enqueue failed" },
 							);
 						}
@@ -215,9 +214,8 @@ export async function lookupSubmit(
 					if (newPaths.length > 0) {
 						let needingAssets: string[] = [];
 						try {
-							needingAssets = await invokeApi<string[]>(
-								"job_papers_needing_assets",
-								{ args: { vaultPath } },
+							needingAssets = await callApiResult(
+								() => commands.jobPapersNeedingAssets({ vaultPath }),
 								{ fallback: "collect papers needing assets failed" },
 							);
 						} catch (e) {
@@ -232,11 +230,14 @@ export async function lookupSubmit(
 						);
 						for (const rel of newPaths) {
 							if (!needingSet.has(rel)) continue;
-							void invokeApi(
-								"job_download_assets_enqueue",
-								{
-									args: { vaultPath, path: rel, lane: "normal", force: false },
-								},
+							void callApiResult(
+								() =>
+									commands.jobDownloadAssetsEnqueue({
+										vaultPath,
+										path: rel,
+										lane: "normal",
+										force: false,
+									}),
 								{ fallback: "download enqueue failed" },
 							).catch((e) =>
 								logger.warn("post-import download enqueue failed", {

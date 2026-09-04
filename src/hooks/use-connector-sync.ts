@@ -17,13 +17,12 @@ import {
 	startBackgroundTask,
 	updateBackgroundTask,
 } from "@/lib/core/background-tasks";
+import { events } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
 import { notifyError } from "@/lib/core/notify";
 import { isTauri } from "@/lib/core/tauri";
-import { listenSafe } from "@/lib/core/tauri-events";
+import { listenEventSafe } from "@/lib/core/tauri-events";
 import {
-	type ConnectorItemSaved,
-	type ConnectorProgress,
 	connectorSetEnabled,
 	connectorSetParentDir,
 	connectorSetVault,
@@ -89,7 +88,7 @@ export function useConnectorSync(): void {
 	// paper tab (same as magic-wand import).
 	useEffect(() => {
 		const offs = [
-			listenSafe<ConnectorItemSaved>("connector:item-saved", (p) => {
+			listenEventSafe(events.connectorItemSaved, (p) => {
 				const vault = getVaultPath();
 				if (vault) {
 					// Debounced: import saves coalesce with the paper:imported
@@ -105,7 +104,7 @@ export function useConnectorSync(): void {
 					openPaper(joinVaultPath(vault, rel));
 				}
 			}),
-			listenSafe<ConnectorProgress>("connector:progress", (p) => {
+			listenEventSafe(events.connectorProgress, (p) => {
 				if (!p?.key) return;
 				let taskId = progressTasksRef.current.get(p.key);
 				if (!taskId) {
@@ -136,7 +135,7 @@ export function useConnectorSync(): void {
 					progressTasksRef.current.delete(p.key);
 				}
 			}),
-			listenSafe<{ message?: string }>("connector:error", (payload) => {
+			listenEventSafe(events.connectorError, (payload) => {
 				const msg = payload?.message?.trim();
 				if (msg) notifyError(msg);
 			}),

@@ -8,8 +8,9 @@
 
 import i18n from "@/i18n";
 import { enqueueBackgroundTask } from "@/lib/core/background-tasks";
+import { commands } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
-import { invokeApi } from "@/lib/core/ipc";
+import { callApiResult } from "@/lib/core/ipc";
 import { notifyError, notifySuccess, notifyWarning } from "@/lib/core/notify";
 import { arxivUrls } from "@/lib/paper/arxiv";
 import { resolvePaperCatalogRel } from "@/lib/paper/library-actions";
@@ -20,15 +21,6 @@ import { getVaultPath } from "@/lib/vault/store";
 import { refreshTabNotes } from "@/lib/workspace/store";
 
 export const COOL_PAPERS_ORIGIN = "https://papers.cool";
-
-type CoolPapersNotes = {
-	found: boolean;
-	appended: boolean;
-	branch: string | null;
-	paperId: string | null;
-	url: string | null;
-	matchedBy: string | null;
-};
 
 /**
  * Append the papers.cool Kimi analysis for one paper to its NOTES.md.
@@ -61,18 +53,16 @@ export async function fetchCoolPapersNotes(meta: PaperMetadata): Promise<void> {
 				detail: title ?? rel,
 			},
 			() =>
-				invokeApi<CoolPapersNotes>(
-					"paper_coolpapers_notes",
-					{
-						args: {
+				callApiResult(
+					() =>
+						commands.paperCoolpapersNotes({
 							vaultPath,
 							path: rel,
 							catalogId,
 							sourceUrl,
 							arxivId,
 							title,
-						},
-					},
+						}),
 					{ fallback: i18n.t("app:coolPapers.fetchFailed") },
 				),
 		);

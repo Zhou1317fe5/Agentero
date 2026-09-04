@@ -7,8 +7,9 @@
 import i18n from "@/i18n";
 import { track } from "@/lib/activity";
 import { enqueueBackgroundTask } from "@/lib/core/background-tasks";
+import { commands } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
-import { invokeApi } from "@/lib/core/ipc";
+import { callApiResult } from "@/lib/core/ipc";
 import { logger } from "@/lib/core/logger";
 import { notifyError, notifySuccess, notifyWarning } from "@/lib/core/notify";
 import { mapLimit } from "@/lib/core/utils";
@@ -221,7 +222,7 @@ async function runPaperAssetsDownload(vaultPath: string, rel: string) {
 			});
 			track("asset.download", {
 				path: rel,
-				extra: { pdf: r.pdf, tex: r.tex, paperMd: r.paperMd },
+				extra: { pdf: r.pdf, tex: r.tex, paperMd: r.paperMd ?? null },
 			});
 			return r;
 		},
@@ -333,9 +334,8 @@ export async function downloadAllMissingAssets(): Promise<void> {
 	// CapsCache-backed query (§8.4) replaces the frontend tree walk.
 	let queue: string[] = [];
 	try {
-		queue = await invokeApi<string[]>(
-			"job_papers_needing_assets",
-			{ args: { vaultPath } },
+		queue = await callApiResult(
+			() => commands.jobPapersNeedingAssets({ vaultPath }),
 			{ fallback: "collect papers needing assets failed" },
 		);
 	} catch (e) {
@@ -346,9 +346,14 @@ export async function downloadAllMissingAssets(): Promise<void> {
 
 	for (const rel of queue) {
 		if (!rel) continue;
-		void invokeApi(
-			"job_download_assets_enqueue",
-			{ args: { vaultPath, path: rel, lane: "idle", force: false } },
+		void callApiResult(
+			() =>
+				commands.jobDownloadAssetsEnqueue({
+					vaultPath,
+					path: rel,
+					lane: "idle",
+					force: false,
+				}),
 			{ fallback: "download enqueue failed" },
 		).catch((e) =>
 			logger.warn("bulk download enqueue failed", {

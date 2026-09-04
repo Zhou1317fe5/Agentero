@@ -20,18 +20,20 @@ import {
 	startBackgroundTask,
 	updateBackgroundTask,
 } from "@/lib/core/background-tasks";
-import type {
-	JobChangedPayload,
-	JobKind,
-	JobOfferPayload,
-	JobReportArgs,
-	JobSnapshot,
-	JobState,
+import {
+	commands,
+	events,
+	type JobKind,
+	type JobOfferPayload,
+	type JobReportArgs,
+	type JobSnapshot,
+	type JobState,
 } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
-import { invokeApi } from "@/lib/core/ipc";
+import { callApiResult } from "@/lib/core/ipc";
 import { logger } from "@/lib/core/logger";
-import { listenSafe } from "@/lib/core/tauri-events";
+import { isTauri } from "@/lib/core/tauri";
+import { toSafeDisposer } from "@/lib/core/tauri-events";
 
 export type { JobKind, JobOfferPayload, JobState };
 
@@ -90,11 +92,9 @@ function dispatchJobOffer(offer: JobOfferPayload): void {
  */
 async function claimRunningJobOffers(): Promise<void> {
 	try {
-		const jobs = await invokeApi<JobChangedSnapshot[]>(
-			"job_list",
-			{ args: {} },
-			{ fallback: "job list failed" },
-		);
+		const jobs = await callApiResult(() => commands.jobList({}), {
+			fallback: "job list failed",
+		});
 		for (const job of jobs ?? []) {
 			if (job.state !== "running" || !executors.has(job.kind)) continue;
 			dispatchJobOffer({
@@ -114,9 +114,15 @@ async function claimRunningJobOffers(): Promise<void> {
 
 export function startJobCenterExecutorListener(): void {
 	if (offerSubscription) return;
-	offerSubscription = listenSafe<JobOfferPayload>("job:offer", (payload) => {
-		dispatchJobOffer(payload);
-	});
+	if (isTauri()) {
+		offerSubscription = toSafeDisposer(
+			events.jobOffer.listen((event) => {
+				dispatchJobOffer(event.payload);
+			}),
+		);
+	} else {
+		offerSubscription = () => undefined;
+	}
 	void claimRunningJobOffers();
 }
 
@@ -132,18 +138,14 @@ export async function jobReport(args: {
 	error?: string | null;
 	state?: JobState | null;
 }): Promise<void> {
-	await invokeApi(
-		"job_report",
-		{
-			args: {
-				jobId: args.jobId,
-				progress: args.progress ?? undefined,
-				phase: args.phase ?? undefined,
-				error: args.error ?? undefined,
-				state: args.state ?? undefined,
-			} satisfies JobReportArgs,
-		},
-		{ allowVoid: true },
+	await callApiResult(() =>
+		commands.jobReport({
+			jobId: args.jobId,
+			progress: args.progress ?? null,
+			phase: args.phase ?? null,
+			error: args.error ?? null,
+			state: args.state ?? null,
+		} satisfies JobReportArgs),
 	);
 }
 
@@ -194,19 +196,20 @@ const wiredJobCancels = new Set<string>();
  */
 export function startJobTaskProjection(): void {
 	if (projectionSubscription) return;
-	projectionSubscription = listenSafe<JobChangedPayload>(
-		"job:changed",
-		({ job }) => {
-			projectJobToBackgroundTask(job);
-		},
-	);
+	if (isTauri()) {
+		projectionSubscription = toSafeDisposer(
+			events.jobChanged.listen((event) => {
+				projectJobToBackgroundTask(event.payload.job);
+			}),
+		);
+	} else {
+		projectionSubscription = () => undefined;
+	}
 	void (async () => {
 		try {
-			const jobs = await invokeApi<JobChangedSnapshot[]>(
-				"job_list",
-				{ args: {} },
-				{ fallback: "job list failed" },
-			);
+			const jobs = await callApiResult(() => commands.jobList({}), {
+				fallback: "job list failed",
+			});
 			for (const job of jobs ?? []) {
 				projectJobToBackgroundTask(job);
 			}
@@ -277,11 +280,9 @@ export function projectJobToBackgroundTask(job: JobChangedSnapshot): void {
 }
 
 function requestJobCancel(jobId: string): void {
-	void invokeApi<boolean>(
-		"job_cancel",
-		{ jobId },
-		{ fallback: "job cancellation failed" },
-	).catch((error) =>
+	void callApiResult(() => commands.jobCancel(jobId), {
+		fallback: "job cancellation failed",
+	}).catch((error) =>
 		logger.warn("job cancellation failed", {
 			jobId,
 			error: errorText(error),

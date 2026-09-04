@@ -1,4 +1,4 @@
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import i18n from "@/i18n";
 import {
 	completeBackgroundTask,
@@ -6,30 +6,17 @@ import {
 	startBackgroundTask,
 	updateBackgroundTask,
 } from "@/lib/core/background-tasks";
+import { commands, events, type LayoutModelStatus } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
-import { invokeApi } from "@/lib/core/ipc";
+import { callApi } from "@/lib/core/ipc";
 import { logger } from "@/lib/core/logger";
 import { isTauri } from "@/lib/core/tauri";
 
 /** Must match Host `LAYOUT_MODEL_TASK_ID`. */
 export const LAYOUT_MODEL_TASK_ID = "layout-model";
 
-export type LayoutModelStatus = {
-	ready: boolean;
-	path: string;
-	sizeBytes: number;
-	source: string | null;
-	fileName: string;
-};
-
-type LayoutModelTaskEvent = {
-	taskId: string;
-	status: "running" | "completed" | "failed" | "cancelled" | string;
-	progress?: number | null;
-	detail?: string | null;
-	error?: string | null;
-	source?: string | null;
-};
+/** Wire shape from the generated bindings. */
+export type { LayoutModelStatus };
 
 /** Local custom-protocol URL for the XDG-cached ONNX (Host serves the file). */
 export function layoutModelLocalUrl(fileName = "pp-doclayoutv3.onnx"): string {
@@ -41,7 +28,7 @@ export function layoutModelLocalUrl(fileName = "pp-doclayoutv3.onnx"): string {
 
 export async function getLayoutModelStatus(): Promise<LayoutModelStatus | null> {
 	if (!isTauri()) return null;
-	return invokeApi<LayoutModelStatus>("layout_model_status");
+	return callApi(() => commands.layoutModelStatus());
 }
 
 function ensurePanelRow(
@@ -64,46 +51,43 @@ function ensurePanelRow(
 export async function attachLayoutModelTaskListener(): Promise<UnlistenFn> {
 	if (!isTauri()) return () => {};
 
-	const unlisten = await listen<LayoutModelTaskEvent>(
-		"layout-model:task",
-		(event) => {
-			const p = event.payload;
-			if (!p?.taskId || p.taskId !== LAYOUT_MODEL_TASK_ID) return;
+	const unlisten = await events.layoutModelTask.listen((event) => {
+		const p = event.payload;
+		if (!p?.taskId || p.taskId !== LAYOUT_MODEL_TASK_ID) return;
 
-			const status = (p.status ?? "").toLowerCase();
-			if (status === "running") {
-				ensurePanelRow(p.detail, p.progress ?? 0);
-				updateBackgroundTask(LAYOUT_MODEL_TASK_ID, {
-					status: "running",
-					detail: p.detail ?? undefined,
-					progress: typeof p.progress === "number" ? p.progress : undefined,
-				});
-				return;
-			}
-			if (status === "completed") {
-				ensurePanelRow(p.detail, 100);
-				completeBackgroundTask(
-					LAYOUT_MODEL_TASK_ID,
-					p.detail ?? i18n.t("app:tasks.layoutModelDetail"),
-				);
-				return;
-			}
-			if (status === "cancelled") {
-				updateBackgroundTask(LAYOUT_MODEL_TASK_ID, {
-					status: "cancelled",
-					detail: i18n.t("app:tasks.cancelled"),
-				});
-				return;
-			}
-			if (status === "failed") {
-				ensurePanelRow(p.error ?? p.detail, null);
-				failBackgroundTask(
-					LAYOUT_MODEL_TASK_ID,
-					p.error ?? p.detail ?? i18n.t("app:tasks.layoutModelDownload"),
-				);
-			}
-		},
-	);
+		const status = (p.status ?? "").toLowerCase();
+		if (status === "running") {
+			ensurePanelRow(p.detail, p.progress ?? 0);
+			updateBackgroundTask(LAYOUT_MODEL_TASK_ID, {
+				status: "running",
+				detail: p.detail ?? undefined,
+				progress: typeof p.progress === "number" ? p.progress : undefined,
+			});
+			return;
+		}
+		if (status === "completed") {
+			ensurePanelRow(p.detail, 100);
+			completeBackgroundTask(
+				LAYOUT_MODEL_TASK_ID,
+				p.detail ?? i18n.t("app:tasks.layoutModelDetail"),
+			);
+			return;
+		}
+		if (status === "cancelled") {
+			updateBackgroundTask(LAYOUT_MODEL_TASK_ID, {
+				status: "cancelled",
+				detail: i18n.t("app:tasks.cancelled"),
+			});
+			return;
+		}
+		if (status === "failed") {
+			ensurePanelRow(p.error ?? p.detail, null);
+			failBackgroundTask(
+				LAYOUT_MODEL_TASK_ID,
+				p.error ?? p.detail ?? i18n.t("app:tasks.layoutModelDownload"),
+			);
+		}
+	});
 
 	return unlisten;
 }
@@ -128,9 +112,8 @@ export async function ensureLayoutModel(): Promise<LayoutModelStatus | null> {
 
 			ensurePanelRow();
 			try {
-				const result = await invokeApi<LayoutModelStatus>(
-					"layout_model_ensure",
-					{ progressTaskId: LAYOUT_MODEL_TASK_ID },
+				const result = await callApi(() =>
+					commands.layoutModelEnsure(LAYOUT_MODEL_TASK_ID),
 				);
 				if (result.ready) {
 					completeBackgroundTask(

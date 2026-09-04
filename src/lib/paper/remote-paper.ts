@@ -16,7 +16,7 @@ export type RemotePaperItem = {
 	title: string;
 	abstract?: string;
 	url: string;
-	score?: number;
+	score?: number | null;
 };
 
 const cache = new Map<string, PaperMetadata>();

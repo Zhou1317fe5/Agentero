@@ -20,6 +20,7 @@ import {
 	enqueueBackgroundTask,
 	isBackgroundTaskCancelledError,
 } from "@/lib/core/background-tasks";
+import { events } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
 import { notifyError } from "@/lib/core/notify";
 import { isTauri } from "@/lib/core/tauri";
@@ -32,10 +33,7 @@ import {
 	setLayoutOverlayVisible,
 } from "@/lib/pdf/layout";
 import { layoutSidecarPath } from "@/lib/pdf/layout/io";
-import {
-	VAULT_FILE_CHANGED_EVENT,
-	type VaultFileChangedPayload,
-} from "@/lib/vault/fs-watch";
+import type { VaultFileChangedPayload } from "@/lib/vault/fs-watch";
 import { normalizePathKey } from "@/lib/vault/path";
 
 /** In-flight EmbedPDF layout task (abortable, at most one per document). */
@@ -380,15 +378,11 @@ export function usePdfLayoutRun({
 		if (paperAbsPath && isTauri()) {
 			void (async () => {
 				try {
-					const { listen } = await import("@tauri-apps/api/event");
 					if (cancelled) return;
-					const stop = await listen<VaultFileChangedPayload>(
-						VAULT_FILE_CHANGED_EVENT,
-						(event) => {
-							if (cancelled || !eventHitsSidecar(event.payload)) return;
-							void tryLoad();
-						},
-					);
+					const stop = await events.vaultFileChanged.listen((event) => {
+						if (cancelled || !eventHitsSidecar(event.payload)) return;
+						void tryLoad();
+					});
 					if (cancelled) {
 						stop();
 						return;

@@ -11,6 +11,7 @@
  */
 
 import i18n from "@/i18n";
+import { commands } from "@/lib/core/bindings";
 import { notifyError } from "@/lib/core/notify";
 import { isTauri } from "@/lib/core/tauri";
 import { getVaultPath } from "@/lib/vault/store";
@@ -71,14 +72,17 @@ export async function openFeatureWindow(view: FeatureViewType): Promise<void> {
 		const { WebviewWindow } = await import("@tauri-apps/api/webviewWindow");
 		const existed =
 			(await WebviewWindow.getByLabel(featureWindowLabel(view))) != null;
-		const { invoke } = await import("@tauri-apps/api/core");
-		await invoke("feature_window_open", {
+		const res = await commands.featureWindowOpen(
 			view,
-			vaultPath: getVaultPath(),
-			activePath: active?.path ?? null,
-			paperTitle: active?.paperMeta?.title ?? null,
-			title: featureWindowTitle(view),
-		});
+			getVaultPath(),
+			active?.path ?? null,
+			active?.paperMeta?.title ?? null,
+			featureWindowTitle(view),
+		);
+		if (res.status === "error") {
+			notifyError(res.error);
+			return;
+		}
 		await clearMainHostForFeature(view);
 		// Existing feature windows only get focused — re-broadcast so they follow.
 		const { broadcastWorkspaceActive, scheduleAgentSessionHandoffFromMain } =

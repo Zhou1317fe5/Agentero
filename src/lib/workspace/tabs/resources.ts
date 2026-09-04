@@ -1,7 +1,8 @@
 import i18n from "@/i18n";
 import { enqueueBackgroundTask } from "@/lib/core/background-tasks";
+import { commands } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
-import { invokeApi } from "@/lib/core/ipc";
+import { callApiResult } from "@/lib/core/ipc";
 import { toVaultRelative } from "@/lib/core/path";
 import { isTauri } from "@/lib/core/tauri";
 import {
@@ -74,9 +75,8 @@ function reconcilePaperOnOpen(
 		.replace(/\\/g, "/")
 		.replace(/^\/+|\/+$/g, "");
 	if (!rel) return;
-	void invokeApi(
-		"job_reconcile_paper",
-		{ args: { vaultPath, path: rel } },
+	void callApiResult(
+		() => commands.jobReconcilePaper({ vaultPath, path: rel }),
 		{ fallback: "paper reconcile failed" },
 	).catch(() => undefined);
 }

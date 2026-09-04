@@ -4,10 +4,14 @@
  * via `useStore` in `use-background-tasks`.
  */
 
-import { invoke } from "@tauri-apps/api/core";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import { createStore } from "zustand/vanilla";
 import i18n from "@/i18n";
+import {
+	type BackgroundTaskProgressEvent,
+	commands,
+	events,
+} from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
 import { logger } from "@/lib/core/logger";
 import { isTauri } from "@/lib/core/tauri";
@@ -53,17 +57,6 @@ export type BackgroundTask = {
 type Store = {
 	tasks: BackgroundTask[];
 	expanded: boolean;
-};
-
-type BackgroundTaskProgressEvent = {
-	taskId: string;
-	phase: string;
-	downloadedBytes: number;
-	totalBytes?: number;
-	progress: number | null;
-	/** Optional item counters for batch operations (e.g. import 2/5). */
-	currentCount?: number;
-	totalCount?: number;
 };
 
 export function formatBytes(bytes: number): string {
@@ -295,11 +288,13 @@ export function cancelBackgroundTask(id: string): void {
 		detail: i18n.t("app:tasks.cancelled"),
 	});
 	if (isTauri()) {
-		void invoke("background_task_cancel", { taskId: id }).catch((error) =>
-			logger.warn(
-				`background task cancellation signal failed: ${String(error)}`,
-			),
-		);
+		void commands
+			.backgroundTaskCancel(id)
+			.catch((error) =>
+				logger.warn(
+					`background task cancellation signal failed: ${String(error)}`,
+				),
+			);
 	}
 	schedulePrune(id);
 }
@@ -363,8 +358,7 @@ function ensureGlobalProgressListener(): void {
 	}
 	globalProgressAttachPromise = (async () => {
 		try {
-			globalProgressUnlisten = await listen<BackgroundTaskProgressEvent>(
-				"background-task:progress",
+			globalProgressUnlisten = await events.backgroundTaskProgress.listen(
 				(event) => handleBackgroundTaskProgress(event.payload),
 			);
 		} finally {

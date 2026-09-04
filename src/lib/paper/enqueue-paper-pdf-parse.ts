@@ -7,8 +7,9 @@
  * projected row.
  */
 
+import { commands } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
-import { invokeApi } from "@/lib/core/ipc";
+import { callApiResult } from "@/lib/core/ipc";
 import { logger } from "@/lib/core/logger";
 
 const queuedPapers = new Set<string>();
@@ -38,15 +39,13 @@ export function enqueuePaperPdfParse(opts: EnqueuePaperPdfParseOptions): void {
 
 	void (async () => {
 		try {
-			await invokeApi(
-				"job_parse_body_enqueue",
-				{
-					args: {
+			await callApiResult(
+				() =>
+					commands.jobParseBodyEnqueue({
 						vaultPath,
 						path: paperRelPath,
 						force: false,
-					},
-				},
+					}),
 				{ fallback: "PDF body parse failed" },
 			);
 		} catch (e) {

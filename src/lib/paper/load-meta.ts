@@ -1,4 +1,5 @@
-import { invokeApi } from "@/lib/core/ipc";
+import { commands } from "@/lib/core/bindings";
+import { callApi, callApiResult } from "@/lib/core/ipc";
 import { toVaultRelative } from "@/lib/core/path";
 import { isTauri } from "@/lib/core/tauri";
 import { arxivUrls } from "@/lib/paper/arxiv";
@@ -54,16 +55,14 @@ export async function loadPaperOpenBundle(
 			"@/lib/vault/remote/remote-vault"
 		);
 		if (isRemoteVaultHandle(vaultRoot)) return null;
-		void invokeApi(
-			"job_focus_paper",
-			{ args: { vaultPath: vaultRoot, path } },
-			{ allowVoid: true },
+		void callApiResult(() =>
+			commands.jobFocusPaper({ vaultPath: vaultRoot, path }),
 		).catch(() => undefined);
-		const data = await invokeApi<PaperOpenBundle>(
-			"paper_open_bundle",
-			{ args: { vaultPath: vaultRoot, path } },
-			{ allowVoid: true },
-		);
+		// Wire bundle carries serde `null` on absent optionals; domain readers
+		// treat them as absent, so fold once at the boundary.
+		const data = (await callApiResult(() =>
+			commands.paperOpenBundle({ vaultPath: vaultRoot, path }),
+		)) as PaperOpenBundle;
 		if (!data?.paper?.id) return null;
 		return {
 			...data,
@@ -105,12 +104,10 @@ export async function loadPaperMetadata(
 				data = (await remotePaperGet(sessionId, { path })) as PaperMetadata;
 			}
 		} else {
-			data =
-				(await invokeApi<PaperMetadata>(
-					"paper_get",
-					{ args: { vaultPath: vaultRoot, path } },
-					{ allowVoid: true },
-				)) ?? null;
+			const record = await callApi(() =>
+				commands.paperGet({ vaultPath: vaultRoot, path }),
+			);
+			data = (record ?? null) as PaperMetadata | null;
 		}
 		if (data?.id) {
 			return withNormalizedTags(

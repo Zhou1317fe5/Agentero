@@ -1,35 +1,31 @@
-import { invokeApi } from "@/lib/core/ipc";
+import {
+	type ClearAndReparseResult,
+	type ClearParseResultsResult,
+	commands,
+	type ParseResultScope,
+} from "@/lib/core/bindings";
+import { callApiResult } from "@/lib/core/ipc";
 
-export type ParseResultScope = "layout" | "paper" | "all";
-
-export type ClearParseResultsResult = {
-	papersScanned: number;
-	filesRemoved: number;
-};
-
-export type ClearAndReparseResult = ClearParseResultsResult & {
-	layoutEnqueued: number;
-	paperEnqueued: number;
+export type {
+	ClearAndReparseResult,
+	ClearParseResultsResult,
+	ParseResultScope,
 };
 
 export async function clearParseResults(
 	vaultPath: string,
 	scope: ParseResultScope,
 ): Promise<ClearParseResultsResult> {
-	return invokeApi<ClearParseResultsResult>(
-		"clear_parse_results",
-		{ args: { vaultPath, scope } },
-		{ fallback: "Failed to clear parse results" },
-	);
+	return callApiResult(() => commands.clearParseResults({ vaultPath, scope }), {
+		fallback: "Failed to clear parse results",
+	});
 }
 
 export async function clearAndReparse(
 	vaultPath: string,
 	scope: ParseResultScope,
 ): Promise<ClearAndReparseResult> {
-	return invokeApi<ClearAndReparseResult>(
-		"clear_and_reparse",
-		{ args: { vaultPath, scope } },
-		{ fallback: "Failed to clear and reparse" },
-	);
+	return callApiResult(() => commands.clearAndReparse({ vaultPath, scope }), {
+		fallback: "Failed to clear and reparse",
+	});
 }

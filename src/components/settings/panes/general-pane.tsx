@@ -26,9 +26,10 @@ import {
 } from "@/components/ui/tooltip";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { clearUsage } from "@/lib/activity";
+import { commands, events } from "@/lib/core/bindings";
 import { copyTextToClipboard } from "@/lib/core/clipboard";
 import { errorText } from "@/lib/core/error";
-import { invokeApi } from "@/lib/core/ipc";
+import { callApi } from "@/lib/core/ipc";
 import { notifyError, notifySuccess } from "@/lib/core/notify";
 import { openExternalUrl } from "@/lib/core/open-external";
 import { isTauri } from "@/lib/core/tauri";
@@ -130,7 +131,7 @@ export function GeneralPane({
 	useEffect(() => {
 		if (!isTauri()) return;
 		let cancelled = false;
-		void invokeApi<string | null>("network_system_proxy")
+		void callApi(() => commands.networkSystemProxy())
 			.then((p) => {
 				if (!cancelled) setSystemProxy(p ?? null);
 			})
@@ -581,7 +582,7 @@ function ConnectorSettingsBlock({
 		void refresh();
 	}, [refresh]);
 
-	useTauriEvent<ConnectorStatus>("connector:status", (payload) => {
+	useTauriEvent(events.connectorStatus, (payload) => {
 		setStatus(payload);
 	});
 
@@ -693,7 +694,7 @@ function McpSettingsBlock({
 		void refresh();
 	}, [refresh]);
 
-	useTauriEvent<McpStatus>("mcp:status", (payload) => {
+	useTauriEvent(events.mcpStatus, (payload) => {
 		setStatus(payload);
 	});
 
@@ -858,7 +859,7 @@ function McpTunnelRows({
 		void refresh();
 	}, [refresh]);
 
-	useTauriEvent<McpTunnelStatus>("mcp:tunnel-status", (payload) => {
+	useTauriEvent(events.mcpTunnelStatus, (payload) => {
 		setStatus(payload);
 	});
 

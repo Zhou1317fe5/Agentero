@@ -11,6 +11,7 @@ import { useSettings, useVaultStore } from "@/hooks/use-app-stores";
 import { useVaultOpenRequest } from "@/hooks/use-vault-open-request";
 import { applyLocale } from "@/i18n";
 import { startActivityTracking } from "@/lib/activity";
+import { commands } from "@/lib/core/bindings";
 import { isTauri } from "@/lib/core/tauri";
 import { initLifecycleBridge, lifecycle } from "@/lib/lifecycle";
 import { registerLifecycleHandlers } from "@/lib/lifecycle/register";
@@ -42,8 +43,7 @@ export function useAppBootstrap(): void {
 		if (!isTauri()) return;
 		void (async () => {
 			try {
-				const { invoke } = await import("@tauri-apps/api/core");
-				await invoke("set_locale", { locale: resolved });
+				await commands.setLocale(resolved);
 			} catch {
 				// Native menu keeps its previous locale; non-fatal.
 			}

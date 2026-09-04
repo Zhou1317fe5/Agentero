@@ -5,7 +5,8 @@
  * and kept separate from user tags.
  */
 
-import { invokeApi } from "@/lib/core/ipc";
+import { commands, type Json } from "@/lib/core/bindings";
+import { callApi } from "@/lib/core/ipc";
 import { isTauri } from "@/lib/core/tauri";
 import type { PaperTag, PaperTagInput } from "@/lib/paper/tags";
 import type { TagColorId } from "@/lib/ui/tag-colors";
@@ -182,7 +183,7 @@ export async function probeEasyScholarKey(
 ): Promise<boolean> {
 	if (!isTauri()) return false;
 	try {
-		const ok = await invokeApi<boolean>("easy_scholar_probe", undefined, {
+		const ok = await callApi(() => commands.easyScholarProbe(), {
 			fallback: "EasyScholar probe failed",
 		});
 		if (signal?.aborted) return false;
@@ -202,9 +203,10 @@ export async function fetchEasyScholarRank(
 	if (!isTauri()) {
 		throw new Error("EasyScholar rank lookup requires the desktop app.");
 	}
-	return invokeApi<EasyScholarRankResponse>(
-		"easy_scholar_get_rank",
-		{ publicationName },
+	// The Host forwards the raw provider JSON; narrow once at the boundary.
+	const data: Json = await callApi(
+		() => commands.easyScholarGetRank(publicationName),
 		{ fallback: "Failed to fetch EasyScholar rank" },
 	);
+	return data as EasyScholarRankResponse;
 }
