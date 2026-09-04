@@ -128,6 +128,12 @@
 		"filterTags": "按标签筛选",
 		"filterTagsEmpty": "当前库中还没有标签。",
 		"clearTagFilter": "清除标签筛选",
+		"easyScholar": {
+			"fetchRank": "获取 EasyScholar 分区/影响因子标签",
+			"noData": "EasyScholar 未返回该期刊数据。",
+			"fetchFailed": "获取 EasyScholar 数据失败。",
+			"done": "已添加 {{count}} 个 EasyScholar 标签"
+		},
 		"noMatch": "没有匹配的论文。",
 		"columnsMenuLabel": "列",
 		"resetColumns": "重置列",
@@ -388,13 +394,6 @@
 			"desktopOnly": "编辑元数据需要桌面应用。",
 			"remoteUnsupported": "远程 Vault 暂不支持编辑元数据。",
 			"saveFailed": "元数据保存失败。"
-		},
-		"easyScholar": {
-			"fetchRank": "获取 EasyScholar 分区/影响因子标签",
-			"noPublication": "缺少期刊/会议名称。",
-			"noData": "EasyScholar 未返回该期刊数据。",
-			"fetchFailed": "获取 EasyScholar 数据失败。",
-			"done": "已添加 {{count}} 个 EasyScholar 标签"
 		}
 	}
 }

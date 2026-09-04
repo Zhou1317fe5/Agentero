@@ -6,7 +6,11 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import type { PaperMetadata } from "@/lib/paper";
 import type { ReadingHeatmap } from "@/lib/paper/reading-heatmap";
-import { type PaperTag, visiblePaperTags } from "@/lib/paper/tags";
+import {
+	type PaperTag,
+	type PaperTagInput,
+	visiblePaperTags,
+} from "@/lib/paper/tags";
 import type { LibraryColumnKey, LibraryColumnPref } from "@/lib/settings";
 
 export type SortKey = LibraryColumnKey;
@@ -120,6 +124,10 @@ export type CellCtx = {
 		text: string | null | undefined,
 		label: string,
 	) => void;
+	onSetPaperTags?: (
+		paper: PaperMetadata,
+		tags: PaperTagInput[],
+	) => Promise<void>;
 	heat: ReadingHeatmap | undefined;
 	tags: PaperTag[];
 };

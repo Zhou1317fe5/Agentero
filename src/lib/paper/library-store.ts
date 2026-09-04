@@ -8,9 +8,10 @@ import { createStore } from "zustand/vanilla";
 import { debounce } from "@/lib/core/debounce";
 import { isTauri } from "@/lib/core/tauri";
 import type { PaperMetadata } from "@/lib/paper";
-import { listPapers } from "@/lib/paper/api";
+import { listPapers, setPaperTags } from "@/lib/paper/api";
 import type { LocalPdfImportEntry } from "@/lib/paper/lookup";
 import type { CitingScanResult } from "@/lib/paper/refs";
+import type { PaperTagInput } from "@/lib/paper/tags";
 import { getVaultPath } from "@/lib/vault/store";
 
 export type LibraryIoBusy =
@@ -158,6 +159,19 @@ export async function refreshLibrary(): Promise<void> {
 	} finally {
 		libraryStore.setState({ loading: false });
 	}
+}
+
+/**
+ * Replace a paper's tags in catalog and update the local library row.
+ * Works for both local and remote vaults.
+ */
+export async function setLibraryPaperTags(
+	vaultPath: string,
+	path: string,
+	tags: PaperTagInput[],
+): Promise<void> {
+	const updated = await setPaperTags(vaultPath, path, tags);
+	setLibraryPapers((prev) => prev.map((p) => (p.path === path ? updated : p)));
 }
 
 /** Coalesces external-change bursts (CLI, sync clients) into one reload. */
