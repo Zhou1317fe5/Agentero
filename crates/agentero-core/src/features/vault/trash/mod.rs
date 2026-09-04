@@ -37,7 +37,7 @@ struct TrashManifest {
 }
 
 /// Result of a trash operation returned to the UI.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TrashResult {
     /// Batch id used to undo (restore) the whole delete.
@@ -49,7 +49,7 @@ pub struct TrashResult {
 }
 
 /// One item in the recycle bin (flattened across batches) for the UI list.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TrashEntry {
     /// Stable id: "{batchId}::{stored}".

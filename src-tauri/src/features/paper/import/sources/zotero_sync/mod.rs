@@ -21,7 +21,7 @@ use push::PushCandidate;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ZoteroSyncArgs {
     pub vault_path: String,
@@ -45,7 +45,7 @@ fn default_true() -> bool {
 }
 
 /// Progress event streamed to the UI while a sync runs.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncProgress {
     pub current: usize,
@@ -53,7 +53,7 @@ pub struct SyncProgress {
     pub phase: String,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ZoteroSyncResult {
     pub linked: usize,

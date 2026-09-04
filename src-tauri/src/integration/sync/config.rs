@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncBackendConfig {
     /// S3-compatible endpoint, e.g. `https://<account>.r2.cloudflarestorage.com`.

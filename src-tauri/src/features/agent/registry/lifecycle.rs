@@ -257,7 +257,7 @@ pub fn supports_lifecycle(template_id: &str) -> bool {
 /// `--prefix` mirroring install); `dirs` are Agentero-managed directories.
 /// `None` means the template has no managed uninstall (e.g. hermes installs
 /// via an official script we cannot reverse).
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UninstallInfo {
     pub npm_commands: Vec<String>,
@@ -1244,5 +1244,55 @@ mod tests {
             chain,
             "npm uninstall -g a || true; npm uninstall -g b || true"
         );
+    }
+}
+
+/// Anti-drift: bind the owned `AgentLifecycleProgressEvent` mirror (in
+/// `app::events_contract`, feeding the `agent-lifecycle:progress` payload type
+/// in bindings.ts) to the private `ToolLifecycleProgress` actually emitted
+/// here: serde shapes and field types must stay identical.
+#[cfg(test)]
+mod events_contract_shape_tests {
+    use super::ToolLifecycleProgress;
+    use crate::app::events_contract::AgentLifecycleProgressEvent as MirrorAgentLifecycleProgress;
+
+    fn samples() -> (ToolLifecycleProgress, MirrorAgentLifecycleProgress) {
+        (
+            ToolLifecycleProgress {
+                task_id: "task-1".to_string(),
+                phase: "download".to_string(),
+                downloaded_bytes: 1024,
+                total_bytes: Some(4096),
+                progress: Some(25),
+            },
+            MirrorAgentLifecycleProgress {
+                task_id: "task-1".to_string(),
+                phase: "download".to_string(),
+                downloaded_bytes: 1024,
+                total_bytes: Some(4096),
+                progress: Some(25),
+            },
+        )
+    }
+
+    #[test]
+    fn agent_lifecycle_progress_mirror_matches_emit_payload_shape() {
+        let (real, mirror) = samples();
+        assert_eq!(
+            serde_json::to_value(&real).unwrap(),
+            serde_json::to_value(&mirror).unwrap(),
+            "AgentLifecycleProgressEvent mirror drifted from ToolLifecycleProgress"
+        );
+    }
+
+    #[test]
+    fn agent_lifecycle_progress_mirror_field_types_match() {
+        fn eq_type<T>(_: &T, _: &T) {}
+        let (real, mirror) = samples();
+        eq_type(&real.task_id, &mirror.task_id);
+        eq_type(&real.phase, &mirror.phase);
+        eq_type(&real.downloaded_bytes, &mirror.downloaded_bytes);
+        eq_type(&real.total_bytes, &mirror.total_bytes);
+        eq_type(&real.progress, &mirror.progress);
     }
 }

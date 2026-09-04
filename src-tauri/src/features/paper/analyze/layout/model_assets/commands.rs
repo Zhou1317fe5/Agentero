@@ -5,6 +5,7 @@ use crate::core::error::{map_err, ApiResult};
 use tauri::AppHandle;
 
 #[tauri::command]
+#[specta::specta]
 pub fn layout_model_status() -> ApiResult<LayoutModelStatus> {
     ApiResult::ok(status())
 }
@@ -13,6 +14,7 @@ pub fn layout_model_status() -> ApiResult<LayoutModelStatus> {
 /// `enqueueBackgroundTask` so the Host can emit `background-task:progress`
 /// and honor cancel.
 #[tauri::command]
+#[specta::specta]
 pub async fn layout_model_ensure(
     app: AppHandle,
     progress_task_id: Option<String>,

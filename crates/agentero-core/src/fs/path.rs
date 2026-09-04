@@ -5,7 +5,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 
 /// Capability flags so UI / business logic can degrade without guesswork.
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FsCaps {
     pub atomic_rename: bool,
@@ -36,7 +36,7 @@ impl FsCaps {
     };
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FsDirEntry {
     pub name: String,

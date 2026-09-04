@@ -8,11 +8,13 @@ use super::{
 use tauri::{AppHandle, Runtime};
 
 #[tauri::command]
+#[specta::specta]
 pub fn cli_install_status<R: Runtime>(app: AppHandle<R>) -> ApiResult<CliInstallStatus> {
     ApiResult::ok(collect_status(&app))
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn cli_install_command<R: Runtime>(app: AppHandle<R>) -> ApiResult<CliInstallResult> {
     let (binary, action) = match ensure_cli_binary(&app).await {
         Ok(v) => v,
@@ -56,6 +58,7 @@ pub async fn cli_install_command<R: Runtime>(app: AppHandle<R>) -> ApiResult<Cli
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn cli_uninstall_command<R: Runtime>(app: AppHandle<R>) -> ApiResult<CliInstallResult> {
     let local = resolve_local_cli(&app);
     let binary = local.as_ref().map(|r| r.path.as_path());

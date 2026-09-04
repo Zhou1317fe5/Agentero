@@ -16,7 +16,7 @@ const ANNOTATIONS_JSON: &str = "annotations.json";
 
 /// Minimal activity point mirrored by `ReadingActivityPoint` in
 /// `src/lib/paper/reading-heatmap/types.ts`.
-#[derive(Debug, Clone, Serialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ReadingActivityPoint {
     /// `highlight` | `ask` | `translate`.

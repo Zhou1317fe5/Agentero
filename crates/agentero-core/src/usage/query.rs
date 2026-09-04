@@ -17,7 +17,7 @@ pub struct ListFilter {
     pub limit: usize,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageEvent {
     pub id: i64,
@@ -35,10 +35,11 @@ pub struct UsageEvent {
     pub dur_ms: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub qty: Option<i64>,
+    #[specta(type = Option<crate::json::Json>)]
     pub extra: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageKindCount {
     pub kind: String,

@@ -132,7 +132,7 @@ async fn enter_pdf_parse(
     }))
 }
 
-#[derive(Debug, Default, Clone, Serialize)]
+#[derive(Debug, Default, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperParseResult {
     pub paper_md: bool,
@@ -156,7 +156,7 @@ impl PaperParseResult {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperParseBodyArgs {
     pub vault_path: String,

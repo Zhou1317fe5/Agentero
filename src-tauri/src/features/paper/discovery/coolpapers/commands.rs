@@ -5,7 +5,7 @@ use crate::core::log_util::{trunc, OpTimer};
 use crate::features::import::AssetProgressContext;
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CoolPapersNotesArgs {
     pub vault_path: String,
@@ -24,7 +24,7 @@ pub struct CoolPapersNotesArgs {
     pub title: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CoolPapersImportArgs {
     pub vault_path: String,
@@ -44,6 +44,7 @@ pub struct CoolPapersImportArgs {
 /// Bypasses the Translator: the page's `citation_*` fields cover every branch
 /// papers.cool aggregates and also carry the PDF URL.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_coolpapers_import(
     app: tauri::AppHandle,
     args: CoolPapersImportArgs,
@@ -80,6 +81,7 @@ pub async fn paper_coolpapers_import(
 /// Resolves by Cool Papers URL / venue catalog id, then arXiv id, then title.
 /// A paper that cannot be resolved returns `found: false` and writes nothing.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_coolpapers_notes(
     args: CoolPapersNotesArgs,
 ) -> Result<ApiResult<super::CoolPapersNotes>, String> {

@@ -77,7 +77,7 @@ impl JsonRpcRequest for GrokAskUserRequest {
 }
 
 /// Event payload for `agent:ask-user-request`.
-#[derive(Debug, Clone, Serialize)]
+#[derive(specta::Type, Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AskUserRequestEvent {
     pub request_id: String,
@@ -89,7 +89,7 @@ pub struct AskUserRequestEvent {
 }
 
 /// Frontend-friendly question (mirrors `AskUserQuestion` in chat-state).
-#[derive(Debug, Clone, Serialize)]
+#[derive(specta::Type, Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AskUserQuestionDto {
     pub question: String,
@@ -99,11 +99,11 @@ pub struct AskUserQuestionDto {
     pub allow_other: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(specta::Type, Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AskUserOptionDto {
     pub label: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
 

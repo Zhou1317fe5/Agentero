@@ -12,7 +12,7 @@ use std::time::SystemTime;
 /// Default cap for one remote vault's blob directory (2 GiB).
 pub const DEFAULT_MAX_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct BlobCacheStats {
     /// Total bytes under all (or one) remote blob dirs.

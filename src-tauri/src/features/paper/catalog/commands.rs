@@ -15,7 +15,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::State;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperGetArgs {
     pub vault_path: String,
@@ -29,6 +29,7 @@ pub struct PaperGetArgs {
 
 /// Get one paper's metadata from catalog.sqlite.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_get(args: PaperGetArgs) -> ApiResult<PaperRecord> {
     run_blocking(move || {
         let vault = match resolve_vault(&args.vault_path) {
@@ -59,7 +60,7 @@ pub async fn paper_get(args: PaperGetArgs) -> ApiResult<PaperRecord> {
     .await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperOpenBundleArgs {
     pub vault_path: String,
@@ -67,7 +68,7 @@ pub struct PaperOpenBundleArgs {
     pub path: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperOpenBundle {
     pub paper: PaperRecord,
@@ -82,6 +83,7 @@ pub struct PaperOpenBundle {
 
 /// Bundle local paper-open data for the renderer's focus path.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_open_bundle(
     args: PaperOpenBundleArgs,
     cache: State<'_, CapsCache>,
@@ -126,14 +128,14 @@ fn paper_open_bundle_inner(
     })
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperListArgs {
     pub vault_path: String,
 }
 
 /// One library row: the catalog record plus a local-PDF probe.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 pub struct PaperListRow {
     #[serde(flatten)]
     pub paper: PaperRecord,
@@ -146,6 +148,7 @@ pub struct PaperListRow {
 /// Returns one row per logical paper `id` so the Library never shows duplicate
 /// entries when the same paper was imported under multiple paths (#248).
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_list(
     args: PaperListArgs,
     cache: State<'_, CapsCache>,
@@ -172,7 +175,7 @@ pub async fn paper_list(
     .await)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperSetIsReadArgs {
     pub vault_path: String,
@@ -183,6 +186,7 @@ pub struct PaperSetIsReadArgs {
 
 /// Update catalog `is_read` after paper-reader workflow completes (or reset).
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_set_is_read(args: PaperSetIsReadArgs) -> ApiResult<PaperRecord> {
     run_blocking(move || {
         let vault = match resolve_vault(&args.vault_path) {
@@ -201,7 +205,7 @@ pub async fn paper_set_is_read(args: PaperSetIsReadArgs) -> ApiResult<PaperRecor
     .await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperUpdateMetaArgs {
     pub vault_path: String,
@@ -213,6 +217,7 @@ pub struct PaperUpdateMetaArgs {
 /// Manually edit paper metadata (patch semantics: only provided fields change,
 /// empty strings clear). Marks the row `meta_source = "manual"`.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_update_meta(args: PaperUpdateMetaArgs) -> ApiResult<PaperRecord> {
     run_blocking(move || {
         let vault = match resolve_vault(&args.vault_path) {
@@ -334,7 +339,7 @@ mod open_bundle_tests {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperSetTagsArgs {
     pub vault_path: String,
@@ -347,6 +352,7 @@ pub struct PaperSetTagsArgs {
 
 /// Replace catalog tags for a paper (syncs metadata.json projection).
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_set_tags(args: PaperSetTagsArgs) -> ApiResult<PaperRecord> {
     run_blocking(move || {
         let vault = match resolve_vault(&args.vault_path) {
@@ -365,13 +371,13 @@ pub async fn paper_set_tags(args: PaperSetTagsArgs) -> ApiResult<PaperRecord> {
     .await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperRescanArgs {
     pub vault_path: String,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperRescanResult {
     /// Number of paper folders re-imported into the catalog.
@@ -381,6 +387,7 @@ pub struct PaperRescanResult {
 /// Rebuild catalog rows from `papers/` metadata.json — recovers papers that are
 /// on disk but missing from the catalog (added externally, or a lost row).
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_rescan(args: PaperRescanArgs) -> ApiResult<PaperRescanResult> {
     run_blocking(move || {
         use crate::core::log_util::OpTimer;
@@ -407,7 +414,7 @@ pub async fn paper_rescan(args: PaperRescanArgs) -> ApiResult<PaperRescanResult>
     .await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperPageCountsArgs {
     pub vault_path: String,
@@ -415,6 +422,7 @@ pub struct PaperPageCountsArgs {
 
 /// Cached PDF page counts keyed by vault-relative paper path.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_page_counts(
     args: PaperPageCountsArgs,
 ) -> ApiResult<std::collections::HashMap<String, i64>> {
@@ -431,7 +439,7 @@ pub async fn paper_page_counts(
     .await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperReadingActivityBatchArgs {
     pub vault_path: String,
@@ -443,6 +451,7 @@ pub struct PaperReadingActivityBatchArgs {
 /// one IPC round-trip — replaces the Library heatmap's per-paper
 /// highlights/asks/translates fan-out (an IPC storm at 500+ papers).
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_reading_activity_batch(
     args: PaperReadingActivityBatchArgs,
 ) -> ApiResult<std::collections::HashMap<String, Vec<reading_activity::ReadingActivityPoint>>> {
@@ -468,7 +477,7 @@ pub async fn paper_reading_activity_batch(
     .await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperSetPageCountsArgs {
     pub vault_path: String,
@@ -478,6 +487,7 @@ pub struct PaperSetPageCountsArgs {
 
 /// Persist newly discovered PDF page counts (heatmap page-count cache).
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_set_page_counts(args: PaperSetPageCountsArgs) -> ApiResult<()> {
     run_blocking(move || {
         let vault = match resolve_vault(&args.vault_path) {

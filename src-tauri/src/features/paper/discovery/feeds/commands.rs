@@ -8,6 +8,7 @@ use crate::core::error::{map_err, ApiResult};
 use serde::Deserialize;
 
 #[tauri::command]
+#[specta::specta]
 pub async fn feeds_list() -> ApiResult<FeedList> {
     match list() {
         Ok(data) => ApiResult::ok(data),
@@ -15,7 +16,7 @@ pub async fn feeds_list() -> ApiResult<FeedList> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedsAddArgs {
     pub url: String,
@@ -24,6 +25,7 @@ pub struct FeedsAddArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn feeds_add(args: FeedsAddArgs) -> ApiResult<FeedSub> {
     match add_and_fetch(args.url, args.title).await {
         Ok(data) => ApiResult::ok(data),
@@ -31,13 +33,14 @@ pub async fn feeds_add(args: FeedsAddArgs) -> ApiResult<FeedSub> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedsIdArgs {
     pub id: String,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn feeds_remove(args: FeedsIdArgs) -> ApiResult<()> {
     match remove(&args.id) {
         Ok(()) => ApiResult::ok(()),
@@ -45,7 +48,7 @@ pub async fn feeds_remove(args: FeedsIdArgs) -> ApiResult<()> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedsRenameArgs {
     pub id: String,
@@ -53,6 +56,7 @@ pub struct FeedsRenameArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn feeds_rename(args: FeedsRenameArgs) -> ApiResult<FeedSub> {
     match rename(&args.id, &args.title) {
         Ok(data) => ApiResult::ok(data),
@@ -60,7 +64,7 @@ pub async fn feeds_rename(args: FeedsRenameArgs) -> ApiResult<FeedSub> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedsRefreshArgs {
     #[serde(default)]
@@ -70,6 +74,7 @@ pub struct FeedsRefreshArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn feeds_refresh(args: FeedsRefreshArgs) -> ApiResult<FeedRefreshResult> {
     match refresh(args.id, args.stale_only).await {
         Ok(data) => ApiResult::ok(data),
@@ -77,7 +82,7 @@ pub async fn feeds_refresh(args: FeedsRefreshArgs) -> ApiResult<FeedRefreshResul
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedsItemsArgs {
     #[serde(default)]
@@ -93,6 +98,7 @@ pub struct FeedsItemsArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn feeds_items(args: FeedsItemsArgs) -> ApiResult<FeedItemsPage> {
     let filter = args.filter.as_deref().unwrap_or("all");
     let limit = args.limit.unwrap_or(100).min(200);
@@ -109,6 +115,7 @@ pub async fn feeds_items(args: FeedsItemsArgs) -> ApiResult<FeedItemsPage> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn feeds_mark_imported(args: FeedsIdArgs) -> ApiResult<FeedItem> {
     match mark_imported(&args.id) {
         Ok(data) => ApiResult::ok(data),
@@ -116,7 +123,7 @@ pub async fn feeds_mark_imported(args: FeedsIdArgs) -> ApiResult<FeedItem> {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedsSetPinnedArgs {
     pub id: String,
@@ -124,6 +131,7 @@ pub struct FeedsSetPinnedArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn feeds_set_pinned(args: FeedsSetPinnedArgs) -> ApiResult<FeedSub> {
     match set_pinned(&args.id, args.pinned) {
         Ok(data) => ApiResult::ok(data),
@@ -132,6 +140,7 @@ pub async fn feeds_set_pinned(args: FeedsSetPinnedArgs) -> ApiResult<FeedSub> {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn feeds_resolve_body(args: FeedsIdArgs) -> ApiResult<FeedItem> {
     match resolve_body(&args.id).await {
         Ok(data) => ApiResult::ok(data),

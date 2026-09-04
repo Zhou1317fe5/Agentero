@@ -18,7 +18,7 @@ pub use crate::features::settings::DEFAULT_CONNECTOR_PORT;
 const CONNECTOR_API_VERSION: &str = "2";
 const AGENTERO_CONNECTOR_VERSION: &str = "0.1.0-agentero";
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectorStatus {
     pub enabled: bool,
@@ -30,7 +30,7 @@ pub struct ConnectorStatus {
     pub parent_dir: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(specta::Type, Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectorItemSaved {
     pub path: String,
@@ -40,7 +40,7 @@ pub struct ConnectorItemSaved {
     pub session_id: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(specta::Type, Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectorProgress {
     pub key: String,

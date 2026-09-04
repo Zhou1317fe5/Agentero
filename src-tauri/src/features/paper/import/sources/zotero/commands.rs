@@ -17,6 +17,7 @@ use tauri::State;
 
 /// Read-only preview of a Zotero data directory (item + local-PDF counts).
 #[tauri::command]
+#[specta::specta]
 pub async fn zotero_scan(args: ZoteroScanArgs) -> ApiResult<ZoteroScan> {
     run_blocking(move || {
         use crate::core::log_util::{trunc, OpTimer};
@@ -33,6 +34,7 @@ pub async fn zotero_scan(args: ZoteroScanArgs) -> ApiResult<ZoteroScan> {
 /// Migrate a Zotero library into `papers/…` + catalog; optionally copy PDFs.
 /// Streams `{current,total,phase}` progress to the UI via `on_progress`.
 #[tauri::command]
+#[specta::specta]
 pub async fn zotero_migrate(
     app: tauri::AppHandle,
     args: ZoteroMigrateArgs,
@@ -60,6 +62,7 @@ pub async fn zotero_migrate(
 
 /// Export catalog papers via Translator `POST /export` (Zotero JSON array → BibTeX/RIS/…).
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_export(args: PaperExportArgs) -> ApiResult<PaperExportResult> {
     use crate::core::log_util::OpTimer;
 
@@ -70,6 +73,7 @@ pub async fn paper_export(args: PaperExportArgs) -> ApiResult<PaperExportResult>
 
 /// Import BibTeX/RIS/… via Translator `POST /import`, write papers into vault + catalog.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_import(
     app: tauri::AppHandle,
     remote: State<'_, Arc<dyn RemoteImportOps>>,

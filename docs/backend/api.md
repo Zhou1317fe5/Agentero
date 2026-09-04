@@ -92,6 +92,28 @@ Host 通过 Tauri event 向前端推送事件。文件系统、任务和菜单�
 - 使用 `State<'_, T>` 的 async command 受 Tauri 限制必须返回 `Result`（惯例 `Result<ApiResult<T>, String>`，恒为 `Ok(...)`）。`std::sync::Mutex` guard 不能跨 `await`：把「拿锁 + 干活」整体放进 `run_blocking` 闭包，State 先 clone 出可 `Send + 'static` 的 Arc 句柄（如 `WikiIndexState::handle()`、`CapsCache`、`ExternalRenameRepairStore`）。
 - 已按此约定改造：`vault_*`（create/ensure/tree_build/tree_children）、`wiki_*` 全部、`graph_*`、`vault_search`、`paper_*`（catalog）、`usage_*`/`activity_record_events`、`zotero_sync`/`zotero_scan`、`doctor_*`（除纯内存的 `doctor_set_dirty_paths`）、`list_system_fonts`（另有进程级缓存）、`export_system_cjk_font`、`paper_stage_import_file`、`paper_refs_list`、`connector_set_enabled`/`connector_set_port`（bind 改真 async，不再 `block_on`）。
 
+### 2.6 类型化 IPC 契约（tauri-specta → `src/lib/core/bindings.ts`）
+
+`src/lib/core/bindings.ts` 由 [tauri-specta](https://github.com/specta-rs/specta)（rc.25）从 Rust 签名生成，是 Frontend ↔ Host IPC 的类型化契约。**生成物，不要手改**。
+
+- **覆盖范围**
+  - **命令**：desktop 注册的全部 185 个 `#[tauri::command]`（`app/handlers.rs` 的 `common_commands!` + desktop-only extras）逐一 collect 于 `src-tauri/src/app/bindings_test.rs`。iOS-only 的 5 个 bridge client 命令（`bridge_connect` / `bridge_resume` / `bridge_disconnect` / `bridge_rpc` / client 版 `bridge_status`）不进 desktop bindings。
+  - **事件**：desktop 侧 emit 的 43 个事件（`job:*`、`agent:*`、`vault:file-changed`、`settings:changed`、`bridge:host-status`/`bridge:pair-request`、`connector:*`、`mcp:*`、`sync:*`、`background-task:progress`、`paper:*` 等），声明于 `src-tauri/src/app/events_contract.rs`（wrapper/mirror + `#[tauri_specta(event_name = "…")]`，事件名与 emit 字面量一致，emit 调用点不改造）。iOS-only bridge client 事件（`bridge:status` / `bridge:progress` / `bridge:pair-pending`）不在其中。
+- **再生成 / 防漂移**
+
+  ```bash
+  # 校验 bindings.ts 与 Rust 签名一致（cargo test 默认只比对，不写盘）
+  cargo test -p agentero export_typescript_bindings
+  # 重新生成（覆写 src/lib/core/bindings.ts）
+  AGENTERO_UPDATE_BINDINGS=1 cargo test -p agentero export_typescript_bindings
+  ```
+
+  另有 `event_names_match_emit_literals` 测试断言事件名与 emit 常量一致。改任何命令签名 / 事件 payload 后必须重新生成并提交 bindings.ts。
+- **`_Serialize` / `_Deserialize` 拆分**：specta 对 serde 不对称表示的忠实拆分——`X_Deserialize` 是 **TS→Rust 入参**形态（`#[serde(default)]` 字段可省略），`X_Serialize` 是 **Rust→TS 出参**形态（`skip_serializing_if` 字段可缺省）。二者一致时只生成单一 `X`。命令函数与 `events.*` 的签名已内嵌正确方向的类型，**调用点无需手写这些类型名**。
+- **前端调用形态（迁移说明）**：bindings 导出 `commands`（camelCase 命令函数）与 `events`（`events.jobChanged.listen(cb)` 等，payload 已按事件名类型化）。返回值有两种信封：
+  - 命令返回 `ApiResult<T>`（如 `commands.settingsGet()`）：Promise 直接 resolve 信封，判错看 `r.ok === false` 时读 `r.error`（`{ code, message, details? }`）；`r.data` 类型为 `T | null`。
+  - 命令返回 `Result<ApiResult<T>, String>`（如 `commands.jobReport(args)`）：bindings 包了一层 `typedError`，resolve 为 `{ status: "ok", data: ApiResult<T> } | { status: "error", error: string }`；先判 `status`（外层 IPC 级错误，对应 Rust `Err(String)`），再判 `data.ok`（业务错误信封）。
+
 ## 3. Host 层 Tauri invoke API
 
 ### 3.1 Vault 与窗口

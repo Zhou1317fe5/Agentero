@@ -47,7 +47,7 @@ pub const ERR_PROBE_FAILED: &str = "recommend.probe_failed";
 /// provider must accept an input of this length.
 const PROBE_INPUT: &str = "hi";
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RecommendItem {
     pub arxiv_id: String,
@@ -59,7 +59,7 @@ pub struct RecommendItem {
     pub score: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RecommendResult {
     pub items: Vec<RecommendItem>,
@@ -71,7 +71,7 @@ pub struct RecommendResult {
     pub reused_cache: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ProbeEmbeddingResult {
     /// Dimensionality reported by the embedding endpoint for the probe input.

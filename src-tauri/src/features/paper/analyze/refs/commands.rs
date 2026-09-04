@@ -5,7 +5,7 @@ use crate::core::error::{map_err, ApiResult, AppError};
 use crate::core::log_util::{trunc, OpTimer};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperRefsParseArgs {
     pub vault_path: String,
@@ -14,14 +14,14 @@ pub struct PaperRefsParseArgs {
     pub force: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperRefsListArgs {
     pub vault_path: String,
     pub path: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryCitingScanArgs {
     pub vault_path: String,
@@ -42,6 +42,7 @@ pub struct LibraryCitingScanArgs {
 /// Parse (or refresh with `force`) the reference sidecar for one paper. Online
 /// reference lookup is always on; local bib/bbl parsing still runs.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_refs_parse(
     args: PaperRefsParseArgs,
 ) -> Result<ApiResult<super::CiteSidecar>, String> {
@@ -61,6 +62,7 @@ pub async fn paper_refs_parse(
 
 /// Read the existing reference sidecar; `None` when it has not been parsed yet.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_refs_list(args: PaperRefsListArgs) -> ApiResult<Option<super::CiteSidecar>> {
     crate::core::blocking::run_blocking(move || {
         let op = OpTimer::start_with(
@@ -107,6 +109,7 @@ struct CitingScanProgress {
 
 /// Scan the whole library for new papers that cite it but are not imported yet.
 #[tauri::command]
+#[specta::specta]
 pub async fn library_citing_scan(
     app: tauri::AppHandle,
     args: LibraryCitingScanArgs,

@@ -13,7 +13,7 @@ use tokio::sync::Mutex;
 /// Magic host for local-sim backend (dev / unit-style integration without SSH).
 pub const LOCAL_SIM_HOST: &str = "__local_sim__";
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteSessionInfo {
     pub session_id: String,

@@ -26,6 +26,7 @@ use tauri::State;
 /// Batch resolve identifiers and write papers into vault.
 /// Deduplicates within the batch and against existing catalog entries.
 #[tauri::command]
+#[specta::specta]
 pub async fn lookup_import_batch(
     app: tauri::AppHandle,
     remote: State<'_, Arc<dyn RemoteImportOps>>,
@@ -61,7 +62,7 @@ pub async fn lookup_import_batch(
     Ok(op.finish_result(result))
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SkillInstallArgs {
     pub vault_path: String,
@@ -73,6 +74,7 @@ pub struct SkillInstallArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn skill_install(args: SkillInstallArgs) -> ApiResult<Vec<SkillImportResult>> {
     let op = OpTimer::start_with(
         "skill_install",
@@ -87,6 +89,7 @@ pub fn skill_install(args: SkillInstallArgs) -> ApiResult<Vec<SkillImportResult>
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn skill_discard(discovery_id: String) -> ApiResult<()> {
     let op = OpTimer::start_with(
         "skill_discard",
@@ -98,6 +101,7 @@ pub fn skill_discard(discovery_id: String) -> ApiResult<()> {
 /// Download PDF (+ arXiv LaTeX) for an existing paper folder that is missing local assets.
 /// When no TeX remains after download, also tries liteparse → PAPER.md.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_download_assets(
     app: tauri::AppHandle,
     remote: State<'_, Arc<dyn RemoteImportOps>>,
@@ -121,6 +125,7 @@ pub async fn paper_download_assets(
 
 /// Import local PDF file(s) into the vault as paper folders (copy + catalog + liteparse).
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_import_local_pdf(
     app: tauri::AppHandle,
     remote: State<'_, Arc<dyn RemoteImportOps>>,
@@ -162,6 +167,7 @@ pub async fn paper_import_local_pdf(
 /// Parse a paper's local PDF into `PAPER.md` using liteparse.
 /// Runs as a standalone background task; `task_id` is used for cancellation.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_parse_body(
     remote: State<'_, Arc<dyn RemoteImportOps>>,
     cache: State<'_, CapsCache>,
@@ -189,6 +195,7 @@ pub async fn paper_parse_body(
 
 /// Stage a path-less OS drop (File bytes as base64) into `~/.agentero/import-tmp/`.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_stage_import_file(
     args: StageImportFileArgs,
 ) -> ApiResult<StageImportFileResult> {
@@ -200,7 +207,7 @@ pub async fn paper_stage_import_file(
     .await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperResolveIdentifierArgs {
     /// DOI / arXiv id / URL / title text.
@@ -214,6 +221,7 @@ pub struct PaperResolveIdentifierArgs {
 /// arXiv id is not sent to title search); S2 `publicationVenue` enriches
 /// truncated Crossref / empty Translator venues. Title search is fallback.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_resolve_identifier(
     args: PaperResolveIdentifierArgs,
 ) -> ApiResult<super::PaperMeta> {
@@ -272,7 +280,7 @@ async fn enrich_publication_from_s2(meta: &mut super::PaperMeta) {
     }
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct NotesTemplateSeedResult {
     pub created: bool,
@@ -281,6 +289,7 @@ pub struct NotesTemplateSeedResult {
 /// Seed `{vault}/.agentero/templates/NOTES.md` with a starting template for
 /// the `custom` paper-note mode. Never overwrites an existing template.
 #[tauri::command]
+#[specta::specta]
 pub fn notes_template_seed(vault_path: String) -> ApiResult<NotesTemplateSeedResult> {
     let op = OpTimer::start_with(
         "notes_template_seed",
@@ -292,7 +301,7 @@ pub fn notes_template_seed(vault_path: String) -> ApiResult<NotesTemplateSeedRes
     op.finish_result(result)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperBackfillPublicationArgs {
     pub vault_path: String,
@@ -301,7 +310,7 @@ pub struct PaperBackfillPublicationArgs {
     pub translator_base_url: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperBackfillPublicationResult {
     pub total: usize,
@@ -316,6 +325,7 @@ pub struct PaperBackfillPublicationResult {
 /// then title → Semantic Scholar. Crossref is last among identifier sources
 /// because its `container-title` truncates many conference proceedings.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_backfill_publication(
     args: PaperBackfillPublicationArgs,
 ) -> Result<ApiResult<PaperBackfillPublicationResult>, String> {

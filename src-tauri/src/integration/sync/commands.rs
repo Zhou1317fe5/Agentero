@@ -12,20 +12,20 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, State};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncVaultArgs {
     pub vault_path: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncConfigureArgs {
     pub vault_path: String,
     pub config: SyncBackendConfig,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncStatus {
     pub configured: bool,
@@ -65,6 +65,7 @@ fn vault_dir(vault_path: &str) -> Result<PathBuf, AppError> {
 
 /// Current sync binding + last-pass info for the settings pane.
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_get_status(
     args: SyncVaultArgs,
     service: State<'_, SyncService>,
@@ -88,6 +89,7 @@ pub async fn sync_get_status(
 
 /// Validate + connection-test + persist the S3 binding for a vault.
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_configure(
     app: AppHandle,
     service: State<'_, SyncService>,
@@ -122,6 +124,7 @@ pub async fn sync_configure(
 
 /// Remove the binding and local sync state (remote data stays untouched).
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_disconnect(
     service: State<'_, SyncService>,
     args: SyncVaultArgs,
@@ -143,7 +146,7 @@ pub async fn sync_disconnect(
 }
 
 /// Local disk usage per bulky-asset category (bytes), for the sync-scope UI.
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncScopeSizes {
     pub pdf: u64,
@@ -152,6 +155,7 @@ pub struct SyncScopeSizes {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_scope_sizes(args: SyncVaultArgs) -> Result<ApiResult<SyncScopeSizes>, String> {
     let inner = async {
         let dir = vault_dir(&args.vault_path)?;
@@ -237,6 +241,7 @@ pub async fn perform_sync(
 
 /// One full sync pass (manual trigger from the settings pane).
 #[tauri::command]
+#[specta::specta]
 pub async fn sync_now(
     app: AppHandle,
     service: State<'_, SyncService>,
@@ -273,4 +278,77 @@ fn emit_state(app: &AppHandle, vault_path: &str, status: &str, error: Option<Str
             error,
         },
     );
+}
+
+/// Anti-drift: bind the owned `SyncStateEvent` / `SyncProgressEvent` mirrors
+/// (in `app::events_contract`, feeding the `sync:state` / `sync:progress`
+/// payload types in bindings.ts) to the private borrowed structs actually
+/// emitted here. Borrowed fields (`&str`) cannot share compile-time type
+/// identity with the owned mirror, so the binding is the serde shape (covers
+/// `rename_all` + `skip_serializing_if`); the owned `usize` counters are also
+/// type-bound.
+#[cfg(test)]
+mod events_contract_shape_tests {
+    use super::{SyncProgressEvent, SyncStateEvent};
+    use crate::app::events_contract::{
+        SyncProgressEvent as MirrorSyncProgress, SyncStateEvent as MirrorSyncState,
+    };
+
+    #[test]
+    fn sync_state_mirror_matches_emit_payload_shape() {
+        let real = SyncStateEvent {
+            vault_path: "/vault",
+            status: "configured",
+            error: Some("offline".to_string()),
+        };
+        let mirror = MirrorSyncState {
+            vault_path: "/vault".to_string(),
+            status: "configured".to_string(),
+            error: Some("offline".to_string()),
+        };
+        assert_eq!(
+            serde_json::to_value(&real).unwrap(),
+            serde_json::to_value(&mirror).unwrap(),
+            "SyncStateEvent mirror drifted from the emitted payload"
+        );
+        let real_none = SyncStateEvent {
+            vault_path: "/vault",
+            status: "disconnected",
+            error: None,
+        };
+        let mirror_none = MirrorSyncState {
+            vault_path: "/vault".to_string(),
+            status: "disconnected".to_string(),
+            error: None,
+        };
+        assert_eq!(
+            serde_json::to_value(&real_none).unwrap(),
+            serde_json::to_value(&mirror_none).unwrap(),
+            "SyncStateEvent mirror drifted from the emitted payload (None variant)"
+        );
+    }
+
+    #[test]
+    fn sync_progress_mirror_matches_emit_payload_shape() {
+        let real = SyncProgressEvent {
+            vault_path: "/vault",
+            phase: "upload",
+            current: 3,
+            total: 10,
+        };
+        let mirror = MirrorSyncProgress {
+            vault_path: "/vault".to_string(),
+            phase: "upload".to_string(),
+            current: 3,
+            total: 10,
+        };
+        assert_eq!(
+            serde_json::to_value(&real).unwrap(),
+            serde_json::to_value(&mirror).unwrap(),
+            "SyncProgressEvent mirror drifted from the emitted payload"
+        );
+        fn eq_type<T>(_: &T, _: &T) {}
+        eq_type(&real.current, &mirror.current);
+        eq_type(&real.total, &mirror.total);
+    }
 }

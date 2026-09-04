@@ -4,11 +4,13 @@ use super::{collect_status, install, uninstall, FinderServiceStatus};
 use tauri::{AppHandle, Runtime};
 
 #[tauri::command]
+#[specta::specta]
 pub fn finder_service_status<R: Runtime>(_app: AppHandle<R>) -> ApiResult<FinderServiceStatus> {
     ApiResult::ok(collect_status())
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn finder_service_install<R: Runtime>(
     _app: AppHandle<R>,
 ) -> ApiResult<FinderServiceStatus> {
@@ -19,6 +21,7 @@ pub async fn finder_service_install<R: Runtime>(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn finder_service_uninstall<R: Runtime>(_app: AppHandle<R>) -> ApiResult<FinderServiceStatus> {
     match uninstall() {
         Ok(status) => ApiResult::ok(status),

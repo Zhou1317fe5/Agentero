@@ -14,6 +14,7 @@ use tauri_plugin_fs::FsExt;
 /// call with "forbidden path" until the user re-picks it. Called whenever a
 /// local vault becomes active, before the file tree loads. Idempotent.
 #[tauri::command]
+#[specta::specta]
 pub fn vault_allow_fs_scope<R: Runtime>(app: AppHandle<R>, path: String) -> ApiResult<()> {
     let op = OpTimer::start_with(
         "vault_allow_fs_scope",

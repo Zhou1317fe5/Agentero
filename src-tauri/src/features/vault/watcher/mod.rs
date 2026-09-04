@@ -15,7 +15,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, EventTarget, Manager};
 
 /// Payload for the `vault:file-changed` event (consumed by the renderer).
-#[derive(Clone, Serialize)]
+#[derive(specta::Type, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileChangedPayload {
     /// Absolute paths touched by this (debounced) batch.
@@ -23,13 +23,13 @@ pub struct FileChangedPayload {
     /// Coarse change kind: "create" | "modify" | "remove" | "other".
     pub kind: String,
     /// Present only when the OS delivered one trustworthy old/new rename pair.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rename: Option<FileRename>,
 }
 
 /// A rename pair emitted by the native watcher. `None` means the watcher did
 /// not preserve enough information for automatic internal-link repair.
-#[derive(Clone, Serialize)]
+#[derive(specta::Type, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileRename {
     pub from: String,

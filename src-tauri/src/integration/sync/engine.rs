@@ -50,7 +50,7 @@ struct HeadPointer {
     updated_at: String,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncOutcome {
     pub version: u64,

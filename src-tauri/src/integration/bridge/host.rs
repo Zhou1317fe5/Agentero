@@ -111,7 +111,7 @@ impl Drop for AgentEventForwarder {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PairingRequest {
     pub request_id: String,
@@ -120,7 +120,7 @@ pub struct PairingRequest {
     pub verification_code: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct BridgeStatus {
     pub enabled: bool,

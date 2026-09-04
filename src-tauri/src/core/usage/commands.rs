@@ -12,13 +12,14 @@ use crate::core::usage::{
 use serde::Deserialize;
 use tauri::AppHandle;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivityRecordArgs {
     pub events: Vec<UsageRecord>,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn activity_record_events(
     app: AppHandle,
     args: ActivityRecordArgs,
@@ -51,7 +52,7 @@ fn forward_to_telemetry(app: &AppHandle, events: &[UsageRecord]) {
     telemetry.capture_activity(&projections);
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageListArgs {
     #[serde(default)]
@@ -67,6 +68,7 @@ pub struct UsageListArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn usage_list(args: UsageListArgs) -> ApiResult<Vec<UsageEvent>> {
     run_blocking(move || {
         let filter = ListFilter {
@@ -84,7 +86,7 @@ pub async fn usage_list(args: UsageListArgs) -> ApiResult<Vec<UsageEvent>> {
     .await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageSummaryArgs {
     #[serde(default)]
@@ -94,6 +96,7 @@ pub struct UsageSummaryArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn usage_summary(args: UsageSummaryArgs) -> ApiResult<Vec<UsageKindCount>> {
     run_blocking(
         move || match summarize_default(args.vault.as_deref(), args.since.as_deref()) {
@@ -104,7 +107,7 @@ pub async fn usage_summary(args: UsageSummaryArgs) -> ApiResult<Vec<UsageKindCou
     .await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageClearArgs {
     #[serde(default)]
@@ -112,6 +115,7 @@ pub struct UsageClearArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn usage_clear(args: UsageClearArgs) -> ApiResult<u64> {
     run_blocking(move || match clear_default(args.vault.as_deref()) {
         Ok(n) => ApiResult::ok(n),

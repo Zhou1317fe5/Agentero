@@ -59,7 +59,7 @@ impl BridgeIdentity {
 }
 
 /// A client device that was manually approved by the desktop user.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct BridgeDevice {
     pub device_id: String,

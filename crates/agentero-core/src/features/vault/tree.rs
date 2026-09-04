@@ -48,7 +48,7 @@ const PAPER_MARKER_FILES: &[&str] = &["NOTES.md", "PAPER.md"];
 
 const LAZY_PAPER_DIR: &str = "source";
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultTreeNode {
     pub name: String,

@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 use tauri::State;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperMoveArgs {
     pub vault_path: String,
@@ -27,7 +27,7 @@ pub struct PaperMoveArgs {
     pub dirty_paths: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperMoveResult {
     /// New vault-relative path of the moved item.
@@ -39,6 +39,7 @@ pub struct PaperMoveResult {
 /// Move an item into another `papers/` folder on disk and rewrite matching
 /// catalog path prefixes. Never overwrites an existing target.
 #[tauri::command]
+#[specta::specta]
 pub async fn paper_move(
     args: PaperMoveArgs,
     index: State<'_, WikiIndexState>,

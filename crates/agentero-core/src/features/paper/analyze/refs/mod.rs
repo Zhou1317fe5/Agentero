@@ -25,7 +25,7 @@ use tokio::sync::{Mutex, Notify};
 pub const SIDECAR_FILE: &str = "agentero-cite.json";
 pub const SCHEMA_VERSION: u32 = 1;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CiteSidecar {
     pub schema_version: u32,
@@ -35,7 +35,7 @@ pub struct CiteSidecar {
     pub messages: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CiteSource {
     /// Winning pipeline, e.g. `"s2"`, `"bbl"`, `"bbl+s2"`, `"none"`.
@@ -45,7 +45,7 @@ pub struct CiteSource {
     pub fingerprint: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Citation {
     pub id: String,
@@ -65,7 +65,7 @@ pub struct Citation {
     pub status: String,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CitationMeta {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -84,7 +84,7 @@ pub struct CitationMeta {
     pub url: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LocalMatch {
     /// Vault-relative path of the matched library paper.

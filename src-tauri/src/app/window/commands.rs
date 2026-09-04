@@ -50,6 +50,7 @@ pub fn emit_window_closed(app: &AppHandle, kind: &str, view: Option<&str>) {
 /// off the main thread, so window creation is queued onto the event loop
 /// instead of nested inside another handler.
 #[tauri::command]
+#[specta::specta]
 pub async fn window_new(app: AppHandle) -> Result<(), String> {
     let op = OpTimer::start("window_new");
     let label = format!("agentero-{}", uuid::Uuid::new_v4().simple());
@@ -112,6 +113,7 @@ pub async fn window_new(app: AppHandle) -> Result<(), String> {
 ///
 /// See [`window_new`] for why this must stay `async`.
 #[tauri::command]
+#[specta::specta]
 pub async fn settings_window_open(
     app: AppHandle,
     section: String,
@@ -204,6 +206,7 @@ pub fn doc_window_label(path: &str) -> String {
 ///
 /// See [`window_new`] for why this must stay `async`.
 #[tauri::command]
+#[specta::specta]
 pub async fn feature_window_open(
     app: AppHandle,
     view: String,
@@ -293,6 +296,7 @@ pub async fn feature_window_open(
 ///
 /// See [`window_new`] for why this must stay `async`.
 #[tauri::command]
+#[specta::specta]
 pub async fn doc_window_open(
     app: AppHandle,
     path: String,
@@ -366,4 +370,46 @@ pub async fn doc_window_open(
 
     op.finish_ok_extra(format!("new label={label}"));
     Ok(())
+}
+
+/// Anti-drift: bind the owned `WindowClosedEvent` mirror (in
+/// `app::events_contract`, feeding the `window:closed` payload type in
+/// bindings.ts) to the private borrowed `WindowClosedPayload` actually emitted
+/// here. Borrowed fields (`&str`) cannot share compile-time type identity with
+/// the owned mirror, so the binding is the serde shape (both `view` variants,
+/// covering `rename_all` + `skip_serializing_if`).
+#[cfg(test)]
+mod events_contract_shape_tests {
+    use super::WindowClosedPayload;
+    use crate::app::events_contract::WindowClosedEvent as MirrorWindowClosed;
+
+    #[test]
+    fn window_closed_mirror_matches_emit_payload_shape() {
+        let real = WindowClosedPayload {
+            kind: "feature",
+            view: Some("chat"),
+        };
+        let mirror = MirrorWindowClosed {
+            kind: "feature".to_string(),
+            view: Some("chat".to_string()),
+        };
+        assert_eq!(
+            serde_json::to_value(&real).unwrap(),
+            serde_json::to_value(&mirror).unwrap(),
+            "WindowClosedEvent mirror drifted from WindowClosedPayload"
+        );
+        let real_none = WindowClosedPayload {
+            kind: "settings",
+            view: None,
+        };
+        let mirror_none = MirrorWindowClosed {
+            kind: "settings".to_string(),
+            view: None,
+        };
+        assert_eq!(
+            serde_json::to_value(&real_none).unwrap(),
+            serde_json::to_value(&mirror_none).unwrap(),
+            "WindowClosedEvent mirror drifted from WindowClosedPayload (None variant)"
+        );
+    }
 }

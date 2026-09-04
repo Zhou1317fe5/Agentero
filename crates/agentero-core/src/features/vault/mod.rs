@@ -311,7 +311,7 @@ pub fn bundled_onboarding_files(locale: &str) -> Vec<(&'static str, &'static str
         .collect()
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateVaultResult {
     pub path: String,

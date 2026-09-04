@@ -7,19 +7,21 @@ use std::sync::Arc;
 use tauri::State;
 
 #[tauri::command]
+#[specta::specta]
 pub fn connector_get_status(
     ctrl: State<'_, Arc<ConnectorController>>,
 ) -> ApiResult<ConnectorStatus> {
     ApiResult::ok(ctrl.status())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectorSetEnabledArgs {
     pub enabled: bool,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn connector_set_enabled(
     ctrl: State<'_, Arc<ConnectorController>>,
     args: ConnectorSetEnabledArgs,
@@ -47,13 +49,14 @@ pub async fn connector_set_enabled(
     Ok(ApiResult::ok(status))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectorSetVaultArgs {
     pub vault_path: Option<String>,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn connector_set_vault(
     ctrl: State<'_, Arc<ConnectorController>>,
     args: ConnectorSetVaultArgs,
@@ -62,7 +65,7 @@ pub fn connector_set_vault(
     ApiResult::ok(())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectorSetParentDirArgs {
     /// Vault-relative parent, e.g. `papers` or `papers/nlp`.
@@ -71,6 +74,7 @@ pub struct ConnectorSetParentDirArgs {
 
 /// Remember the default save location (also exposed as selected collection).
 #[tauri::command]
+#[specta::specta]
 pub fn connector_set_parent_dir(
     ctrl: State<'_, Arc<ConnectorController>>,
     args: ConnectorSetParentDirArgs,
@@ -79,13 +83,14 @@ pub fn connector_set_parent_dir(
     ApiResult::ok(())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ConnectorSetPortArgs {
     pub port: u16,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn connector_set_port(
     ctrl: State<'_, Arc<ConnectorController>>,
     args: ConnectorSetPortArgs,

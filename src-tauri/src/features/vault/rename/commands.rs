@@ -16,7 +16,7 @@ use crate::features::rename::{
 };
 use tauri::State;
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiMoveArgs {
     pub vault_path: String,
@@ -29,7 +29,7 @@ pub struct WikiMoveArgs {
     pub dirty_paths: Vec<String>,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiExternalRenamePreviewArgs {
     pub vault_path: String,
@@ -41,7 +41,7 @@ pub struct WikiExternalRenamePreviewArgs {
     pub dirty_paths: Vec<String>,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiApplyExternalRenameArgs {
     pub vault_path: String,
@@ -53,6 +53,7 @@ pub struct WikiApplyExternalRenameArgs {
 
 /// Move or rename one local Vault path while updating resolved internal links.
 #[tauri::command]
+#[specta::specta]
 pub async fn wiki_move(
     args: WikiMoveArgs,
     index: State<'_, WikiIndexState>,
@@ -97,6 +98,7 @@ pub async fn wiki_move(
 /// This is intentionally a read-only preflight: the caller must explicitly apply
 /// it, or opt into the `always` policy in the renderer.
 #[tauri::command]
+#[specta::specta]
 pub async fn wiki_external_rename_preview(
     args: WikiExternalRenamePreviewArgs,
     index: State<'_, WikiIndexState>,
@@ -147,6 +149,7 @@ pub async fn wiki_external_rename_preview(
 /// Apply one previously previewed external rename repair. The Host rechecks the
 /// candidate's source hashes and current dirty paths before touching Markdown.
 #[tauri::command]
+#[specta::specta]
 pub async fn wiki_apply_external_rename_repair(
     args: WikiApplyExternalRenameArgs,
     index: State<'_, WikiIndexState>,

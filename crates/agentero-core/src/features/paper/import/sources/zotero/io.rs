@@ -26,7 +26,7 @@ pub const EXPORT_FORMATS: &[&str] = &[
     "wikipedia",
 ];
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperExportArgs {
     pub vault_path: String,
@@ -37,7 +37,7 @@ pub struct PaperExportArgs {
     pub translator_base_url: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperExportResult {
     pub format: String,

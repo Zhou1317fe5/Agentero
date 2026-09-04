@@ -45,7 +45,7 @@ pub fn mask_translate_api_key(key: &str) -> String {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     #[serde(default = "default_translator_base_url")]
@@ -155,7 +155,7 @@ pub struct AppSettings {
     pub feature_tour_done: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PdfAskSettings {
     #[serde(default)]
@@ -165,7 +165,7 @@ pub struct PdfAskSettings {
 }
 
 /// OpenAI-compatible embedding endpoint (BYOK). All-empty = feature disabled.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbeddingSettings {
     #[serde(default)]
@@ -177,14 +177,14 @@ pub struct EmbeddingSettings {
 }
 
 /// One column in the papers Library table: array order = display order.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LibraryColumnPref {
     pub key: String,
     pub visible: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TranslateSettings {
     #[serde(default = "default_translate_provider")]
@@ -217,7 +217,7 @@ impl Default for TranslateSettings {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TranslateProviderConfig {
     #[serde(default)]
@@ -233,7 +233,7 @@ pub struct TranslateProviderConfig {
 /// PDF layout-analysis backend selection.
 /// - `local`: on-device PP-DocLayoutV3 (ONNX in the renderer).
 /// - `paddle`: remote PP-StructureV3 async job API (`POST {base}/api/v2/ocr/jobs`).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutSettings {
     #[serde(default = "default_layout_backend")]
@@ -255,7 +255,7 @@ impl Default for LayoutSettings {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutProviderConfig {
     #[serde(default)]
@@ -430,7 +430,7 @@ pub struct AppSettingsStore {
     listeners: Mutex<Vec<SettingsListener>>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SettingsGetResult {
     pub settings: AppSettings,

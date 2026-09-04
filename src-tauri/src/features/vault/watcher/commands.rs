@@ -7,6 +7,7 @@ use crate::features::watcher::FsWatchController;
 /// Start (or restart) watching `vault_path` for this window. Emits
 /// `vault:file-changed` to this window when files change on disk.
 #[tauri::command]
+#[specta::specta]
 pub fn fs_watch_start(
     window: tauri::WebviewWindow,
     controller: State<'_, FsWatchController>,
@@ -36,6 +37,7 @@ pub fn fs_watch_start(
 
 /// Stop watching for this window (no-op if not watching).
 #[tauri::command]
+#[specta::specta]
 pub fn fs_watch_stop(
     window: tauri::WebviewWindow,
     controller: State<'_, FsWatchController>,

@@ -53,7 +53,7 @@ impl PendingVaultOpen {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(specta::Type, Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultOpenPayload {
     pub path: String,

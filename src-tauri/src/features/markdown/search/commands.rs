@@ -9,6 +9,7 @@ use crate::features::search::{self, VaultSearchArgs, VaultSearchResult};
 /// Async + `run_blocking`: the walk reads every Markdown file, which must not
 /// run on the main thread (Windows UI message pump).
 #[tauri::command]
+#[specta::specta]
 pub async fn vault_search(args: VaultSearchArgs) -> ApiResult<VaultSearchResult> {
     run_blocking(move || match search::vault_search(args) {
         Ok(r) => ApiResult::ok(r),

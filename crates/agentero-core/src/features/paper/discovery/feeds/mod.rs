@@ -31,7 +31,7 @@ const MAX_BODY_BYTES: usize = 2 * 1024 * 1024;
 const STALE_SECS: i64 = 15 * 60;
 const REFRESH_CONCURRENCY: usize = 4;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedSub {
     pub id: String,
@@ -45,7 +45,7 @@ pub struct FeedSub {
     pub pinned_at: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedItem {
     pub id: String,
@@ -61,13 +61,13 @@ pub struct FeedItem {
     pub body_markdown: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedList {
     pub subscriptions: Vec<FeedSub>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedRefreshResult {
     pub subscriptions: Vec<FeedSub>,
@@ -75,7 +75,7 @@ pub struct FeedRefreshResult {
     pub failed: u32,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FeedItemsPage {
     pub items: Vec<FeedItem>,

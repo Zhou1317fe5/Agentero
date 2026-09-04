@@ -55,7 +55,7 @@ const BUNDLED_CLI_NAME: &str = if cfg!(windows) {
 /// application" dialog on end-user machines, so probing must never run it.
 const MIN_CLI_BYTES: u64 = 1;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CliInstallStatus {
     /// App package version (from Cargo / Tauri).
@@ -92,7 +92,7 @@ pub struct CliInstallStatus {
     pub message: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CliInstallResult {
     pub status: CliInstallStatus,

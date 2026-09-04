@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use tauri::State;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PathTrashArgs {
     pub vault_path: String,
@@ -21,6 +21,7 @@ pub struct PathTrashArgs {
 
 /// Move files/folders into the vault recycle bin (undoable delete).
 #[tauri::command]
+#[specta::specta]
 pub async fn path_trash(
     app: tauri::AppHandle,
     remote: State<'_, Arc<dyn RemoteTrashOps>>,
@@ -75,7 +76,7 @@ pub async fn path_trash(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TrashVaultArgs {
     pub vault_path: String,
@@ -83,6 +84,7 @@ pub struct TrashVaultArgs {
 
 /// List every item currently in the recycle bin (Recycle Bin view).
 #[tauri::command]
+#[specta::specta]
 pub async fn path_list_trash(
     remote: State<'_, Arc<dyn RemoteTrashOps>>,
     args: TrashVaultArgs,
@@ -103,6 +105,7 @@ pub async fn path_list_trash(
 
 /// Empty the entire recycle bin (permanent).
 #[tauri::command]
+#[specta::specta]
 pub async fn path_purge_trash(
     remote: State<'_, Arc<dyn RemoteTrashOps>>,
     args: TrashVaultArgs,
@@ -134,7 +137,7 @@ pub async fn path_purge_trash(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct TrashItemArgs {
     pub vault_path: String,
@@ -143,7 +146,7 @@ pub struct TrashItemArgs {
     pub stored: String,
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PathRestoreItemResult {
     /// Vault-relative path the item was restored to.
@@ -152,6 +155,7 @@ pub struct PathRestoreItemResult {
 
 /// Restore a single recycle-bin item to its original path.
 #[tauri::command]
+#[specta::specta]
 pub async fn path_restore_item(
     remote: State<'_, Arc<dyn RemoteTrashOps>>,
     args: TrashItemArgs,
@@ -195,6 +199,7 @@ pub async fn path_restore_item(
 
 /// Permanently delete a single recycle-bin item.
 #[tauri::command]
+#[specta::specta]
 pub async fn path_purge_item(
     remote: State<'_, Arc<dyn RemoteTrashOps>>,
     args: TrashItemArgs,

@@ -13,13 +13,13 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tauri::State;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteAgentScanArgs {
     pub session_id: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteAgentProbeArgs {
     pub session_id: String,
@@ -28,6 +28,7 @@ pub struct RemoteAgentProbeArgs {
 
 /// Catalog-style scan of common agents on the remote host (`command -v`).
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_agent_scan(
     registry: State<'_, Arc<dyn RemoteAgentHosts>>,
     args: RemoteAgentScanArgs,
@@ -50,6 +51,7 @@ pub async fn remote_agent_scan(
 
 /// ACP initialize probe for one catalog template on the remote vault host.
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_agent_probe(
     registry: State<'_, Arc<dyn RemoteAgentHosts>>,
     agent_registry: State<'_, AgentRegistry>,
@@ -91,7 +93,7 @@ pub async fn remote_agent_probe(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteAgentInstallArgs {
     pub session_id: String,
@@ -101,10 +103,11 @@ pub struct RemoteAgentInstallArgs {
 /// Open a local terminal that SSHes into the remote host and runs the template's
 /// install command after the user presses Enter (same confirm UX as local install).
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_agent_open_install_terminal(
     registry: State<'_, Arc<dyn RemoteAgentHosts>>,
     args: RemoteAgentInstallArgs,
-) -> Result<ApiResult<serde_json::Value>, String> {
+) -> Result<ApiResult<crate::core::json::JsonValue>, String> {
     use crate::app::terminal;
     use crate::features::agent::registry::templates::template_info;
 
@@ -132,13 +135,13 @@ pub async fn remote_agent_open_install_terminal(
     };
     if session.is_local_sim() {
         return Ok(match terminal::open_terminal_confirm_command(&install) {
-            Ok(()) => ApiResult::ok(serde_json::Value::Null),
+            Ok(()) => ApiResult::ok(crate::core::json::JsonValue::null()),
             Err(e) => map_err(e),
         });
     }
     let destination = session.host().to_string();
     match terminal::open_terminal_confirm_remote_install(&destination, &install) {
-        Ok(()) => Ok(ApiResult::ok(serde_json::Value::Null)),
+        Ok(()) => Ok(ApiResult::ok(crate::core::json::JsonValue::null())),
         Err(e) => Ok(map_err(e)),
     }
 }

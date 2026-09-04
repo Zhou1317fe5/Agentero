@@ -12,6 +12,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, State};
 
 #[tauri::command]
+#[specta::specta]
 pub fn agent_list_agents(registry: State<'_, AgentRegistry>) -> ApiResult<AgentListResponse> {
     match service::list_agents(registry.inner()) {
         Ok(s) => ApiResult::ok(s),
@@ -20,6 +21,7 @@ pub fn agent_list_agents(registry: State<'_, AgentRegistry>) -> ApiResult<AgentL
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn agent_list_skills(
     remote_registry: State<'_, Arc<dyn RemoteAgentHosts>>,
     vault_path: Option<String>,
@@ -42,6 +44,7 @@ pub async fn agent_list_skills(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn agent_scan_catalog(registry: State<'_, AgentRegistry>) -> ApiResult<CatalogScanResponse> {
     match service::scan_catalog(registry.inner()) {
         Ok(s) => ApiResult::ok(s),
@@ -50,6 +53,7 @@ pub fn agent_scan_catalog(registry: State<'_, AgentRegistry>) -> ApiResult<Catal
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn agent_upsert_agent(
     app: AppHandle,
     registry: State<'_, AgentRegistry>,
@@ -65,6 +69,7 @@ pub fn agent_upsert_agent(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn agent_ensure_catalog(
     app: AppHandle,
     registry: State<'_, AgentRegistry>,
@@ -78,21 +83,23 @@ pub fn agent_ensure_catalog(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn agent_remove_agent(
     app: AppHandle,
     registry: State<'_, AgentRegistry>,
     id: String,
-) -> ApiResult<serde_json::Value> {
+) -> ApiResult<crate::core::json::JsonValue> {
     match registry.remove(&id) {
         Ok(()) => {
             emit_registry_changed(&app);
-            ApiResult::ok(serde_json::Value::Null)
+            ApiResult::ok(crate::core::json::JsonValue::null())
         }
         Err(e) => map_err(e),
     }
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn agent_set_default(
     app: AppHandle,
     registry: State<'_, AgentRegistry>,
@@ -108,6 +115,7 @@ pub fn agent_set_default(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn agent_set_enabled(
     app: AppHandle,
     registry: State<'_, AgentRegistry>,
@@ -123,6 +131,7 @@ pub fn agent_set_enabled(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn agent_set_user_agent(
     registry: State<'_, AgentRegistry>,
     user_agent: String,
@@ -138,6 +147,7 @@ pub fn agent_set_user_agent(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn agent_probe(
     app: AppHandle,
     registry: State<'_, AgentRegistry>,
@@ -178,13 +188,14 @@ pub async fn agent_probe(
 ///
 /// Blocking work runs on a worker thread so the async runtime is not stalled.
 #[tauri::command]
+#[specta::specta]
 pub async fn agent_run_tool_lifecycle(
     app: AppHandle,
     registry: State<'_, AgentRegistry>,
     template_id: String,
     action: String,
     task_id: Option<String>,
-) -> Result<ApiResult<serde_json::Value>, String> {
+) -> Result<ApiResult<crate::core::json::JsonValue>, String> {
     use crate::features::agent::registry::lifecycle::{
         run_template_lifecycle, ToolLifecycleAction,
     };
@@ -225,7 +236,7 @@ pub async fn agent_run_tool_lifecycle(
                 "tool_lifecycle ok template={template_id_for_log} action={action_label}"
             );
             emit_registry_changed(&app_for_emit);
-            Ok(ApiResult::ok(serde_json::Value::Null))
+            Ok(ApiResult::ok(crate::core::json::JsonValue::null()))
         }
         Err(e) => {
             log::warn!(
@@ -240,6 +251,7 @@ pub async fn agent_run_tool_lifecycle(
 /// What a silent uninstall of this template would remove (npm commands and
 /// managed dirs); null when the template has no managed uninstall.
 #[tauri::command]
+#[specta::specta]
 pub fn agent_tool_uninstall_info(
     template_id: String,
 ) -> ApiResult<Option<crate::features::agent::registry::lifecycle::UninstallInfo>> {
@@ -250,6 +262,7 @@ pub fn agent_tool_uninstall_info(
 
 /// Ensure catalog agent is registered, then run ACP initialize probe.
 #[tauri::command]
+#[specta::specta]
 pub async fn agent_probe_catalog(
     app: AppHandle,
     registry: State<'_, AgentRegistry>,

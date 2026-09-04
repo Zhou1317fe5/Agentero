@@ -7,7 +7,7 @@ use serde_json::Value;
 
 /// Paper metadata written to `metadata.json`.
 /// **snake_case** to match frontend `PaperMetadata` (`pdf_url`, `arxiv_id`, …).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct PaperMeta {
     pub id: String,
     #[serde(rename = "type")]
@@ -15,6 +15,7 @@ pub struct PaperMeta {
     pub title: String,
     pub authors: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(type = Option<crate::json::Json>)]
     pub creators: Option<Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub year: Option<i32>,

@@ -33,7 +33,7 @@ const KEEPALIVE_POLL_EVERY: Duration = Duration::from_secs(10);
 const PROBE_TIMEOUT: Duration = Duration::from_secs(8);
 const LOG_TAIL_CHARS: usize = 800;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum McpTunnelPhase {
     /// `tunnel-client` is not on PATH / common install dirs.
@@ -45,7 +45,7 @@ pub enum McpTunnelPhase {
     Error,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct McpTunnelStatus {
     pub phase: McpTunnelPhase,

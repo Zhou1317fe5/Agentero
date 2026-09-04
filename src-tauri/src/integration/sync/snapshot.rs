@@ -41,7 +41,7 @@ pub(crate) fn is_ignored_name(name: &str) -> bool {
 /// Which bulky, re-derivable paper assets participate in sync. Notes,
 /// sidecars, marks and embedded images always sync — they are small and not
 /// recoverable from any upstream source.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase", default)]
 pub struct SyncScope {
     /// Paper-root PDFs: `papers/<id>/<id>.pdf`.

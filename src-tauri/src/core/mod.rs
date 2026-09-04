@@ -24,6 +24,7 @@ pub use agentero_core::frontmatter;
 pub use agentero_core::fs;
 pub use agentero_core::http;
 pub use agentero_core::install_dirs;
+pub use agentero_core::json;
 pub use agentero_core::log_util;
 pub use agentero_core::paths;
 pub use agentero_core::process;

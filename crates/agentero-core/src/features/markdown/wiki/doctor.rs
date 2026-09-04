@@ -18,7 +18,7 @@ use uuid::Uuid;
 
 use crate::features::doctor::DoctorRepairError;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum WikilinkRepairLayer {
     Deterministic,
@@ -26,14 +26,14 @@ pub enum WikilinkRepairLayer {
     Manual,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum WikilinkEditKind {
     Target,
     Fragment,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikilinkRepairSuggestion {
     pub id: String,
@@ -64,7 +64,7 @@ pub struct WikilinkRepairSuggestion {
     pub context: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikilinkRepairResidual {
     pub id: String,
@@ -94,14 +94,14 @@ pub struct WikilinkRepairResidual {
     pub vault_hints: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikilinkRepairPlan {
     pub suggestions: Vec<WikilinkRepairSuggestion>,
     pub residuals: Vec<WikilinkRepairResidual>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikilinkRepairChange {
     pub source: String,
@@ -112,7 +112,7 @@ pub struct WikilinkRepairChange {
     pub expected_hash: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikilinkRepairResult {
     pub updated_paths: Vec<String>,

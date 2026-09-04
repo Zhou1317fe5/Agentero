@@ -90,7 +90,7 @@ fn is_font_data(bytes: &[u8]) -> bool {
     )
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportFontPayload {
     pub path: String,

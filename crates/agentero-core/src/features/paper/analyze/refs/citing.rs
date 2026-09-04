@@ -54,7 +54,7 @@ const MAX_RETRIES: usize = 6;
 
 // ---------------------------------------------------------------- public types
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CitingCandidate {
     pub s2_id: String,
@@ -77,7 +77,7 @@ pub struct CitingCandidate {
     pub oa_pdf_url: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CitingScanResult {
     pub generated_at: String,

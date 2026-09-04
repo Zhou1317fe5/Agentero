@@ -19,7 +19,7 @@ use crate::features::scholar_api::ApiQuery;
 /// rejections are fast, so this budget only caps the hang case.
 const S2_SEARCH_BUDGET: Duration = Duration::from_secs(5);
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperSearchCandidate {
     pub title: String,
@@ -59,7 +59,7 @@ impl From<crate::features::scholar_api::ApiPaper> for PaperSearchCandidate {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperSearchGroup {
     pub query: String,

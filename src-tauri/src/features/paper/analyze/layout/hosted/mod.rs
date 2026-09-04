@@ -20,7 +20,7 @@ pub(crate) type ProgressFn<'a> = &'a (dyn Fn(&str, Option<u64>, Option<u64>) + S
 /// Cooperative-cancel check polled between cloud-job phases.
 pub(crate) type CancelFn<'a> = &'a (dyn Fn() -> bool + Send + Sync);
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutRemoteBox {
     pub cls_id: i64,
@@ -61,7 +61,7 @@ pub fn parse_det_boxes(boxes: &[Value]) -> Vec<LayoutRemoteBox> {
 /// Progress event consumed by the layout runner for the progress bar.
 pub const CLOUD_PROGRESS_EVENT: &str = "layout-remote:progress";
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutRemoteAnalyzePdfArgs {
     /// Base64-encoded PDF bytes.
@@ -80,7 +80,7 @@ pub struct LayoutRemoteAnalyzePdfArgs {
     pub provider: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutRemotePageResult {
     pub boxes: Vec<LayoutRemoteBox>,
@@ -90,7 +90,7 @@ pub struct LayoutRemotePageResult {
     pub height_px: Option<u32>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutRemoteAnalyzePdfResult {
     pub pages: Vec<LayoutRemotePageResult>,
@@ -128,7 +128,7 @@ pub(crate) fn emit_cloud_progress(
     );
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutRemoteProbeArgs {
     /// Base64-encoded tiny probe image (JPEG).
@@ -140,8 +140,58 @@ pub struct LayoutRemoteProbeArgs {
     pub provider: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutRemoteProbeResult {
     pub job_id: String,
+}
+
+/// Anti-drift: bind the owned `LayoutRemoteProgressEvent` mirror (in
+/// `app::events_contract`, feeding the `layout-remote:progress` payload type
+/// in bindings.ts) to the private `CloudProgressPayload` actually emitted
+/// here: serde shapes (both `requestId` variants, covering
+/// `skip_serializing_if`) and field types must stay identical.
+#[cfg(test)]
+mod events_contract_shape_tests {
+    use super::CloudProgressPayload;
+    use crate::app::events_contract::LayoutRemoteProgressEvent as MirrorLayoutRemoteProgress;
+
+    fn samples(request_id: Option<String>) -> (CloudProgressPayload, MirrorLayoutRemoteProgress) {
+        (
+            CloudProgressPayload {
+                phase: "extract".to_string(),
+                extracted_pages: Some(3),
+                total_pages: Some(10),
+                request_id: request_id.clone(),
+            },
+            MirrorLayoutRemoteProgress {
+                phase: "extract".to_string(),
+                extracted_pages: Some(3),
+                total_pages: Some(10),
+                request_id,
+            },
+        )
+    }
+
+    #[test]
+    fn layout_remote_progress_mirror_matches_emit_payload_shape() {
+        for request_id in [Some("req-1".to_string()), None] {
+            let (real, mirror) = samples(request_id);
+            assert_eq!(
+                serde_json::to_value(&real).unwrap(),
+                serde_json::to_value(&mirror).unwrap(),
+                "LayoutRemoteProgressEvent mirror drifted from CloudProgressPayload"
+            );
+        }
+    }
+
+    #[test]
+    fn layout_remote_progress_mirror_field_types_match() {
+        fn eq_type<T>(_: &T, _: &T) {}
+        let (real, mirror) = samples(Some("req-1".to_string()));
+        eq_type(&real.phase, &mirror.phase);
+        eq_type(&real.extracted_pages, &mirror.extracted_pages);
+        eq_type(&real.total_pages, &mirror.total_pages);
+        eq_type(&real.request_id, &mirror.request_id);
+    }
 }

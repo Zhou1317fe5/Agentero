@@ -111,7 +111,7 @@ pub struct LookupImportArgs {
     pub task_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperDownloadAssetsArgs {
     pub vault_path: String,
@@ -124,7 +124,7 @@ pub struct PaperDownloadAssetsArgs {
 
 /// Bibliography file (BibTeX / RIS / …) import via Translator `/import`.
 /// Consumed by `features/zotero` (`import_catalog`) and the remote bridge.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperImportArgs {
     pub vault_path: String,
@@ -137,7 +137,7 @@ pub struct PaperImportArgs {
     pub translator_base_url: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperImportResult {
     pub imported: usize,
@@ -148,7 +148,7 @@ pub struct PaperImportResult {
 }
 
 /// Per-file overrides when importing a local PDF (metadata confirm dialog).
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LocalPdfImportEntry {
     pub file_path: String,
@@ -170,7 +170,7 @@ pub struct LocalPdfImportEntry {
 
 /// Non-editable structured metadata carried from the confirm dialog's
 /// identifier fetch into the catalog row.
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, Deserialize, Clone, Default, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LocalPdfExtraMeta {
     #[serde(default)]
@@ -194,7 +194,7 @@ pub struct LocalPdfExtraMeta {
 }
 
 /// Stage a dropped PDF (path-less WKWebView drop) into `~/.agentero/import-tmp/`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct StageImportFileArgs {
     /// Original filename (used for stem + safe on-disk name).
@@ -203,14 +203,14 @@ pub struct StageImportFileArgs {
     pub content_base64: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct StageImportFileResult {
     /// Absolute path written on disk.
     pub path: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportLocalPdfArgs {
     pub vault_path: String,
@@ -232,7 +232,7 @@ pub struct ImportLocalPdfArgs {
     pub translator_base_url: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportLocalPdfResult {
     /// One entry per successfully imported PDF.
@@ -242,7 +242,7 @@ pub struct ImportLocalPdfResult {
     pub errors: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LookupImportResult {
     pub paper_dir: String,
@@ -275,7 +275,7 @@ pub struct LookupImportResult {
     pub recognize_pending: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LookupImportBatchArgs {
     pub vault_path: String,
@@ -290,7 +290,7 @@ pub struct LookupImportBatchArgs {
     pub concurrency: Option<usize>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SkippedImport {
     pub raw: String,
@@ -299,7 +299,7 @@ pub struct SkippedImport {
     pub reason: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LookupImportBatchResult {
     pub imported: Vec<LookupImportResult>,

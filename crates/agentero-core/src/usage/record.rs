@@ -16,7 +16,7 @@ const MAX_FACET: usize = 64;
 const MAX_STATUS: usize = 16;
 const MAX_EXTRA_BYTES: usize = 8 * 1024;
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageRecord {
     #[serde(default)]
@@ -31,6 +31,7 @@ pub struct UsageRecord {
     #[serde(default)]
     pub dur_ms: Option<i64>,
     #[serde(default)]
+    #[specta(type = Option<crate::json::Json>)]
     pub extra: Option<serde_json::Value>,
 }
 

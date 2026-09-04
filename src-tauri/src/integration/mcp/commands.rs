@@ -10,17 +10,19 @@ use std::sync::Arc;
 use tauri::State;
 
 #[tauri::command]
+#[specta::specta]
 pub fn mcp_get_status(ctrl: State<'_, Arc<McpController>>) -> ApiResult<McpStatus> {
     ApiResult::ok(ctrl.status())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct McpSetEnabledArgs {
     pub enabled: bool,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn mcp_set_enabled(
     ctrl: State<'_, Arc<McpController>>,
     tunnel: State<'_, Arc<McpTunnelController>>,
@@ -52,13 +54,14 @@ pub async fn mcp_set_enabled(
     Ok(ApiResult::ok(status))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct McpSetPortArgs {
     pub port: u16,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn mcp_set_port(
     ctrl: State<'_, Arc<McpController>>,
     args: McpSetPortArgs,
@@ -67,25 +70,27 @@ pub async fn mcp_set_port(
     Ok(ApiResult::ok(ctrl.set_port(args.port).await))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct McpSetVaultArgs {
     pub vault_path: Option<String>,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn mcp_set_vault(ctrl: State<'_, Arc<McpController>>, args: McpSetVaultArgs) -> ApiResult<()> {
     ctrl.set_vault(args.vault_path);
     ApiResult::ok(())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct McpSetParentDirArgs {
     pub parent_dir: String,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn mcp_set_parent_dir(
     ctrl: State<'_, Arc<McpController>>,
     args: McpSetParentDirArgs,
@@ -103,19 +108,21 @@ pub fn mcp_set_parent_dir(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn mcp_tunnel_status(
     tunnel: State<'_, Arc<McpTunnelController>>,
 ) -> ApiResult<McpTunnelStatus> {
     ApiResult::ok(tunnel.status())
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct McpTunnelStartArgs {
     pub mcp_url: String,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn mcp_tunnel_start(
     tunnel: State<'_, Arc<McpTunnelController>>,
     mcp: State<'_, Arc<McpController>>,
@@ -156,6 +163,7 @@ pub async fn mcp_tunnel_start(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn mcp_tunnel_stop(tunnel: State<'_, Arc<McpTunnelController>>) -> ApiResult<McpTunnelStatus> {
     tunnel.stop();
     ApiResult::ok(tunnel.status())

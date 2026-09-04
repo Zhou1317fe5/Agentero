@@ -23,7 +23,7 @@ use tokio::sync::oneshot;
 
 pub const MCP_STATUS_EVENT: &str = "mcp:status";
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct McpStatus {
     pub enabled: bool,

@@ -17,6 +17,7 @@ use std::sync::Arc;
 use tauri::{Manager, State};
 
 #[tauri::command]
+#[specta::specta]
 #[allow(clippy::too_many_arguments)]
 pub async fn agent_run_once(
     window: tauri::WebviewWindow,
@@ -47,6 +48,7 @@ pub async fn agent_run_once(
 
 /// List ACP sessions for an agent via `session/list`.
 #[tauri::command]
+#[specta::specta]
 pub async fn agent_list_sessions(
     registry: State<'_, AgentRegistry>,
     remote_registry: State<'_, Arc<dyn RemoteAgentHosts>>,
@@ -72,6 +74,7 @@ pub async fn agent_list_sessions(
 
 /// Load an ACP session's history via `session/load`.
 #[tauri::command]
+#[specta::specta]
 pub async fn agent_load_session(
     registry: State<'_, AgentRegistry>,
     remote_registry: State<'_, Arc<dyn RemoteAgentHosts>>,
@@ -95,6 +98,7 @@ pub async fn agent_load_session(
 
 /// Request cooperative cancellation for a currently streaming ACP session.
 #[tauri::command]
+#[specta::specta]
 pub fn agent_cancel_run(
     runs: State<'_, AgentRunController>,
     session_id: String,
@@ -107,6 +111,7 @@ pub fn agent_cancel_run(
 
 /// Background ACP start when Chat opens — loads models/context without a user prompt.
 #[tauri::command]
+#[specta::specta]
 pub async fn agent_warm(
     window: tauri::WebviewWindow,
     registry: State<'_, AgentRegistry>,

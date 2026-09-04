@@ -6,11 +6,12 @@
 //! at app assembly, so this feature imports no other domain.
 
 use crate::core::error::{map_err, ApiResult, AppError};
+use crate::core::json::JsonValue;
 use crate::features::settings::{AppSettings, AppSettingsStore, SettingsGetResult};
-use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 #[tauri::command]
+#[specta::specta]
 pub fn settings_get(store: State<'_, AppSettingsStore>) -> ApiResult<SettingsGetResult> {
     match store.get() {
         Ok(r) => ApiResult::ok(r),
@@ -22,6 +23,7 @@ pub fn settings_get(store: State<'_, AppSettingsStore>) -> ApiResult<SettingsGet
 /// already fall back to it when the app proxy is off; the updater plugin and
 /// the settings UI query it here.
 #[tauri::command]
+#[specta::specta]
 pub fn network_system_proxy() -> ApiResult<Option<String>> {
     ApiResult::ok(crate::core::http::system_proxy_url())
 }
@@ -32,6 +34,7 @@ pub fn network_system_proxy() -> ApiResult<Option<String>> {
 /// `run_blocking` and the result is cached for the process lifetime — the
 /// installed-font set does not change while the app is running.
 #[tauri::command]
+#[specta::specta]
 pub async fn list_system_fonts() -> ApiResult<Vec<String>> {
     #[cfg(any(target_os = "ios", target_os = "android"))]
     {
@@ -74,6 +77,7 @@ pub async fn list_system_fonts() -> ApiResult<Vec<String>> {
 /// [`AppSettingsStore::subscribe`] listeners registered by the app assembly
 /// (see `app/mod.rs`), fired inside `store.set` with the redacted snapshot.
 #[tauri::command]
+#[specta::specta]
 pub fn settings_set(
     app: AppHandle,
     store: State<'_, AppSettingsStore>,
@@ -99,6 +103,7 @@ pub fn settings_set(
 /// Returns false when no key is configured, the request fails, or the API
 /// rejects the key (non-200 / non-200 code).
 #[tauri::command]
+#[specta::specta]
 pub async fn easy_scholar_probe(app: AppHandle) -> ApiResult<bool> {
     use crate::features::scholar_api::sources::easy_scholar::EasyScholarApi;
 
@@ -121,7 +126,11 @@ pub async fn easy_scholar_probe(app: AppHandle) -> ApiResult<bool> {
 /// Returns the full API response so the WebView can extract `officialRank.all`
 /// and build namespaced tags.
 #[tauri::command]
-pub async fn easy_scholar_get_rank(app: AppHandle, publication_name: String) -> ApiResult<Value> {
+#[specta::specta]
+pub async fn easy_scholar_get_rank(
+    app: AppHandle,
+    publication_name: String,
+) -> ApiResult<JsonValue> {
     use crate::features::scholar_api::sources::easy_scholar::EasyScholarApi;
 
     let store = app.state::<AppSettingsStore>();
@@ -146,7 +155,7 @@ pub async fn easy_scholar_get_rank(app: AppHandle, publication_name: String) -> 
                 .and_then(|v| v.as_i64())
                 .is_some_and(|code| code == 200)
             {
-                ApiResult::ok(json)
+                ApiResult::ok(JsonValue(json))
             } else {
                 map_err(AppError::domain(
                     "easyScholarApiError",

@@ -48,7 +48,7 @@ pub enum PermissionPolicy {
 }
 
 /// Payload for the `agent:permission-request` event (ask mode).
-#[derive(Clone, serde::Serialize)]
+#[derive(specta::Type, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PermissionRequestEvent {
     pub(crate) request_id: String,
@@ -59,7 +59,7 @@ pub(crate) struct PermissionRequestEvent {
     pub(crate) options: Vec<PermissionOptionView>,
 }
 
-#[derive(Clone, serde::Serialize)]
+#[derive(specta::Type, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PermissionOptionView {
     pub(crate) option_id: String,
@@ -78,7 +78,7 @@ fn option_kind_label(kind: &PermissionOptionKind) -> &'static str {
 }
 
 /// One form field derived from an elicitation schema property (for UI).
-#[derive(Clone, serde::Serialize)]
+#[derive(specta::Type, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ElicitationFieldView {
     pub(crate) id: String,
@@ -115,7 +115,7 @@ fn codex_meta_string(
         .map(str::to_string)
 }
 
-#[derive(Clone, serde::Serialize)]
+#[derive(specta::Type, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ElicitationOptionView {
     pub(crate) value: String,
@@ -124,7 +124,7 @@ pub(crate) struct ElicitationOptionView {
 }
 
 /// Payload for `agent:elicitation-request`.
-#[derive(Clone, serde::Serialize)]
+#[derive(specta::Type, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ElicitationRequestEvent {
     pub(crate) request_id: String,

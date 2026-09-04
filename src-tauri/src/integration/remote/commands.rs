@@ -14,7 +14,7 @@ use serde::Serialize;
 use std::sync::Arc;
 use tauri::State;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteConnectArgs {
     /// SSH host or config alias. Use `__local_sim__` with an absolute local path for tests.
@@ -25,6 +25,7 @@ pub struct RemoteConnectArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_connect(
     registry: State<'_, Arc<RemoteRegistry>>,
     connector: State<'_, Arc<crate::integration::connector::ConnectorController>>,
@@ -62,6 +63,7 @@ pub async fn remote_connect(
 
 /// Host entries from `~/.ssh/config` for the connect dialog's suggestions (#339).
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_ssh_config_hosts(
 ) -> Result<ApiResult<Vec<crate::integration::remote::ssh_config::SshConfigHost>>, String> {
     Ok(ApiResult::ok(
@@ -69,7 +71,7 @@ pub async fn remote_ssh_config_hosts(
     ))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteSessionArgs {
     pub session_id: String,
@@ -78,6 +80,7 @@ pub struct RemoteSessionArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_disconnect(
     registry: State<'_, Arc<RemoteRegistry>>,
     connector: State<'_, Arc<crate::integration::connector::ConnectorController>>,
@@ -111,6 +114,7 @@ pub async fn remote_disconnect(
 /// Seed bundled content and safely update untouched first-party skills in a
 /// remote vault without overwriting user files.
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_vault_ensure(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemoteSessionArgs,
@@ -125,7 +129,7 @@ pub async fn remote_vault_ensure(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemotePathArgs {
     pub session_id: String,
@@ -134,6 +138,7 @@ pub struct RemotePathArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_list(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemotePathArgs,
@@ -149,6 +154,7 @@ pub async fn remote_list(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_read_text(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemotePathArgs,
@@ -166,7 +172,7 @@ pub async fn remote_read_text(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteWriteTextArgs {
     pub session_id: String,
@@ -175,6 +181,7 @@ pub struct RemoteWriteTextArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_write_text(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemoteWriteTextArgs,
@@ -200,6 +207,7 @@ pub async fn remote_write_text(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_mkdir(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemotePathArgs,
@@ -214,7 +222,7 @@ pub async fn remote_mkdir(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteRemoveArgs {
     pub session_id: String,
@@ -224,6 +232,7 @@ pub struct RemoteRemoveArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_remove(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemoteRemoveArgs,
@@ -238,7 +247,7 @@ pub async fn remote_remove(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteWriteBytesArgs {
     pub session_id: String,
@@ -247,6 +256,7 @@ pub struct RemoteWriteBytesArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_write_bytes(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemoteWriteBytesArgs,
@@ -271,7 +281,7 @@ pub async fn remote_write_bytes(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemotePaperGetArgs {
     pub session_id: String,
@@ -282,6 +292,7 @@ pub struct RemotePaperGetArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_paper_get(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemotePaperGetArgs,
@@ -312,6 +323,7 @@ pub async fn remote_paper_get(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_paper_list(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemoteSessionArgs,
@@ -327,7 +339,7 @@ pub async fn remote_paper_list(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemotePaperSetTagsArgs {
     pub session_id: String,
@@ -336,6 +348,7 @@ pub struct RemotePaperSetTagsArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_paper_set_tags(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemotePaperSetTagsArgs,
@@ -361,7 +374,7 @@ pub async fn remote_paper_set_tags(
     Ok(ApiResult::ok(row))
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemotePaperSetIsReadArgs {
     pub session_id: String,
@@ -370,6 +383,7 @@ pub struct RemotePaperSetIsReadArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_paper_set_is_read(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemotePaperSetIsReadArgs,
@@ -396,14 +410,14 @@ pub async fn remote_paper_set_is_read(
 }
 
 /// Ensure a remote PDF (or other file) is cached under the session blob dir; return local path.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteCacheFileArgs {
     pub session_id: String,
     pub path: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteCacheFileResult {
     /// Absolute local path to cached bytes (ephemeral).
@@ -411,6 +425,7 @@ pub struct RemoteCacheFileResult {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_cache_file(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemoteCacheFileArgs,
@@ -443,7 +458,7 @@ pub async fn remote_cache_file(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteCacheStatsArgs {
     /// When set, stats for that session's blob dir; otherwise all remote caches.
@@ -452,6 +467,7 @@ pub struct RemoteCacheStatsArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_cache_stats(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemoteCacheStatsArgs,
@@ -475,7 +491,7 @@ pub async fn remote_cache_stats(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteCacheClearArgs {
     /// When set, clear that session's blobs; otherwise all remote blob caches.
@@ -483,13 +499,14 @@ pub struct RemoteCacheClearArgs {
     pub session_id: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteCacheClearResult {
     pub freed_bytes: u64,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_cache_clear(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemoteCacheClearArgs,
@@ -525,13 +542,14 @@ pub async fn remote_cache_clear(
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemotePaperRescanResult {
     pub count: usize,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn remote_paper_rescan(
     registry: State<'_, Arc<RemoteRegistry>>,
     args: RemoteSessionArgs,

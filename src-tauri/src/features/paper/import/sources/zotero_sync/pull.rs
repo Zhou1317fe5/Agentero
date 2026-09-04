@@ -25,7 +25,7 @@ pub struct PullOptions {
 
 /// One paper where both sides changed since the last sync; notes pull is
 /// skipped for it and the user decides.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SyncConflict {
     pub paper_path: String,

@@ -8,7 +8,7 @@ pub const RELAY_PROTOCOL_VERSION: u8 = 2;
 pub const DEFAULT_RELAY_ENDPOINT: &str = "relay.philfan.cn:443";
 
 /// Relay connection information embedded in a pairing offer.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RelayOffer {
     pub endpoint: String,
@@ -16,7 +16,7 @@ pub struct RelayOffer {
 
 /// QR payload. It intentionally carries no bearer token: desktop confirmation
 /// and a device signature turn a scanned offer into an approved pairing.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct BridgeOffer {
     pub v: u8,

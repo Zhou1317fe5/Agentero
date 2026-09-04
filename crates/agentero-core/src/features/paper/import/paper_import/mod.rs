@@ -17,7 +17,7 @@ use serde::Serialize;
 use std::fs;
 use std::path::Path;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum CommitStatus {
     /// New paper folder + catalog row were written.
@@ -84,7 +84,7 @@ pub struct PaperCommitOptions<'a> {
 }
 
 /// Uniform result shape for every entry (camelCase matches the frontend).
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperCommitResult {
     pub status: CommitStatus,

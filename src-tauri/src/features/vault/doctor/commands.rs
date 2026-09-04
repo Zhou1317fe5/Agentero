@@ -16,13 +16,13 @@ use tauri::State;
 // `run_blocking` so the main thread (Windows UI message pump) never blocks.
 // `doctor_set_dirty_paths` stays sync: it only touches an in-memory map.
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorCheckArgs {
     pub vault_path: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorApplyAliasesArgs {
     pub vault_path: String,
@@ -31,7 +31,7 @@ pub struct DoctorApplyAliasesArgs {
     pub dirty_paths: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorSetDirtyPathsArgs {
     pub vault_path: String,
@@ -39,7 +39,7 @@ pub struct DoctorSetDirtyPathsArgs {
     pub dirty_paths: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorIgnoreAliasesArgs {
     pub vault_path: String,
@@ -49,13 +49,13 @@ pub struct DoctorIgnoreAliasesArgs {
     pub ignore: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorPlanWikilinksArgs {
     pub vault_path: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorApplyWikilinksArgs {
     pub vault_path: String,
@@ -65,6 +65,7 @@ pub struct DoctorApplyWikilinksArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn doctor_set_dirty_paths(
     args: DoctorSetDirtyPathsArgs,
     state: State<'_, DoctorDirtyPathsState>,
@@ -78,6 +79,7 @@ pub fn doctor_set_dirty_paths(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn doctor_check(args: DoctorCheckArgs) -> ApiResult<DoctorReport> {
     run_blocking(move || {
         let vault = match crate::core::fs::resolve_vault(&args.vault_path) {
@@ -92,13 +94,14 @@ pub async fn doctor_check(args: DoctorCheckArgs) -> ApiResult<DoctorReport> {
     .await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorFixCatalogDuplicatesArgs {
     pub vault_path: String,
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn doctor_fix_catalog_duplicates(
     args: DoctorFixCatalogDuplicatesArgs,
 ) -> ApiResult<DuplicateRepairResult> {
@@ -116,6 +119,7 @@ pub async fn doctor_fix_catalog_duplicates(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn doctor_ignore_aliases(args: DoctorIgnoreAliasesArgs) -> ApiResult<DoctorVaultState> {
     run_blocking(move || {
         let vault = PathBuf::from(&args.vault_path);
@@ -128,6 +132,7 @@ pub async fn doctor_ignore_aliases(args: DoctorIgnoreAliasesArgs) -> ApiResult<D
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn doctor_apply_aliases(
     args: DoctorApplyAliasesArgs,
     index: State<'_, WikiIndexState>,
@@ -173,6 +178,7 @@ pub async fn doctor_apply_aliases(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn doctor_plan_wikilinks(args: DoctorPlanWikilinksArgs) -> ApiResult<WikilinkRepairPlan> {
     run_blocking(move || {
         let vault = match crate::core::fs::resolve_vault(&args.vault_path) {
@@ -190,7 +196,7 @@ pub async fn doctor_plan_wikilinks(args: DoctorPlanWikilinksArgs) -> ApiResult<W
     .await
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorApplyVisualMarksArgs {
     pub vault_path: String,
@@ -200,6 +206,7 @@ pub struct DoctorApplyVisualMarksArgs {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn doctor_apply_visual_marks(
     args: DoctorApplyVisualMarksArgs,
     dirty_state: State<'_, DoctorDirtyPathsState>,
@@ -224,6 +231,7 @@ pub async fn doctor_apply_visual_marks(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn doctor_apply_wikilinks(
     args: DoctorApplyWikilinksArgs,
     index: State<'_, WikiIndexState>,

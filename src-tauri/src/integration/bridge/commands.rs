@@ -3,7 +3,7 @@ use crate::core::error::{map_err, ApiResult, AppError};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct BridgeStartArgs {
     pub vault_path: String,
@@ -12,7 +12,7 @@ pub struct BridgeStartArgs {
     pub relay_endpoint: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct BridgeOfferResult {
     pub offer: BridgeOffer,
@@ -20,6 +20,7 @@ pub struct BridgeOfferResult {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn bridge_start(
     app: AppHandle,
     controller: State<'_, BridgeController>,
@@ -32,6 +33,7 @@ pub fn bridge_start(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn bridge_stop(controller: State<'_, BridgeController>) -> ApiResult<()> {
     match controller.stop() {
         Ok(()) => ApiResult::ok(()),
@@ -41,6 +43,7 @@ pub fn bridge_stop(controller: State<'_, BridgeController>) -> ApiResult<()> {
 
 #[cfg(not(target_os = "ios"))]
 #[tauri::command]
+#[specta::specta]
 pub fn bridge_status(controller: State<'_, BridgeController>) -> ApiResult<BridgeStatus> {
     match controller.status() {
         Ok(status) => ApiResult::ok(status),
@@ -49,6 +52,7 @@ pub fn bridge_status(controller: State<'_, BridgeController>) -> ApiResult<Bridg
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn bridge_offer(controller: State<'_, BridgeController>) -> ApiResult<BridgeOfferResult> {
     let offer = match controller.offer() {
         Ok(offer) => offer,
@@ -64,6 +68,7 @@ pub fn bridge_offer(controller: State<'_, BridgeController>) -> ApiResult<Bridge
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn bridge_pair_respond(
     controller: State<'_, BridgeController>,
     request_id: String,
@@ -76,6 +81,7 @@ pub fn bridge_pair_respond(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn bridge_devices(controller: State<'_, BridgeController>) -> ApiResult<Vec<BridgeDevice>> {
     match controller.devices() {
         Ok(devices) => ApiResult::ok(devices),
@@ -84,6 +90,7 @@ pub fn bridge_devices(controller: State<'_, BridgeController>) -> ApiResult<Vec<
 }
 
 #[tauri::command]
+#[specta::specta]
 pub fn bridge_revoke_device(
     controller: State<'_, BridgeController>,
     device_id: String,

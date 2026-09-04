@@ -2,6 +2,11 @@
 
 #[cfg(test)]
 mod bindings_test;
+// `pub(crate)`: the mirror-shape anti-drift tests live in the owning modules
+// of the private payload structs and reference the mirrors from here. Test
+// builds only — the module does not exist otherwise.
+#[cfg(test)]
+pub(crate) mod events_contract;
 mod handlers;
 mod logging;
 pub mod menu;

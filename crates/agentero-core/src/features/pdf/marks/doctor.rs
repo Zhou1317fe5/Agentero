@@ -8,7 +8,7 @@ use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VisualMarkCandidate {
     /// Vault-relative path e.g. `papers/foo/marks/abc.json`
@@ -19,7 +19,7 @@ pub struct VisualMarkCandidate {
     pub selected_by_default: bool,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VisualMarksDoctorSection {
     pub ok: bool,
@@ -28,13 +28,13 @@ pub struct VisualMarksDoctorSection {
     pub issues: Vec<DoctorIssue>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VisualMarkRepairChange {
     pub path: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VisualMarkRepairResult {
     pub updated_paths: Vec<String>,

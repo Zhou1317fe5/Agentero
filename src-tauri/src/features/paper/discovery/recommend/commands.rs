@@ -10,7 +10,7 @@ use crate::features::settings::AppSettingsStore;
 use serde::Deserialize;
 use tauri::{AppHandle, Manager};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RecommendArxivArgs {
     pub vault_path: String,
@@ -29,6 +29,7 @@ pub struct RecommendArxivArgs {
 /// Reuses the stored same-day run unless `force` is set, so the vault-open
 /// prewarm and repeated page opens stay free.
 #[tauri::command]
+#[specta::specta]
 pub async fn recommend_arxiv(
     app: AppHandle,
     args: RecommendArxivArgs,
@@ -45,7 +46,7 @@ pub async fn recommend_arxiv(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RecommendArxivLastArgs {
     pub vault_path: String,
@@ -53,6 +54,7 @@ pub struct RecommendArxivLastArgs {
 
 /// Stored recommendation run, if any — lets the page render before refreshing.
 #[tauri::command]
+#[specta::specta]
 pub async fn recommend_arxiv_last(
     args: RecommendArxivLastArgs,
 ) -> ApiResult<Option<RecommendResult>> {
@@ -69,7 +71,7 @@ pub async fn recommend_arxiv_last(
     .await
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ProbeEmbeddingArgs {
     /// Override the stored base URL. Empty / missing keeps the stored value.
@@ -91,6 +93,7 @@ pub struct ProbeEmbeddingArgs {
 /// committed yet. Returns `ERR_NO_EMBEDDING` when nothing is configured so
 /// the UI can route the user to the settings page.
 #[tauri::command]
+#[specta::specta]
 pub async fn probe_embedding(
     app: AppHandle,
     args: ProbeEmbeddingArgs,

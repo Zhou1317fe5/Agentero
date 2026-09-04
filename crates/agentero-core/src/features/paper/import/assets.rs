@@ -15,7 +15,7 @@ use std::path::{Component, Path, PathBuf};
 use std::time::Duration;
 use tar::Archive;
 
-#[derive(Debug, Default, Clone, Serialize)]
+#[derive(Debug, Default, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetDownloadResult {
     pub pdf: bool,
@@ -26,7 +26,7 @@ pub struct AssetDownloadResult {
     pub messages: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(specta::Type, Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetDownloadProgress {
     pub task_id: String,
@@ -35,9 +35,9 @@ pub struct AssetDownloadProgress {
     pub total_bytes: Option<u64>,
     pub progress: Option<u8>,
     /// Optional item counters for batch operations (e.g. import 2/5).
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub current_count: Option<usize>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub total_count: Option<usize>,
 }
 

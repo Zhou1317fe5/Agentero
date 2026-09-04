@@ -51,6 +51,7 @@ fn unknown_provider(provider: &str) -> AppError {
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn layout_remote_analyze_pdf(
     app: AppHandle,
     mut args: LayoutRemoteAnalyzePdfArgs,
@@ -90,6 +91,7 @@ pub async fn layout_remote_analyze_pdf(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn layout_remote_probe(
     app: AppHandle,
     mut args: LayoutRemoteProbeArgs,

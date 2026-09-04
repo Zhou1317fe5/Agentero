@@ -8,7 +8,7 @@ use crate::features::wiki::models::{
 use crate::features::wiki::WikiIndexState;
 use tauri::State;
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiRenameHeadingArgs {
     pub vault_path: String,
@@ -26,6 +26,7 @@ pub struct WikiRenameHeadingArgs {
 // `run_blocking` — never on the main thread (Windows UI message pump).
 
 #[tauri::command]
+#[specta::specta]
 pub async fn graph_get_backlinks(
     index: State<'_, WikiIndexState>,
     vault_path: String,
@@ -46,6 +47,7 @@ pub async fn graph_get_backlinks(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn wiki_resolve(
     index: State<'_, WikiIndexState>,
     vault_path: String,
@@ -74,6 +76,7 @@ pub async fn wiki_resolve(
 
 /// Resolve and read the exact source projection for one `![[...]]` embed.
 #[tauri::command]
+#[specta::specta]
 pub async fn wiki_embed_read(
     index: State<'_, WikiIndexState>,
     vault_path: String,
@@ -98,6 +101,7 @@ pub async fn wiki_embed_read(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn wiki_search(
     index: State<'_, WikiIndexState>,
     vault_path: String,
@@ -122,6 +126,7 @@ pub async fn wiki_search(
 /// Explicitly rename one saved heading and rewrite every resolved inbound
 /// heading fragment as one rollback-capable local transaction.
 #[tauri::command]
+#[specta::specta]
 pub async fn wiki_rename_heading(
     args: WikiRenameHeadingArgs,
     index: State<'_, WikiIndexState>,
@@ -161,6 +166,7 @@ pub async fn wiki_rename_heading(
 }
 
 #[tauri::command]
+#[specta::specta]
 pub async fn graph_rebuild(
     index: State<'_, WikiIndexState>,
     vault_path: String,
@@ -195,6 +201,7 @@ pub async fn graph_rebuild(
 
 /// Internal diagnostic: remove the derived snapshot and rebuild it from Vault files.
 #[tauri::command]
+#[specta::specta]
 pub async fn wiki_cache_rebuild(
     index: State<'_, WikiIndexState>,
     vault_path: String,

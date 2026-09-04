@@ -12,6 +12,7 @@ use tauri::ipc::Channel;
 /// Vault notes, which must not run on the main thread. The progress `Channel`
 /// is `Send` and keeps streaming from the blocking pool.
 #[tauri::command]
+#[specta::specta]
 pub async fn zotero_sync(
     args: ZoteroSyncArgs,
     on_progress: Channel<SyncProgress>,

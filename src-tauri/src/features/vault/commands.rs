@@ -16,6 +16,7 @@ fn vault_path_arg(path: &str) -> Result<std::path::PathBuf, AppError> {
 
 /// Create / scaffold a Agentero vault at the given absolute path.
 #[tauri::command]
+#[specta::specta]
 pub async fn vault_create(path: String, locale: Option<String>) -> ApiResult<CreateVaultResult> {
     run_blocking(move || {
         let op = OpTimer::start_with("vault_create", format!("path={}", trunc(&path, 200)));
@@ -38,6 +39,7 @@ pub async fn vault_create(path: String, locale: Option<String>) -> ApiResult<Cre
 /// content without requiring the user to re-run Create Vault. User-customized
 /// files are never overwritten.
 #[tauri::command]
+#[specta::specta]
 pub async fn vault_ensure(path: String, locale: Option<String>) -> ApiResult<CreateVaultResult> {
     run_blocking(move || {
         let op = OpTimer::start_with("vault_ensure", format!("path={}", trunc(&path, 200)));
@@ -55,6 +57,7 @@ pub async fn vault_ensure(path: String, locale: Option<String>) -> ApiResult<Cre
 
 /// Build the whole vault file tree in one pass (single IPC).
 #[tauri::command]
+#[specta::specta]
 pub async fn vault_tree_build(
     vault_path: String,
     caps: State<'_, crate::features::catalog::CapsCache>,
@@ -79,6 +82,7 @@ pub async fn vault_tree_build(
 
 /// List one directory's children (lazy expand / targeted tree refresh).
 #[tauri::command]
+#[specta::specta]
 pub async fn vault_tree_children(
     vault_path: String,
     dir_path: String,

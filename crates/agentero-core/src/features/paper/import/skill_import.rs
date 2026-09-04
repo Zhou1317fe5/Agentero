@@ -16,7 +16,7 @@ const MAX_EXTRACTED_FILES: usize = 2_000;
 const MAX_SKILL_NAME_LEN: usize = 64;
 const MAX_DESCRIPTION_LEN: usize = 1024;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SkillImportResult {
     pub name: String,
@@ -26,7 +26,7 @@ pub struct SkillImportResult {
     pub skipped: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SkillCandidate {
     pub name: String,
@@ -36,7 +36,7 @@ pub struct SkillCandidate {
     pub already_installed: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SkillDiscovery {
     pub discovery_id: String,

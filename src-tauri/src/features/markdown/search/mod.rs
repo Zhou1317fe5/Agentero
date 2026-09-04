@@ -15,7 +15,7 @@ const MAX_DEPTH: usize = 16;
 const MAX_FILES: usize = 20_000;
 const SNIPPET_CHARS: usize = 200;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultSearchArgs {
     pub vault_path: String,
@@ -24,7 +24,7 @@ pub struct VaultSearchArgs {
     pub limit: Option<usize>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SearchHit {
     /// Vault-relative md file, e.g. `papers/x/NOTES.md`.
@@ -39,7 +39,7 @@ pub struct SearchHit {
     pub score: i64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct VaultSearchResult {
     pub hits: Vec<SearchHit>,

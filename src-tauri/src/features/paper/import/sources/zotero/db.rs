@@ -21,7 +21,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ZoteroScanArgs {
     /// Absolute path to the Zotero data directory (contains zotero.sqlite + storage/).
@@ -29,7 +29,7 @@ pub struct ZoteroScanArgs {
 }
 
 /// A Zotero collection surfaced in the scan preview (for the folder picker).
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ZoteroCollectionInfo {
     /// Zotero collectionID, or 0 for the pseudo "unfiled" bucket.
@@ -40,7 +40,7 @@ pub struct ZoteroCollectionInfo {
 }
 
 /// One migratable item surfaced in the scan (for the per-paper picker).
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ZoteroItemInfo {
     /// Zotero itemID (stable within a library); used by `include_items`.
@@ -55,7 +55,7 @@ pub struct ZoteroItemInfo {
     pub collections: Vec<i64>,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ZoteroScan {
     pub valid: bool,
@@ -69,7 +69,7 @@ pub struct ZoteroScan {
 }
 
 /// Progress event streamed to the UI while a migration runs.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct MigrateProgress {
     pub current: usize,
@@ -77,7 +77,7 @@ pub struct MigrateProgress {
     pub phase: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ZoteroMigrateArgs {
     pub vault_path: String,
@@ -111,7 +111,7 @@ pub struct ZoteroMigrateArgs {
     pub migrate_annotations: bool,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ZoteroMigrateResult {
     pub imported: usize,

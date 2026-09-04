@@ -41,7 +41,7 @@ struct ModelSource {
     url: &'static str,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct LayoutModelStatus {
     pub ready: bool,
@@ -474,5 +474,58 @@ mod tests {
         assert_eq!(MODEL_SOURCES[0].id, "modelscope");
         assert!(MODEL_SOURCES[0].url.contains("modelscope.cn"));
         assert_eq!(MODEL_SOURCES[1].id, "huggingface");
+    }
+}
+
+/// Anti-drift: bind the owned `LayoutModelTaskEvent` mirror (in
+/// `app::events_contract`, feeding the `layout-model:task` payload type in
+/// bindings.ts) to the private struct actually emitted here: serde shapes and
+/// field types must stay identical.
+#[cfg(test)]
+mod events_contract_shape_tests {
+    use super::LayoutModelTaskEvent;
+    use crate::app::events_contract::LayoutModelTaskEvent as MirrorLayoutModelTask;
+
+    fn samples() -> (LayoutModelTaskEvent, MirrorLayoutModelTask) {
+        (
+            LayoutModelTaskEvent {
+                task_id: "task-1".to_string(),
+                status: "running".to_string(),
+                progress: Some(42),
+                detail: Some("downloading".to_string()),
+                error: None,
+                source: Some("modelscope".to_string()),
+            },
+            MirrorLayoutModelTask {
+                task_id: "task-1".to_string(),
+                status: "running".to_string(),
+                progress: Some(42),
+                detail: Some("downloading".to_string()),
+                error: None,
+                source: Some("modelscope".to_string()),
+            },
+        )
+    }
+
+    #[test]
+    fn layout_model_task_mirror_matches_emit_payload_shape() {
+        let (real, mirror) = samples();
+        assert_eq!(
+            serde_json::to_value(&real).unwrap(),
+            serde_json::to_value(&mirror).unwrap(),
+            "LayoutModelTaskEvent mirror drifted from the emitted payload"
+        );
+    }
+
+    #[test]
+    fn layout_model_task_mirror_field_types_match() {
+        fn eq_type<T>(_: &T, _: &T) {}
+        let (real, mirror) = samples();
+        eq_type(&real.task_id, &mirror.task_id);
+        eq_type(&real.status, &mirror.status);
+        eq_type(&real.progress, &mirror.progress);
+        eq_type(&real.detail, &mirror.detail);
+        eq_type(&real.error, &mirror.error);
+        eq_type(&real.source, &mirror.source);
     }
 }

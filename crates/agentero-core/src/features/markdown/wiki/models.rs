@@ -3,21 +3,21 @@ use serde::{Deserialize, Serialize};
 /// Byte range of the target portion of an internal-link token in its source file.
 /// It deliberately excludes aliases, fragments and Markdown labels so a rename can
 /// replace only the target while preserving the user's surrounding text.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceRange {
     pub start: usize,
     pub end: usize,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum InternalLinkSyntax {
     Wikilink,
     Markdown,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum LinkFragment {
     Heading {
@@ -32,7 +32,7 @@ pub enum LinkFragment {
     },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum LinkResolutionStatus {
     Resolved,
@@ -43,7 +43,7 @@ pub enum LinkResolutionStatus {
 
 /// A parsed explicit Vault-local link. Markdown remains the source of truth; this
 /// is only an in-memory, rebuildable occurrence projection.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct InternalLinkOccurrence {
     pub source: String,
@@ -95,7 +95,7 @@ pub struct BlockAnchor {
 }
 
 /// A parsed occurrence enriched with one deterministic resolution result.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct ResolvedLink {
     pub occurrence: InternalLinkOccurrence,
@@ -114,7 +114,7 @@ pub type WikiLinkEdge = ResolvedLink;
 /// One incoming occurrence for a selected target file.
 pub type Backlink = ResolvedLink;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct BacklinksResponse {
     pub path: String,
@@ -128,7 +128,7 @@ pub struct OutgoingLinksResponse {
     pub outgoing: Vec<ResolvedLink>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiCheckCounts {
     pub resolved: u32,
@@ -137,7 +137,7 @@ pub struct WikiCheckCounts {
     pub invalid_fragment: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiCheckIssue {
     pub status: LinkResolutionStatus,
@@ -159,7 +159,7 @@ pub struct WikiCheckIssue {
 /// `scope` is a normalized Vault-relative Markdown file or directory. `None`
 /// means the complete Vault. Only non-resolved occurrences appear in `issues`;
 /// `counts` still includes resolved links for an auditable total.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiCheckResult {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -169,13 +169,13 @@ pub struct WikiCheckResult {
     pub issues: Vec<WikiCheckIssue>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiResolveResponse {
     pub link: ResolvedLink,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum WikiEmbedContentKind {
     Markdown,
@@ -190,7 +190,7 @@ pub enum WikiEmbedContentKind {
 ///
 /// `link` always carries the canonical resolution status. Content is present
 /// only when that status is resolved and the target kind is supported.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiEmbedResponse {
     pub link: ResolvedLink,
@@ -200,7 +200,7 @@ pub struct WikiEmbedResponse {
     pub content: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum WikiSearchCandidateKind {
     File,
@@ -208,7 +208,7 @@ pub enum WikiSearchCandidateKind {
     Block,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiSearchCandidate {
     pub kind: WikiSearchCandidateKind,
@@ -225,7 +225,7 @@ pub struct WikiSearchCandidate {
     pub fragment: Option<LinkFragment>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RebuildResult {
     pub indexed_files: u32,
@@ -259,7 +259,7 @@ pub enum WikiRenameErrorCode {
 }
 
 /// How far a failed transaction was restored.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "kebab-case")]
 pub enum WikiRenameRollback {
     NotNeeded,
@@ -268,7 +268,7 @@ pub enum WikiRenameRollback {
 }
 
 /// A source skipped by the rename planner because it was not safe to rewrite.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiRenameSkipped {
     pub path: String,
@@ -276,7 +276,7 @@ pub struct WikiRenameSkipped {
 }
 
 /// Observable outcome of a successful link-aware file or directory move.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiRenameResult {
     pub moved_path: String,
@@ -286,7 +286,7 @@ pub struct WikiRenameResult {
 }
 
 /// Observable outcome of a successful explicit heading rename.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiRenameHeadingResult {
     pub path: String,
@@ -299,7 +299,7 @@ pub struct WikiRenameHeadingResult {
 /// A verified external filesystem rename that is safe to present for explicit
 /// approval. The opaque ID keeps the pre-rename semantic snapshot in the Host
 /// until the renderer either applies or discards the repair.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct WikiExternalRenamePreview {
     pub candidate_id: String,

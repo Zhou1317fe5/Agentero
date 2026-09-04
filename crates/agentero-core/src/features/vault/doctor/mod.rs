@@ -25,14 +25,14 @@ use std::fs;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum DoctorSeverity {
     Error,
     Warning,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorIssue {
     pub code: String,
@@ -42,14 +42,14 @@ pub struct DoctorIssue {
     pub path: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorSection {
     pub ok: bool,
     pub issues: Vec<DoctorIssue>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct CatalogDoctorSection {
     pub ok: bool,
@@ -61,7 +61,7 @@ pub struct CatalogDoctorSection {
     pub duplicate_report: Option<DuplicateReport>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AliasRepairCandidate {
     pub path: String,
@@ -76,7 +76,7 @@ pub struct AliasRepairCandidate {
     pub reason: Option<String>,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AliasDoctorSection {
     pub ok: bool,
@@ -90,7 +90,7 @@ pub struct AliasDoctorSection {
 }
 
 /// Vault-local Doctor preferences (`.agentero/doctor.json`).
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorVaultState {
     /// Relative `papers/**/NOTES.md` paths skipped by paper-alias checks.
@@ -173,7 +173,7 @@ pub fn set_ignored_alias_paths(
     Ok(load_doctor_state(vault))
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorReport {
     pub ok: bool,
@@ -185,7 +185,7 @@ pub struct DoctorReport {
     pub visual_marks: VisualMarksDoctorSection,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AliasRepairChange {
     pub path: String,
@@ -194,7 +194,7 @@ pub struct AliasRepairChange {
     pub expected_hash: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AliasRepairResult {
     pub updated_paths: Vec<String>,

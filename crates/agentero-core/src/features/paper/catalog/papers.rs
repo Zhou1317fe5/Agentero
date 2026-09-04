@@ -48,7 +48,7 @@ const ARXIV_CATEGORY_PREFIXES: &[&str] = &[
 
 /// One catalog tag: display name + optional color id.
 /// JSON: bare string when uncolored; `{"name","color"}` when colored.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, specta::Type)]
 pub struct PaperTag {
     pub name: String,
     pub color: Option<String>,
@@ -172,7 +172,7 @@ fn normalize_color(color: Option<&str>) -> Option<String> {
 }
 
 /// API / frontend shape (snake_case, matches PaperMetadata).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct PaperRecord {
     /// Vault-relative paper folder path (primary key).
     /// Defaults empty so sidecar files without `path` still parse; readers
@@ -185,6 +185,7 @@ pub struct PaperRecord {
     pub title: String,
     pub authors: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(type = Option<crate::json::Json>)]
     pub creators: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub year: Option<i32>,
@@ -381,7 +382,7 @@ pub fn list_all_conn(conn: &Connection) -> Result<Vec<PaperRecord>, AppError> {
 }
 
 /// One row in a duplicate group (lightweight, for diagnostics / repair).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DuplicateRow {
     pub path: String,
@@ -392,7 +393,7 @@ pub struct DuplicateRow {
 }
 
 /// What kind of duplicate was detected.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "lowercase")]
 pub enum DuplicateKind {
     Id,
@@ -400,7 +401,7 @@ pub enum DuplicateKind {
 }
 
 /// A set of catalog rows sharing the same `id` or `path`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DuplicateGroup {
     pub kind: DuplicateKind,
@@ -409,7 +410,7 @@ pub struct DuplicateGroup {
 }
 
 /// Report of duplicate rows in the catalog.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DuplicateReport {
     pub duplicate_ids: Vec<DuplicateGroup>,
@@ -564,7 +565,7 @@ fn dedupe_records_by_id(vault_root: &Path, rows: Vec<PaperRecord>) -> Vec<PaperR
 /// Returns the number of rows removed. Deleted rows whose paper folders still
 /// exist on disk are reported in `removed_paths` so the caller can follow up
 /// manually.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct DuplicateRepairResult {
     pub removed_rows: usize,
@@ -796,7 +797,7 @@ fn minimal_record_for(dir: &Path, rel_path: &str) -> PaperRecord {
 
 /// Manual metadata patch: `None` keeps the current value; a provided value is
 /// trimmed and an empty string clears the column (stored as NULL).
-#[derive(Debug, Default, Clone, Deserialize)]
+#[derive(Debug, Default, Clone, Deserialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PaperMetaPatch {
     pub title: Option<String>,

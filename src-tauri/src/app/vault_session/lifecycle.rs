@@ -12,6 +12,7 @@ use tauri::Manager;
 /// Feature-specific cleanup remains owned by each feature; the app shell only
 /// orchestrates the cross-feature release sequence.
 #[tauri::command]
+#[specta::specta]
 pub async fn vault_release(app: tauri::AppHandle, path: String) -> ApiResult<()> {
     let op = OpTimer::start_with("vault_release", format!("path={}", trunc(&path, 200)));
     let vault = match vault_path_arg(&path) {

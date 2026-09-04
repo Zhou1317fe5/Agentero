@@ -18,7 +18,7 @@ pub const WORKFLOW_NAME: &str = "Open with Agentero";
 /// Ownership marker — never overwrite a `.workflow` we did not create.
 pub const MARKER_BUNDLE_ID: &str = "com.poco-ai.agentero.open-vault-service";
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct FinderServiceStatus {
     /// Quick Action integration only exists on macOS.

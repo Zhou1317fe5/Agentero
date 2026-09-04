@@ -14,7 +14,7 @@ use crate::features::agent::remote_host::{RemoteAgentHosts, RemoteAgentLaunch};
 use serde::Serialize;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct RemoteAgentScanResponse {
     pub session_id: String,
