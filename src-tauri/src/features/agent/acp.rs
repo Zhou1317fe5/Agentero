@@ -107,13 +107,20 @@ fn windows_shell_quote(s: &str) -> String {
 
 /// Convert Rust's canonicalized local drive path into a form accepted by `cmd.exe`.
 /// True UNC paths stay unchanged; supporting them requires a separate `pushd` flow.
-#[cfg(windows)]
+#[cfg(any(windows, test))]
 fn windows_cmd_cwd(cwd: &Path) -> String {
     let cwd = cwd.to_string_lossy();
     cwd.strip_prefix(r"\\?\")
         .filter(|path| path.as_bytes().get(1) == Some(&b':'))
         .unwrap_or(cwd.as_ref())
         .to_string()
+}
+
+/// Pre-quote the cwd environment value so metacharacters remain literal after
+/// `cmd.exe` expands `%AGENTERO_AGENT_CWD%`, even when the path has no spaces.
+#[cfg(any(windows, test))]
+fn windows_cmd_cwd_env_value(cwd: &Path) -> String {
+    format!("\"{}\"", windows_cmd_cwd(cwd))
 }
 
 /// Windows variant of [`wrap_local_command_with_cwd`]. Uses `cmd /D /C` and an
@@ -128,7 +135,7 @@ fn wrap_local_command_with_cwd(
 ) -> (PathBuf, Vec<String>) {
     env.insert(
         "AGENTERO_AGENT_CWD".to_string(),
-        windows_shell_quote(&windows_cmd_cwd(cwd)),
+        windows_cmd_cwd_env_value(cwd),
     );
     let mut agent_command = windows_shell_quote(&command.to_string_lossy());
     for arg in args {
@@ -3441,6 +3448,22 @@ mod cwd_shell_wrap_tests {
     }
 
     #[test]
+    fn windows_cmd_cwd_env_value_normalizes_and_always_quotes() {
+        assert_eq!(
+            windows_cmd_cwd_env_value(Path::new(r"\\?\C:\Vault)")),
+            r#""C:\Vault)""#
+        );
+        assert_eq!(
+            windows_cmd_cwd_env_value(Path::new(r"C:\Vault")),
+            r#""C:\Vault""#
+        );
+        assert_eq!(
+            windows_cmd_cwd(Path::new(r"\\?\UNC\server\share")),
+            r"\\?\UNC\server\share"
+        );
+    }
+
+    #[test]
     #[cfg(windows)]
     fn wrap_windows_builds_cmd_cd_script() {
         let mut env = HashMap::new();
@@ -3466,14 +3489,6 @@ mod cwd_shell_wrap_tests {
         assert_eq!(
             env.get("AGENTERO_AGENT_COMMAND"),
             Some(&r#""C:\Program Files\pi-acp.cmd" --foo "bar baz""#.to_string())
-        );
-        assert_eq!(
-            windows_cmd_cwd(Path::new(r"C:\My Vault")),
-            r"C:\My Vault"
-        );
-        assert_eq!(
-            windows_cmd_cwd(Path::new(r"\\?\UNC\server\share")),
-            r"\\?\UNC\server\share"
         );
     }
 }
