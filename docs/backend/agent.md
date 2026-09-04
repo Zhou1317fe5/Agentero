@@ -6,6 +6,10 @@ Agentero 作为 **ACP Client**，stdio JSON-RPC 连接用户本机或远端 Agen
 
 - Crate：`agent-client-protocol`（及 Codex 的 npm ACP 适配器进程）。
 - 会话 `cwd` = 当前 Vault 根（远程则为远端 Vault 根）。
+- 本地 Pi / 自定义 Agent 会先经 shell 切到 Vault；Windows 仅在传给 `cmd.exe` 时将
+  `\\?\D:\...` 形式的本地盘符路径还原为 `D:\...`，避免 CMD 将其误判为 UNC（#458）。
+- Windows 的 cwd 与完整 Agent 命令通过环境变量展开，避免 Rust argv 转义破坏 CMD 内层引号；
+  cwd 环境变量始终携带双引号，防止无空格路径中的括号等 CMD 元字符被当作语法（#458）。
 - 统一接口：OpenCode、OpenClaw、Hermes、Gemini、Claude ACP、Codex ACP、Qoder、Grok、Pi、Dsh（DeepSeek Harness）、Kimi Code、自定义 `command`/`args`/`env`。
 - Dsh：ACP 服务端是 `@deepseek-ai/dsh-acp-demo`（npm 包），与依赖插件一起固定
   `0.1.1-rc.2`。安装/启动三处入口，检测按序回退：
