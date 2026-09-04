@@ -5,7 +5,7 @@
 //! refresh, jobs layout cap) subscribe via [`AppSettingsStore::subscribe`]
 //! at app assembly, so this feature imports no other domain.
 
-use crate::core::error::{map_err, ApiResult};
+use crate::core::error::{map_err, ApiResult, AppError};
 use crate::features::settings::{AppSettings, AppSettingsStore, SettingsGetResult};
 use serde_json::Value;
 use std::time::Duration;
@@ -14,6 +14,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 const EASYSCHOLAR_PROBE_URL: &str = "https://easyscholar.cc/open/getPublicationRank";
 const EASYSCHOLAR_PROBE_JOURNAL: &str = "Nature";
 const EASYSCHOLAR_PROBE_TIMEOUT: Duration = Duration::from_secs(8);
+const EASYSCHOLAR_RANK_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[tauri::command]
 pub fn settings_get(store: State<'_, AppSettingsStore>) -> ApiResult<SettingsGetResult> {
@@ -129,4 +130,60 @@ pub async fn easy_scholar_probe(app: AppHandle) -> ApiResult<bool> {
         _ => false,
     };
     ApiResult::ok(ok)
+}
+
+/// Query EasyScholar for a publication's rank data.
+/// Returns the full API response so the WebView can extract `officialRank.all`
+/// and build namespaced tags.
+#[tauri::command]
+pub async fn easy_scholar_get_rank(app: AppHandle, publication_name: String) -> ApiResult<Value> {
+    let store = app.state::<AppSettingsStore>();
+    let Some(key) = store.easy_scholar_key() else {
+        return map_err(AppError::domain(
+            "easyScholarKeyMissing",
+            "EasyScholar key is not configured.",
+        ));
+    };
+    if publication_name.trim().is_empty() {
+        return map_err(AppError::domain(
+            "easyScholarEmptyPublication",
+            "Publication name is empty.",
+        ));
+    }
+
+    let client = match crate::core::http::client(EASYSCHOLAR_RANK_TIMEOUT) {
+        Ok(c) => c,
+        Err(e) => return map_err(e),
+    };
+    let url = format!(
+        "{}?secretKey={}&publicationName={}",
+        EASYSCHOLAR_PROBE_URL,
+        urlencoding::encode(&key),
+        urlencoding::encode(&publication_name),
+    );
+
+    match client.get(&url).send().await {
+        Ok(resp) if resp.status().is_success() => match resp.json::<Value>().await {
+            Ok(json) => {
+                if json
+                    .get("code")
+                    .and_then(|v| v.as_i64())
+                    .is_some_and(|code| code == 200)
+                {
+                    ApiResult::ok(json)
+                } else {
+                    map_err(AppError::domain(
+                        "easyScholarApiError",
+                        "EasyScholar API returned an error response.",
+                    ))
+                }
+            }
+            Err(e) => map_err(AppError::message(e.to_string())),
+        },
+        Ok(resp) => map_err(AppError::domain(
+            "easyScholarHttpError",
+            format!("EasyScholar API returned {}.", resp.status()),
+        )),
+        Err(e) => map_err(AppError::message(e.to_string())),
+    }
 }

@@ -1,4 +1,5 @@
 import {
+	Award,
 	BookOpen,
 	Calendar,
 	ChevronRight,
@@ -36,7 +37,13 @@ import {
 	PopoverTrigger,
 } from "@/components/ui/popover";
 import { copyTextToClipboard } from "@/lib/core/clipboard";
+import { errorMessage, notifyError, notifySuccess } from "@/lib/core/notify";
 import { cn } from "@/lib/core/utils";
+import {
+	buildEasyScholarTags,
+	fetchEasyScholarRank,
+	isEasyScholarTag,
+} from "@/lib/easyscholar";
 import type { PaperMetadata } from "@/lib/paper";
 import { arxivUrls } from "@/lib/paper/arxiv";
 import { setEditMetaDraft } from "@/lib/paper/library-store";
@@ -214,10 +221,12 @@ function ServiceLinkChip({
 
 function TagsEditor({
 	tags,
+	publicationTitle,
 	disabled,
 	onChange,
 }: {
 	tags: PaperTag[] | unknown;
+	publicationTitle?: string;
 	disabled?: boolean;
 	onChange: (tags: PaperTag[]) => void;
 }) {
@@ -226,6 +235,7 @@ function TagsEditor({
 	const [draftColor, setDraftColor] = useState<TagColorId | null>(null);
 	const [colorOpen, setColorOpen] = useState(false);
 	const [busy, setBusy] = useState(false);
+	const [rankBusy, setRankBusy] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const allTags = coercePaperTags(tags);
 	const list = visiblePaperTags(allTags);
@@ -271,6 +281,36 @@ function TagsEditor({
 		}
 	};
 
+	const fetchRank = async () => {
+		const title = publicationTitle?.trim();
+		if (!title) {
+			notifyError(t("paperInfo.easyScholar.noPublication"));
+			return;
+		}
+		if (busy || rankBusy || disabled) return;
+		setRankBusy(true);
+		try {
+			const response = await fetchEasyScholarRank(title);
+			const data = response.data?.officialRank?.all;
+			if (!data || Object.keys(data).length === 0) {
+				notifyError(t("paperInfo.easyScholar.noData"));
+				return;
+			}
+			const newTags = buildEasyScholarTags(title, data).map((name) => ({
+				name,
+			}));
+			const base = allTags.filter((tag) => !isEasyScholarTag(tag.name));
+			await commit([...base, ...newTags]);
+			notifySuccess(t("paperInfo.easyScholar.done", { count: newTags.length }));
+		} catch (err) {
+			notifyError(t("paperInfo.easyScholar.fetchFailed"), {
+				description: errorMessage(err),
+			});
+		} finally {
+			setRankBusy(false);
+		}
+	};
+
 	const draftSwatch = tagSwatchStyle(draftColor);
 
 	return (
@@ -286,7 +326,7 @@ function TagsEditor({
 						placeholder={t("paperInfo.addTag")}
 						aria-label={t("paperInfo.addTag")}
 						disabled={busy}
-						className="h-6 border-dashed py-0 pr-7 pl-1.5 text-[11px]"
+						className="h-6 border-dashed py-0 pr-12 pl-1.5 text-[11px]"
 					/>
 					<Popover open={colorOpen} onOpenChange={setColorOpen}>
 						<PopoverTrigger asChild>
@@ -373,6 +413,22 @@ function TagsEditor({
 							</div>
 						</PopoverContent>
 					</Popover>
+					<button
+						type="button"
+						disabled={busy || rankBusy || !publicationTitle}
+						onClick={() => void fetchRank()}
+						className={cn(
+							"absolute top-1/2 right-6 flex size-4 -translate-y-1/2 items-center justify-center",
+							"rounded-full bg-background ring-1 ring-border/70 transition-colors",
+							"hover:ring-foreground/30",
+							"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+							"disabled:pointer-events-none disabled:opacity-50",
+						)}
+						aria-label={t("paperInfo.easyScholar.fetchRank")}
+						title={t("paperInfo.easyScholar.fetchRank")}
+					>
+						<Award className="size-3 text-amber-500" aria-hidden />
+					</button>
 				</div>
 			)}
 			{list.length > 0 ? (
@@ -641,6 +697,7 @@ export function PaperInfoPanel({
 							<MetaRow icon={Tag} label={t("paperInfo.tags")}>
 								<TagsEditor
 									tags={meta.tags ?? []}
+									publicationTitle={meta.publication ?? undefined}
 									// Editable whenever parent can persist; path is resolved in App
 									// Prefer catalog path; else open paper folder.
 									disabled={!onTagsChange}
