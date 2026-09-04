@@ -87,8 +87,9 @@ pub async fn paper_import(
             |r| format!("imported={} skipped={}", r.imported, r.skipped),
         ));
     }
+    let host_app = crate::core::app_handle::wrap(&app);
     Ok(op.finish_result_ok_extra(
-        import_catalog_with_mode(args, Some(&app), note_mode).await,
+        import_catalog_with_mode(args, Some(&host_app), note_mode).await,
         |r| format!("imported={} skipped={}", r.imported, r.skipped),
     ))
 }

@@ -64,7 +64,9 @@ pub async fn import_connector_item_with_cookies(
 
     // No abstract MT and no awaited downloads — the browser extension's HTTP
     // request must finish within ~15s, so assets stay Deferred.
-    let app = ctrl.app_handle();
+    let app = ctrl
+        .app_handle()
+        .map(|app| crate::core::app_handle::wrap(&app));
     let note_mode = note_mode_from_ctrl(&ctrl);
     let commit = paper_commit(
         meta,
@@ -562,12 +564,15 @@ pub async fn import_standalone_attachment(
         )
         .await?
     } else {
+        let host_app = ctrl
+            .app_handle()
+            .map(|app| crate::core::app_handle::wrap(&app));
         import_standalone_local(
             Path::new(&vault_handle),
             &parent_dir,
             meta,
             bytes,
-            ctrl.app_handle().as_ref(),
+            host_app.as_ref(),
             note_mode_from_ctrl(&ctrl),
         )
         .await?
@@ -604,7 +609,7 @@ async fn import_standalone_local(
     parent_dir: &str,
     meta: PaperMeta,
     bytes: &[u8],
-    app: Option<&tauri::AppHandle>,
+    app: Option<&crate::core::app_handle::AppHandle>,
     note_mode: NoteShellMode,
 ) -> Result<ConnectorImportResult, AppError> {
     use crate::features::import::{

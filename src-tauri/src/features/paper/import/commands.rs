@@ -35,6 +35,7 @@ pub async fn lookup_import_batch(
     let n = args.texts.len();
     let op = OpTimer::start_with("lookup_import_batch", format!("count={n}"));
     let note_mode = crate::features::import::note_mode_from_app(&app);
+    let host_app = crate::core::app_handle::wrap(&app);
     if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned) {
         let vault_id = std::path::PathBuf::from(&args.vault_path);
         let result = remote
@@ -42,13 +43,18 @@ pub async fn lookup_import_batch(
             .await;
         if let Ok(r) = &result {
             for paper in &r.imported {
-                crate::features::lifecycle::emit_paper_imported(Some(&app), &vault_id, &paper.id);
+                crate::features::lifecycle::emit_paper_imported(
+                    Some(&host_app),
+                    &vault_id,
+                    &paper.id,
+                );
             }
         }
         return Ok(op.finish_result(result));
     }
     let task_id = args.task_id.clone();
-    let result = super::import_by_identifier_batch(args, Some(&app), Some(&cache), note_mode).await;
+    let result =
+        super::import_by_identifier_batch(args, Some(&host_app), Some(&cache), note_mode).await;
     if let Some(task_id) = task_id.as_deref() {
         crate::core::background_tasks::finish(task_id);
     }
@@ -104,7 +110,9 @@ pub async fn paper_download_assets(
         return Ok(op.finish_result(remote.download_paper_assets_remote(&session_id, args).await));
     }
     let task_id = args.task_id.clone();
-    let result = super::download_paper_assets_with_progress(args, Some(&app), Some(&cache)).await;
+    let host_app = crate::core::app_handle::wrap(&app);
+    let result =
+        super::download_paper_assets_with_progress(args, Some(&host_app), Some(&cache)).await;
     if let Some(task_id) = task_id.as_deref() {
         crate::core::background_tasks::finish(task_id);
     }
@@ -122,6 +130,7 @@ pub async fn paper_import_local_pdf(
     let n = args.file_paths.len();
     let op = OpTimer::start_with("paper_import_local_pdf", format!("count={n}"));
     let note_mode = crate::features::import::note_mode_from_app(&app);
+    let host_app = crate::core::app_handle::wrap(&app);
     let task_id = args.task_id.clone();
     let result = if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned)
     {
@@ -131,12 +140,16 @@ pub async fn paper_import_local_pdf(
             .await;
         if let Ok(r) = &result {
             for paper in &r.papers {
-                crate::features::lifecycle::emit_paper_imported(Some(&app), &vault_id, &paper.id);
+                crate::features::lifecycle::emit_paper_imported(
+                    Some(&host_app),
+                    &vault_id,
+                    &paper.id,
+                );
             }
         }
         result
     } else {
-        super::import_local_pdfs(args, Some(&app), Some(&cache), note_mode).await
+        super::import_local_pdfs(args, Some(&host_app), Some(&cache), note_mode).await
     };
     if let Some(task_id) = task_id.as_deref() {
         crate::core::background_tasks::finish(task_id);

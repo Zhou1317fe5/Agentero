@@ -59,13 +59,14 @@ pub async fn paper_coolpapers_import(
             return Ok(map_err(err));
         }
     };
+    let host_app = crate::core::app_handle::wrap(&app);
     let result = super::page::import_page(super::page::ImportPageArgs {
         vault: &vault,
         parent_dir: &args.parent_dir,
         branch: &args.branch,
         id: &args.id,
         progress: AssetProgressContext {
-            app: Some(&app),
+            app: Some(&host_app),
             task_id: args.task_id.as_deref(),
         },
         note_mode: crate::features::import::note_mode_from_app(&app),

@@ -15,7 +15,8 @@ name = "agentero-cli"
 path = "src/main.rs"
 
 [dependencies]
-agentero_lib = { path = "../src-tauri", package = "agentero", default-features = false }
+# Tauri-free domain services (catalog, vault, import, wiki, feeds, zotero, …).
+agentero-core = { path = "../crates/agentero-core" }
 clap = { version = "4", features = ["derive", "env"] }
 clap_complete = "4"
 serde = { workspace = true }

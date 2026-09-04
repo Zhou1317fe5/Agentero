@@ -1,7 +1,10 @@
 //! Domain features (feature-first layout, aligned with frontend `src/lib`).
 //!
-//! Each submodule owns its service logic and thin `commands` shells.
-//! The headless CLI may import non-agent features; BYOA (`agent`) is desktop-only.
+//! Tauri-free service bodies live in `agentero_core::features::*` and are
+//! bridged here (`pub use`) so historical `crate::features::X` paths stay
+//! stable; this crate keeps the desktop shells: `#[tauri::command]` surfaces,
+//! JobCenter runners, watcher/agent/integration wiring. The headless CLI
+//! consumes `agentero_core` directly; BYOA (`agent`) is desktop-only.
 
 #[cfg(feature = "desktop")]
 pub mod agent;

@@ -2351,7 +2351,7 @@ CLI 对照：`agentero usage which|timeline|summary|clear`（见 [cli.md](cli.md
 
 ## 3.x Headless CLI（对照）
 
-> 完整语义见 [`cli.md`](cli.md)。CLI **不**走 Tauri invoke，直接 path 依赖 `agentero_lib::services`（无 BYOA）。
+> 完整语义见 [`cli.md`](cli.md)。CLI **不**走 Tauri invoke，直接 path 依赖 `agentero_core::features`（无 BYOA、无 tauri）。
 
 | CLI | Host service / command 锚点 |
 |---|---|

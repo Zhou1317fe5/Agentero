@@ -2,11 +2,16 @@
 //!
 //! Nothing in this crate may depend on `tauri` / `wry` / `tao`; the desktop
 //! shell re-exports these modules as `agentero_lib::core::*` so both binaries
-//! share one storage/plumbing layer.
+//! share one storage/plumbing layer. [`features`] holds the tauri-free domain
+//! services (catalog, vault, import, wiki, …), re-exported by the Host as
+//! `agentero_lib::features::*`; host-side effects (event emit, job spawns)
+//! route through [`app_handle::HostHooks`].
 
+pub mod app_handle;
 pub mod background_tasks;
 pub mod blocking;
 pub mod error;
+pub mod features;
 pub mod frontmatter;
 pub mod fs;
 pub mod http;

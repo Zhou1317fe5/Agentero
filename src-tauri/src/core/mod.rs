@@ -1,11 +1,12 @@
 //! Cross-cutting foundations shared by Host features and the headless CLI.
 //!
 //! Tauri-independent foundations live in the `agentero-core` crate and are
-//! re-exported here so `crate::core::X` paths (and `agentero_lib::core::X` for
-//! the CLI) stay stable. Modules kept in this crate:
+//! re-exported here so `crate::core::X` paths stay stable (the CLI depends on
+//! `agentero-core` directly). Modules kept in this crate:
 //!
-//! - [`app_handle`]: headless `AppHandle` shim; its `not(desktop)` gate only
-//!   exists in this crate (agentero-core has no `desktop` feature).
+//! - [`app_handle`]: bridge around `agentero_core::app_handle` — on desktop it
+//!   wraps `tauri::AppHandle` into the tauri-free [`AppHandle`](app_handle::AppHandle)
+//!   via `TauriHostHooks` (event emit + JobCenter spawns).
 //! - [`telemetry`]: PostHog sender — `posthog-rs` (desktop-only optional dep)
 //!   plus `tauri::VERSION` in the payload.
 //! - [`usage::commands`]: `#[tauri::command]` surface over the tauri-free
