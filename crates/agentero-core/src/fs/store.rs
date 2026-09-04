@@ -17,7 +17,7 @@
 //! Like every original implementation, this does not `fsync`; durability is
 //! "atomic replacement", not "crash-proof persistence".
 
-use crate::core::error::AppError;
+use crate::error::AppError;
 use serde::Serialize;
 use std::fs;
 use std::io;

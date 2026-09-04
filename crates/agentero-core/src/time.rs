@@ -7,7 +7,7 @@
 //! digits) — do not sort correctly against the millisecond form because
 //! `'+' < '.' < 'Z'`.
 
-use crate::core::error::AppError;
+use crate::error::AppError;
 
 /// RFC 3339 with millisecond precision and Z suffix, e.g. `2026-08-21T10:00:00.500Z`.
 /// All persisted timestamps MUST use this format: catalog orders by string compare.

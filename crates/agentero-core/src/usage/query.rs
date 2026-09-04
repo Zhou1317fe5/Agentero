@@ -1,6 +1,6 @@
 //! Reads, clears, and path renames over the activity log.
 
-use crate::core::error::AppError;
+use crate::error::AppError;
 use rusqlite::params;
 use serde::Serialize;
 use std::path::Path;
@@ -256,7 +256,7 @@ fn row_to_event(row: &rusqlite::Row<'_>) -> Result<UsageEvent, AppError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::usage::{rec, record_events, temp_db};
+    use crate::usage::{rec, record_events, temp_db};
     use std::fs;
 
     #[test]

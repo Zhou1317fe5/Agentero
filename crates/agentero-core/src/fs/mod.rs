@@ -13,7 +13,7 @@ pub use path::{
 };
 pub use store::{atomic_write, atomic_write_with, json_store, json_store_with, AtomicOpts};
 
-use crate::core::error::AppError;
+use crate::error::AppError;
 use async_trait::async_trait;
 
 #[derive(Debug, Clone, Copy, Default)]

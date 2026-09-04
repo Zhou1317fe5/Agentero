@@ -1,4 +1,4 @@
-use crate::core::install_dirs;
+use crate::install_dirs;
 use std::path::{Path, PathBuf};
 
 /// Extra directories GUI apps often miss when launched outside a login shell.

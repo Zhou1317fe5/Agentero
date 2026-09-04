@@ -1,6 +1,6 @@
 //! Append-only event writes: normalization, facet/qty derivation, daily rollup.
 
-use crate::core::error::AppError;
+use crate::error::AppError;
 use rusqlite::params;
 use serde::Deserialize;
 use std::path::Path;
@@ -286,13 +286,13 @@ pub(super) fn normalize_rel(path: &str) -> String {
 }
 
 fn now_rfc3339() -> String {
-    crate::core::time::now_rfc3339_millis()
+    crate::time::now_rfc3339_millis()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::usage::{list_events, rec, summarize, temp_db, ListFilter};
+    use crate::usage::{list_events, rec, summarize, temp_db, ListFilter};
     use std::fs;
 
     #[test]

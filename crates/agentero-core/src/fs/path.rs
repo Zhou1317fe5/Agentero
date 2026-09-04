@@ -1,6 +1,6 @@
 //! Path safety and shared FS metadata types.
 
-use crate::core::error::AppError;
+use crate::error::AppError;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 

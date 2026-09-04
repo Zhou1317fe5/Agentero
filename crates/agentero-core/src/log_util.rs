@@ -1,6 +1,6 @@
 //! Operation start/end logging helpers (see `docs/development/logging.md`).
 
-use crate::core::error::{map_err, ApiResult, AppError};
+use crate::error::{map_err, ApiResult, AppError};
 use std::time::Instant;
 
 const TARGET: &str = "agentero::op";
@@ -149,7 +149,7 @@ pub fn trunc(s: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::error::AppError;
+    use crate::error::AppError;
 
     #[test]
     fn trunc_short_and_long() {

@@ -5,8 +5,12 @@
 //! command freezes the whole window. Heavy-IO commands therefore become
 //! `async fn` and push their blocking body onto the async runtime's blocking
 //! pool via [`run_blocking`].
+//!
+//! Tauri's async runtime is tokio-backed and every caller runs inside it, so
+//! [`tokio::task::spawn_blocking`] targets the same blocking pool the desktop
+//! shell would use — without this crate depending on tauri.
 
-use crate::core::error::{map_err, ApiResult, AppError};
+use crate::error::{map_err, ApiResult, AppError};
 use serde::Serialize;
 
 /// Execute a blocking closure on the blocking thread pool and return its
@@ -16,7 +20,7 @@ where
     T: Serialize + Send + 'static,
     F: FnOnce() -> ApiResult<T> + Send + 'static,
 {
-    match tauri::async_runtime::spawn_blocking(f).await {
+    match tokio::task::spawn_blocking(f).await {
         Ok(result) => result,
         Err(e) => map_err(AppError::message(format!("blocking task failed: {e}"))),
     }
@@ -28,10 +32,10 @@ mod tests {
 
     /// The whole point of `run_blocking`: the closure must not run on the
     /// thread that awaits it (on Windows that would be the UI message pump).
-    #[test]
-    fn run_blocking_moves_work_off_the_calling_thread() {
+    #[tokio::test]
+    async fn run_blocking_moves_work_off_the_calling_thread() {
         let caller = std::thread::current().id();
-        let result = tauri::async_runtime::block_on(run_blocking(move || {
+        let result = run_blocking(move || {
             let worker = std::thread::current();
             eprintln!(
                 "run_blocking worker thread: id={:?} name={:?} (caller id={caller:?})",
@@ -39,7 +43,8 @@ mod tests {
                 worker.name()
             );
             ApiResult::ok(worker.id() != caller)
-        }));
+        })
+        .await;
         assert!(result.ok, "blocking closure result is surfaced");
         assert_eq!(
             result.data,
@@ -48,9 +53,9 @@ mod tests {
         );
     }
 
-    #[test]
-    fn run_blocking_surfaces_panics_as_api_errors() {
-        let result: ApiResult<()> = tauri::async_runtime::block_on(run_blocking(|| panic!("boom")));
+    #[tokio::test]
+    async fn run_blocking_surfaces_panics_as_api_errors() {
+        let result: ApiResult<()> = run_blocking(|| panic!("boom")).await;
         assert!(!result.ok);
         assert!(result
             .error

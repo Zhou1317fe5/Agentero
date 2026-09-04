@@ -6,7 +6,7 @@
 //! wording grew independently per database (catalog predates the `usage ` /
 //! `feeds ` prefixes) and is preserved verbatim by [`DbMsgs`].
 
-use crate::core::error::AppError;
+use crate::error::AppError;
 use rusqlite::Connection;
 use std::path::Path;
 

@@ -2,7 +2,7 @@
 //!
 //! First shipped shape: vaults + typed events + daily rollup + reserved memories.
 
-use crate::core::error::AppError;
+use crate::error::AppError;
 use rusqlite::Connection;
 use std::fs;
 use std::path::Path;
@@ -79,14 +79,14 @@ pub fn ensure_usage_at(db_path: &Path) -> Result<Connection, AppError> {
     if let Some(parent) = db_path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let conn = crate::core::sqlite::open_standard(db_path, crate::core::sqlite::DbMsgs::USAGE)?;
+    let conn = crate::sqlite::open_standard(db_path, crate::sqlite::DbMsgs::USAGE)?;
     migrate(&conn)?;
     prune(&conn)?;
     Ok(conn)
 }
 
 pub fn schema_version(conn: &Connection) -> Result<i32, AppError> {
-    crate::core::sqlite::read_schema_version(conn, crate::core::sqlite::DbMsgs::USAGE)
+    crate::sqlite::read_schema_version(conn, crate::sqlite::DbMsgs::USAGE)
 }
 
 fn migrate(conn: &Connection) -> Result<(), AppError> {
@@ -110,7 +110,7 @@ fn migrate(conn: &Connection) -> Result<(), AppError> {
 }
 
 fn set_schema_version(conn: &Connection, version: i32) -> Result<(), AppError> {
-    crate::core::sqlite::write_schema_version(conn, version, crate::core::sqlite::DbMsgs::USAGE)
+    crate::sqlite::write_schema_version(conn, version, crate::sqlite::DbMsgs::USAGE)
 }
 
 fn prune(conn: &Connection) -> Result<(), AppError> {

@@ -2,7 +2,7 @@
 //! proxy configuration, client factories, the product User-Agent, and
 //! error-body truncation.
 
-use crate::core::error::AppError;
+use crate::error::AppError;
 use std::sync::{OnceLock, RwLock};
 use std::time::{Duration, Instant};
 

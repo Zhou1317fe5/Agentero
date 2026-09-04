@@ -19,9 +19,11 @@ Tauri 2 + Rust Host：文件系统、Catalog、索引、ACP Client、远程 Vaul
 ## 源码布局（feature-first）
 
 ```text
+crates/agentero-core/src/   # tauri 无关基座（agentero-core crate）
+  error、fs、http、paths、log_util、sqlite、time、blocking、usage（存储层）…
 src-tauri/src/
   app/           # run()、menu、logging、command 注册
-  core/          # error、fs、paths、log_util
+  core/          # 桥接层：re-export agentero-core；留守 app_handle、telemetry、usage::commands（tauri 耦合）
   features/      # 与前端 lib 域对齐
     vault/      # 创建、树、trash、watcher、rename、doctor 聚合
     paper/      # catalog、import、discovery、refs、paper move
@@ -30,7 +32,7 @@ src-tauri/src/
     system/     # settings
     layout/     # model_assets、hosted providers
     agent/ jobs/ background_tasks/ translate/
-  core/usage/    # XDG usage.sqlite 本地活动日志
+  core/usage/    # usage.sqlite Tauri commands（存储层在 agentero-core）
   lib.rs
   main.rs
 ```

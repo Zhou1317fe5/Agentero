@@ -22,5 +22,5 @@
 
 ## 代码
 
-`src-tauri/src/integration/remote/`（handle 解析：`src-tauri/src/core/remote.rs`）  
+`src-tauri/src/integration/remote/`（handle 解析：`crates/agentero-core/src/remote.rs`）  
 教程：[../usage/remote-vault.md](../usage/remote-vault.md)

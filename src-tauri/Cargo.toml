@@ -53,6 +53,9 @@ tokio = { workspace = true, features = ["test-util", "macros"] }
 tempfile = { workspace = true }
 
 [dependencies]
+# Tauri-independent foundations (errors, fs, http, paths, sqlite, usage log),
+# re-exported as `crate::core::*`. Must stay free of tauri/wry/tao.
+agentero-core = { path = "../crates/agentero-core" }
 tauri = { version = "2", features = [], optional = true }
 tauri-plugin-opener = { version = "2", optional = true }
 serde = { workspace = true }
