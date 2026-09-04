@@ -44,6 +44,34 @@ const EASY_SCHOLAR_FIELD_NAMES: Record<string, string> = {
 const EASY_SCHOLAR_IF_COLOR: TagColorId = "green";
 const EASY_SCHOLAR_OTHER_COLOR: TagColorId = "blue";
 
+/** Common CCF-A / top-tier venues: long publication titles → short abbreviations. */
+const PUBLICATION_ABBREVIATIONS: [RegExp, string][] = [
+	[/computer vision and pattern recognition/i, "CVPR"],
+	[/international conference on computer vision/i, "ICCV"],
+	[/european conference on computer vision/i, "ECCV"],
+	[/international conference on machine learning/i, "ICML"],
+	[/neural information processing systems/i, "NIPS"],
+	[/international conference on learning representations/i, "ICLR"],
+	[/aaai conference on artificial intelligence/i, "AAAI"],
+	[/international joint conference on artificial intelligence/i, "IJCAI"],
+	[/sigkdd.*knowledge discovery/i, "KDD"],
+	[/sigir.*research and development/i, "SIGIR"],
+	[/pattern analysis and machine intelligence/i, "TPAMI"],
+	[/international journal of computer vision/i, "IJCV"],
+	[/journal of machine learning research/i, "JMLR"],
+	[/ieee transactions on image processing/i, "TIP"],
+	[/ieee transactions on multimedia/i, "TMM"],
+	[/ieee transactions on knowledge and data engineering/i, "TKDE"],
+];
+
+function abbreviatePublicationTitle(title: string): string {
+	const t = title.trim();
+	for (const [pattern, abbr] of PUBLICATION_ABBREVIATIONS) {
+		if (pattern.test(t)) return abbr;
+	}
+	return t;
+}
+
 function tagValue(value: unknown): string {
 	return String(value ?? "")
 		.replace(/[\r\n]+/g, " ")
@@ -65,7 +93,7 @@ export function buildEasyScholarTags(
 	data: EasyScholarRankData,
 ): PaperTagInput[] {
 	const tags: PaperTagInput[] = [];
-	const title = tagValue(publicationTitle);
+	const title = abbreviatePublicationTitle(tagValue(publicationTitle));
 	if (title) {
 		tags.push({
 			name: `${EASY_SCHOLAR_TAG_PREFIX}journal=${title}`,
