@@ -36,7 +36,7 @@ PDFium engine 由窗口共享。默认优先 **worker 引擎**（PDFium WASM 跑
 
 ## 划词菜单
 
-选区后：高亮 / 批注 / 提问 / 加入对话 / 翻译。
+选区后：高亮 / 批注 / 提问 / 加入对话 / 翻译。Settings → 翻译开启「划词自动翻译」后，选区文本提取完成即自动启动翻译并打开结果卡；关闭时保留手动翻译入口。
 
 **远程 PDF**（`agentero:arxiv:*`，如 arXiv Daily 预览）：无本地 sidecar。划词菜单只保留 **复制 / 提问 / 加入对话**（Ask 内存 ephemeral，关 tab 即丢，不写 `marks/`）；高亮 / 批注 / 翻译隐藏。底栏显示 Remote mode 徽标（`SiArxiv`，与 Info 面板同色）。引用 hover 可从 PDF dest key 生成只读条目，导入按钮走整篇入库。
 

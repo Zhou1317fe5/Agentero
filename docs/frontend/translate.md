@@ -7,7 +7,7 @@
 Settings → **翻译**：
 
 - **默认服务** 下拉：免费 MT 与 Agent 始终可选；商用仅列出已配置者。打开下拉时对免费 MT 与已配置商用并行 probe。
-- 目标语言、划词自动翻译。
+- 目标语言、划词自动翻译；开启后，PDF 选区文本提取完成即自动启动翻译并打开结果卡，关闭时仍可从选区菜单手动翻译。
 - **商用 API** 卡片仅填写 key / endpoint / region / model；点「确定」后：
   - 将 API key 写入 Host `settings.json`（Unix 权限 `0600`）；WebView 只保留同长度 `*` 掩码，不再回显明文。
   - Host `settings_get` / `settings:changed` 对 key 按字符 redact 为 `*`；`settings_set` 收到纯 `*` 串时保留原密钥。

@@ -105,7 +105,7 @@ import { ActiveCardScrollSync } from "@/components/viewer/pdf/viewport/active-ca
 import { DockviewViewport } from "@/components/viewer/pdf/viewport/dockview-viewport";
 import { PanDragHandler } from "@/components/viewer/pdf/viewport/pan-handler";
 import { WheelZoomHandler } from "@/components/viewer/pdf/viewport/wheel-zoom-handler";
-import { useLibraryStore } from "@/hooks/use-app-stores";
+import { useLibraryStore, useSettings } from "@/hooks/use-app-stores";
 import { copyTextToClipboard } from "@/lib/core/clipboard";
 import { errorText } from "@/lib/core/error";
 import { notifyError } from "@/lib/core/notify";
@@ -367,6 +367,9 @@ function PdfViewerInner({
 
 	// Catalog title + link for the ask card's external "open in chat" query.
 	const paperMetaByRelPath = useLibraryStore((s) => s.paperMetaByRelPath);
+	const autoTranslateSelection = useSettings(
+		(s) => s.translate.autoTranslateSelection,
+	);
 	const paperMeta = useMemo(() => {
 		if (paperMetaProp) return paperMetaProp;
 		if (!paperRelPath) return undefined;
@@ -957,6 +960,14 @@ function PdfViewerInner({
 		paperRelPath,
 		paperAbsPath,
 	});
+
+	// When enabled, translate as soon as text extraction has produced a usable
+	// selection anchor. Keep the setting subscription narrow so unrelated
+	// settings changes do not re-render the PDF viewer.
+	useEffect(() => {
+		if (!autoTranslateSelection || !selectionMenu?.anchor.quote?.trim()) return;
+		handleMenuTranslate();
+	}, [autoTranslateSelection, selectionMenu, handleMenuTranslate]);
 
 	// ---- In-PDF highlight selection menu ----
 
