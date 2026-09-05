@@ -484,6 +484,11 @@ export function startJobProgressListener(): void {
 	}
 }
 
+export function stopJobProgressListener(): void {
+	progressSubscription?.();
+	progressSubscription = null;
+}
+
 function handleJobProgress(payload: JobProgressEvent): void {
 	const id = payload.taskId;
 	const task = getBackgroundTasksSnapshot().tasks.find((t) => t.id === id);

@@ -41,6 +41,7 @@ import {
 	startJobProgressListener,
 	startJobTaskProjection,
 	stopJobCenterExecutorListener,
+	stopJobProgressListener,
 	stopJobTaskProjection,
 } from "@/lib/core/job-center";
 import { logger } from "@/lib/core/logger";
@@ -431,5 +432,6 @@ export function startTaskRuntime(): () => void {
 	return () => {
 		stopJobCenterExecutorListener();
 		stopJobTaskProjection();
+		stopJobProgressListener();
 	};
 }
