@@ -3,20 +3,20 @@
 //! `refs` keeps its desktop command/job shell here; the tauri-free body lives
 //! in `agentero_core`. `parse` (liteparse worker + engine framework) is fully
 //! migrated; the desktop cloud engines register into the core engine registry
-//! from [`remote_engines`].
+//! from [`body_engines`].
 
 pub mod refs;
 
 #[cfg(feature = "desktop")]
 pub mod layout;
 
-// `remote_engines` dispatches through the target-gated `parse` re-export
+// `body_engines` dispatches through the target-gated `parse` re-export
 // below, so the desktop GUI gate alone is not enough on mobile targets.
 #[cfg(all(
     feature = "desktop",
     not(any(target_os = "ios", target_os = "android"))
 ))]
-pub mod remote_engines;
+pub mod body_engines;
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub use agentero_core::features::paper::analyze::parse;

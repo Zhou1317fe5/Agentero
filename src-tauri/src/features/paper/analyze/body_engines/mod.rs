@@ -1,11 +1,27 @@
 //! Desktop cloud body-parse engines (MinerU / Paddle / OpenAI-compatible VLM).
 //!
-//! These engines share the layout provider credential pool
-//! (`features::layout::hosted`), so they stay in the Host crate; the tauri-free
-//! engine framework (trait, snapshot, dispatch, local liteparse engine) lives
-//! in `agentero_core::features::paper::analyze::parse::engines`. Registration
-//! happens inside [`refresh_parser_config`], which runs at startup and on
-//! every settings change, so the registry is populated before the first parse.
+//! These implement agentero-core's [`engines::BodyParseEngine`] trait and produce the
+//! markdown written to PAPER.md. They register into the core dynamic engine
+//! registry via [`register_body_engines`], called from [`refresh_parser_config`]
+//! at startup and on every settings change.
+//!
+//! # Relationship to `layout::hosted`
+//!
+//! The MinerU and Paddle engines here are thin markdown-extraction layers over
+//! the cloud job runners in [`crate::features::layout::hosted`] (upload →
+//! poll → zip/JSONL). Sharing those runners avoids duplicating the HTTP
+//! orchestration; the same cloud job is run once and consumed differently
+//! (zip → `full.md` here; zip → `content_list.json` boxes there).
+//! `openai_vlm` is self-contained and does not touch `layout::hosted`.
+//!
+//! Both trees draw credentials from the single `layout.providerConfigs`
+//! settings pool via the `layout_*` accessors — the naming is historical, the
+//! sharing is intentional. `openaiCompatible` is deliberately split:
+//! `layout::hosted` holds a probe-only stub (connectivity check for the
+//! settings UI), while the full VLM OCR engine lives here.
+//!
+//! The tauri-free engine framework (trait, snapshot, dispatch, local liteparse
+//! engine) lives in `agentero_core::features::paper::analyze::parse::engines`.
 
 mod mineru;
 mod openai_vlm;
@@ -18,7 +34,7 @@ use std::sync::Arc;
 
 /// Register the cloud engines and the settings-backed provider resolver with
 /// the core engine registry. Idempotent (replaces existing entries).
-pub fn register_remote_engines() {
+pub fn register_body_engines() {
     engines::register_engine("mineru", || Arc::new(mineru::MineruBodyEngine));
     engines::register_engine("paddle", || Arc::new(paddle::PaddleBodyEngine));
     engines::register_engine("openaicompatible", || {
@@ -30,7 +46,7 @@ pub fn register_remote_engines() {
 /// Rebuild the snapshot from the settings store; plaintext keys never leave
 /// the Host process.
 pub fn refresh_parser_config(store: &AppSettingsStore) {
-    register_remote_engines();
+    register_body_engines();
     let mut credentials = HashMap::new();
     for provider in ["paddle", "mineru", "openaiCompatible"] {
         credentials.insert(
@@ -59,7 +75,7 @@ mod tests {
 
     #[test]
     fn engine_registry_resolves_backends() {
-        register_remote_engines();
+        register_body_engines();
         assert_eq!(engine_for("local").id(), "local");
         assert_eq!(engine_for("mineru").id(), "mineru");
         assert_eq!(engine_for("paddle").id(), "paddle");
@@ -70,7 +86,7 @@ mod tests {
 
     #[test]
     fn provider_lookup_matches_settings_keys() {
-        register_remote_engines();
+        register_body_engines();
         assert_eq!(provider_for_backend("mineru"), Some("mineru"));
         assert_eq!(
             provider_for_backend("openaiCompatible"),
@@ -86,7 +102,7 @@ mod tests {
     /// test reads `PARSER_CONFIG`.
     #[tokio::test]
     async fn cloud_failure_falls_back_to_local_with_reason() {
-        register_remote_engines();
+        register_body_engines();
         configure_parser(ParserEngineConfig {
             backend: "mineru".to_string(),
             credentials: HashMap::from([("mineru".to_string(), EngineCredentials::default())]),

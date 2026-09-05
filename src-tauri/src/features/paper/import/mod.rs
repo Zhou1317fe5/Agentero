@@ -28,7 +28,7 @@ pub use remote_ops::RemoteImportOps;
     feature = "desktop",
     not(any(target_os = "ios", target_os = "android"))
 ))]
-pub use crate::features::paper::analyze::remote_engines::refresh_parser_config;
+pub use crate::features::paper::analyze::body_engines::refresh_parser_config;
 
 /// Resolve the configured NOTES shell mode from the managed settings store.
 #[cfg(feature = "desktop")]

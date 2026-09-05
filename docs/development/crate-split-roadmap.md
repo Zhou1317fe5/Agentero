@@ -47,7 +47,7 @@ Host 侧桥接策略：原目录留 `mod.rs` 薄壳（`pub use agentero_core::�
 
 desktop 在 `src-tauri/src/core/app_handle.rs` 用 `TauriHostHooks(tauri::AppHandle)` 实现，`wrap(&app)` 生成 core `AppHandle`；命令壳/JobCenter/Connector/MCP/Remote 在调用迁移后的服务时包一层。headless（CLI）传 `None` → 全部 no-op，与迁移前 `cfg(not(desktop))` 行为一致（refs 的 tokio 直跑 fallback 保留）。
 
-parse 引擎同理：远端引擎（MinerU/Paddle/OpenAI-compatible，依赖 `layout::hosted` 与设置库）留守 `features/paper/analyze/remote_engines/`，经 core 的 `register_engine` / `set_provider_resolver` 注册表接入 `engine_for` 派发；注册发生在 `refresh_parser_config`（启动 + settings 变更时）。
+parse 引擎同理：远端引擎（MinerU/Paddle/OpenAI-compatible，依赖 `layout::hosted` 与设置库）留守 `features/paper/analyze/body_engines/`，经 core 的 `register_engine` / `set_provider_resolver` 注册表接入 `engine_for` 派发；注册发生在 `refresh_parser_config`（启动 + settings 变更时）。
 
 ## 留守域及耦合原因
 
@@ -58,7 +58,7 @@ parse 引擎同理：远端引擎（MinerU/Paddle/OpenAI-compatible，依赖 `la
 | `features/vault/watcher`、`markdown/search`、`pdf/export`、`system/settings`、`paper::catalog::commands`（paper_move） | notify/AppHandle/tauri command/settings store |
 | `features/paper/import`：`commands`、`job_runners`、`remote_ops`、`recognize/{chain_resolve,pdf_recognize,apply}` | tauri command/State、JobCenter、AppHandle 事件 |
 | `features/paper/zotero`：`db`、`commands`、`sync/` | `tauri::AppHandle`（jobs spawn）、Channel IPC |
-| `features/paper/analyze/layout`（hosted/model_assets）、`remote_engines` | settings store 凭据、模型资产下载任务、tauri command |
+| `features/paper/analyze/layout`（hosted/model_assets）、`body_engines` | settings store 凭据、模型资产下载任务、tauri command |
 | `features/paper/discovery`：`coolpapers`、`recommend`、`proxy/{mod,arxiv,modelscope}` | tauri command / `tauri::http` 站点代理 |
 | `markdown/wiki`：`commands`、`heading_rename` | tauri State（`WikiIndexState` manage）、watcher 协同 |
 | `features/lifecycle` desktop 部分 | `job:completed/failed` 依赖 JobSnapshot |

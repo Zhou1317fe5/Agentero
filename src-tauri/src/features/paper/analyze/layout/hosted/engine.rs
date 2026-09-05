@@ -5,6 +5,8 @@
 //! (`src/lib/pdf/layout/{settings,providers}.ts`). Providers that also (or
 //! only) parse PAPER.md bodies register a second engine in
 //! `paper::analyze::parse::engines` (`PARSER_PROVIDERS` on the TS side).
+//! The body-parse counterparts live in [`crate::features::paper::analyze::body_engines`];
+//! they reuse this module's cloud job runners and share the `layout.providerConfigs` credential pool.
 
 use std::sync::Arc;
 
