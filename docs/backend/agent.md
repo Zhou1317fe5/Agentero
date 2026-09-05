@@ -5,6 +5,7 @@ Agentero 作为 **ACP Client**，stdio JSON-RPC 连接用户本机或远端 Agen
 ## 协议与运行时
 
 - Crate：`agent-client-protocol`（及 Codex 的 npm ACP 适配器进程）。
+- ACP `initialize` 最多等待 30 秒，覆盖 BYOA 冷启动；其余 session RPC 保持 15 秒预算。
 - 会话 `cwd` = 当前 Vault 根（远程则为远端 Vault 根）。
 - 本地 Pi / 自定义 Agent 会先经 shell 切到 Vault；Windows 仅在传给 `cmd.exe` 时将
   `\\?\D:\...` 形式的本地盘符路径还原为 `D:\...`，避免 CMD 将其误判为 UNC（#458）。
@@ -73,13 +74,17 @@ spawn 用户配置的 agent
 ACP `terminal` 能力：Host 在 initialize 时声明 `terminal: true`，并本地实现
 `terminal/create`、`terminal/output`、`terminal/release`、`terminal/wait_for_exit`、
 `terminal/kill`。每个 ACP 连接持有独立的 `AcpTerminalManager`，按 `TerminalId`
-管理子进程；输出按 `outputByteLimit` 从头部截断并保证 UTF-8 字符边界。该能力
+管理子进程；每个 terminal 由单独任务独占 `Child`，`wait_for_exit` 不占 manager
+锁，`kill` / `release` 通过控制通道保持可用。`terminal/output` 只快照当前缓冲区，
+不会等待进程退出；输出按 `outputByteLimit` 从头部截断并保证 UTF-8 字符边界。该能力
 让 Kimi Code 等需要执行 shell 命令的 Agent 可以在 Vault 工作目录下运行命令并
 读取结果。
 
-Kimi Code ACP 会把 `Bash`/`Glob`/`Grep` 等工具实现为 `terminal/create`：它发送
-`/bin/bash -c "cd '<cwd>' && <cmd>"`，Host 按收到的 `cwd` 直接 spawn 该 bash
-进程即可。若 Host 没有声明 `terminal` 能力，或 Kimi Code 版本过旧，这些工具会
+Kimi Code ACP 会把 `Bash`/`Glob`/`Grep` 等工具实现为 `terminal/create`。[当前实现](https://github.com/MoonshotAI/kimi-cli/blob/main/src/kimi_cli/acp/tools.py)
+会把完整 shell 文本放进 `command`；Host 对可解析的可执行文件继续按 `command + args`
+直接 spawn，对无法解析且没有 `args` 的命令在 Windows 用 PowerShell、Unix 用
+`/bin/sh -c` 执行，以兼容 `pwd`、`echo ...` 等 shell 命令；请求没有显式 `cwd`
+时使用当前 ACP session 的 Vault cwd。若 Host 没有声明 `terminal` 能力，或 Kimi Code 版本过旧，这些工具会
 直接失败并报 `ACP runtime only supports interactive Bash tool processes`。
 此外 Kimi Code 的权限请求目前只返回通用 `"bash"` 字符串（[MoonshotAI/kimi-code#800](https://github.com/MoonshotAI/kimi-code/issues/800)），不会给出具体命令，因此 Agentero 默认的 Restricted 策略会拒绝、Ask 模式也只能看到 `bash`，需要用户在 Kimi 侧或 Agentero 侧开启自动批准（YOLO）才能静默执行。
 
