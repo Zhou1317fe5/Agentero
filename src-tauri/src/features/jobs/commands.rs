@@ -308,6 +308,95 @@ pub async fn job_download_assets_enqueue(
     Ok(ApiResult::ok(start_or_hold(&app, &center, snapshot).await))
 }
 
+#[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct JobImportEnqueueArgs {
+    pub vault_path: String,
+    /// Vault-relative destination folder (`parentDir`); imports have no paper
+    /// dir yet, so this is not validated against the catalog.
+    #[serde(default)]
+    pub path: Option<String>,
+    #[serde(default)]
+    pub lane: Option<JobLane>,
+    #[serde(default)]
+    pub force: bool,
+    /// Mode + source identifiers; participates in the dedupe fingerprint.
+    #[specta(type = Option<crate::core::json::Json>)]
+    #[serde(default)]
+    pub params: Option<serde_json::Value>,
+}
+
+/// Enqueue a renderer-orchestrated import (magic wand / local PDF / plaza /
+/// papers.cool). Only the vault is resolved — the paper folder does not exist
+/// yet — and the frontend executor drives the multi-command orchestration.
+#[tauri::command]
+#[specta::specta]
+pub async fn job_import_enqueue(
+    app: tauri::AppHandle,
+    center: State<'_, JobCenter>,
+    args: JobImportEnqueueArgs,
+) -> Result<ApiResult<JobSnapshot>, String> {
+    let vault = match crate::core::fs::resolve_vault(&args.vault_path) {
+        Ok(vault) => vault,
+        Err(e) => return Ok(map_err(e)),
+    };
+    let snapshot = center
+        .enqueue_import(
+            &vault,
+            args.path.unwrap_or_default(),
+            parse_lane(args.lane),
+            args.force,
+            args.params,
+        )
+        .await;
+    Ok(ApiResult::ok(start_or_hold(&app, &center, snapshot).await))
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct JobConnectorSyncEnqueueArgs {
+    pub vault_path: String,
+    /// Vault-relative paper folder the attachment lands in. Not validated
+    /// against the catalog: the Connector commits the paper and starts the
+    /// attachment save in the same request, so the row may not be visible yet.
+    #[serde(default)]
+    pub path: Option<String>,
+    #[serde(default)]
+    pub lane: Option<JobLane>,
+    #[serde(default)]
+    pub force: bool,
+    /// `connector:progress` key + title; participates in the dedupe fingerprint.
+    #[specta(type = Option<crate::core::json::Json>)]
+    #[serde(default)]
+    pub params: Option<serde_json::Value>,
+}
+
+/// Enqueue a Zotero Connector attachment save. The Host writes the attachment
+/// and streams `connector:progress`; the renderer relays that stream into this
+/// job so the task panel row comes from the JobCenter projection.
+#[tauri::command]
+#[specta::specta]
+pub async fn job_connector_sync_enqueue(
+    app: tauri::AppHandle,
+    center: State<'_, JobCenter>,
+    args: JobConnectorSyncEnqueueArgs,
+) -> Result<ApiResult<JobSnapshot>, String> {
+    let vault = match crate::core::fs::resolve_vault(&args.vault_path) {
+        Ok(vault) => vault,
+        Err(e) => return Ok(map_err(e)),
+    };
+    let snapshot = center
+        .enqueue_connector_sync(
+            &vault,
+            args.path.unwrap_or_default(),
+            parse_lane(args.lane),
+            args.force,
+            args.params,
+        )
+        .await;
+    Ok(ApiResult::ok(start_or_hold(&app, &center, snapshot).await))
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn job_focus_paper(

@@ -168,14 +168,64 @@ const PROJECTED_JOB_KINDS: Partial<Record<JobKind, BackgroundTaskKind>> = {
 	parseBody: "pdfParse",
 	downloadAssets: "download",
 	recognizeMetadata: "recognize",
+	import: "import",
+	connectorSync: "connector",
 };
 
-function projectedTaskKind(kind: JobKind): BackgroundTaskKind | null {
-	return PROJECTED_JOB_KINDS[kind] ?? null;
+/**
+ * Import flows keep the icon their legacy row had (`lookup` for the magic wand
+ * and 广场, `parse` for Cool Papers notes).
+ */
+function importTaskKind(params: unknown): BackgroundTaskKind {
+	switch (jobParams(params).mode) {
+		case "lookup":
+		case "plaza":
+			return "lookup";
+		case "coolNotes":
+			return "parse";
+		default:
+			return "import";
+	}
 }
 
-function jobPanelTitle(kind: JobKind): string {
-	switch (kind) {
+function projectedTaskKind(job: JobChangedSnapshot): BackgroundTaskKind | null {
+	if (job.kind === "import") return importTaskKind(job.params);
+	return PROJECTED_JOB_KINDS[job.kind] ?? null;
+}
+
+/** Scheduler-owned phase words carry no user-facing status. */
+const LIFECYCLE_PHASES: ReadonlySet<string> = new Set([
+	"queued",
+	"running",
+	"completed",
+	"failed",
+	"cancelled",
+	"dependency failed",
+]);
+
+/**
+ * The job's status text: executors report their localized phase (the legacy
+ * `setDetail`), which the row shows while running and keeps once settled.
+ */
+function statusDetail(job: JobChangedSnapshot): string | undefined {
+	const phase = job.phase?.trim();
+	if (!phase || LIFECYCLE_PHASES.has(phase)) return undefined;
+	return phase;
+}
+
+/** Absent / zero progress stays indeterminate so the ring keeps spinning. */
+function panelProgress(job: JobChangedSnapshot): number | null {
+	return typeof job.progress === "number" && job.progress > 0
+		? job.progress
+		: null;
+}
+
+function jobPanelTitle(job: JobChangedSnapshot): string {
+	switch (job.kind) {
+		case "import":
+			return importPanelTitle(job.params);
+		case "connectorSync":
+			return connectorPanelTitle(job.params);
 		case "parseRefs":
 			return i18n.t("app:tasks.parseRefs");
 		case "parseBody":
@@ -187,6 +237,72 @@ function jobPanelTitle(kind: JobKind): string {
 		default:
 			return i18n.t("app:tasks.layoutAnalysis");
 	}
+}
+
+/**
+ * Renderer-executed jobs carry their panel identity in `params`: imports their
+ * flow (`mode`) plus source identifiers, Connector saves the progress key and
+ * the paper title.
+ */
+type JobParams = {
+	mode?: string;
+	text?: string;
+	title?: string;
+	id?: string;
+	detail?: string;
+	entries?: Array<{ filePath?: string }>;
+};
+
+function jobParams(params: unknown): JobParams {
+	return (params && typeof params === "object" ? params : {}) as JobParams;
+}
+
+function importPanelTitle(params: unknown): string {
+	switch (jobParams(params).mode) {
+		case "skill":
+			return i18n.t("sidebar:lookup.skillImportTask");
+		case "localPdf":
+			return i18n.t("app:tasks.importPdf");
+		case "plaza":
+			return i18n.t("app:plazaImport.taskTitle");
+		case "coolNotes":
+			return i18n.t("app:coolPapers.fetchTask");
+		default:
+			return i18n.t("app:tasks.lookupImport");
+	}
+}
+
+function importPanelDetail(job: JobChangedSnapshot): string | undefined {
+	const p = jobParams(job.params);
+	switch (p.mode) {
+		case "lookup":
+			return p.text?.slice(0, 80) || undefined;
+		case "plaza":
+			return (p.title?.trim() || p.id || "").slice(0, 80) || undefined;
+		case "coolNotes":
+			return (p.title?.trim() || job.paperPath || "").slice(0, 80) || undefined;
+		case "localPdf": {
+			const first = p.entries?.[0]?.filePath?.split(/[\\/]/).pop();
+			const extra = (p.entries?.length ?? 0) - 1;
+			if (!first) return undefined;
+			return extra > 0 ? `${first} +${extra}` : first;
+		}
+		default:
+			return undefined;
+	}
+}
+
+/** Connector rows are titled after the paper the attachment belongs to. */
+function connectorPanelTitle(params: unknown): string {
+	return jobParams(params).title?.trim() || i18n.t("app:tasks.connector");
+}
+
+function jobPanelDetail(job: JobChangedSnapshot): string | undefined {
+	if (job.kind === "import") return importPanelDetail(job);
+	if (job.kind === "connectorSync") {
+		return jobParams(job.params).detail?.slice(0, 80) || undefined;
+	}
+	return job.paperPath ?? undefined;
 }
 
 let projectionSubscription: (() => void) | null = null;
@@ -230,10 +346,12 @@ export function stopJobTaskProjection(): void {
 }
 
 export function projectJobToBackgroundTask(job: JobChangedSnapshot): void {
-	const taskKind = projectedTaskKind(job.kind);
+	const taskKind = projectedTaskKind(job);
 	if (!taskKind) return;
-	const title = jobPanelTitle(job.kind);
-	const detail = job.paperPath ?? undefined;
+	const title = jobPanelTitle(job);
+	const detail = jobPanelDetail(job);
+	const status = statusDetail(job);
+	const progress = panelProgress(job);
 	switch (job.state) {
 		case "queued":
 		case "running": {
@@ -252,15 +370,18 @@ export function projectJobToBackgroundTask(job: JobChangedSnapshot): void {
 				title,
 				detail,
 				running: job.state === "running",
-				progress: typeof job.progress === "number" ? job.progress : null,
+				progress,
 			});
 			wireJobCancellation(job.id);
 			updateBackgroundTask(
 				job.id,
 				{
 					status: job.state === "running" ? "running" : "queued",
-					progress: typeof job.progress === "number" ? job.progress : null,
-					...(job.phase ? { detail: job.phase } : {}),
+					// Byte progress (`background-task:progress`) owns the bar for
+					// download/import rows, so an absent job progress must not
+					// reset it to indeterminate.
+					...(progress === null ? {} : { progress }),
+					...(status ? { detail: status } : {}),
 				},
 				{ absoluteProgress: true },
 			);
@@ -268,7 +389,7 @@ export function projectJobToBackgroundTask(job: JobChangedSnapshot): void {
 		}
 		case "succeeded":
 		case "skipped":
-			completeBackgroundTask(job.id, detail);
+			completeBackgroundTask(job.id, status ?? detail);
 			releaseJobCancellation(job.id);
 			return;
 		case "failed":

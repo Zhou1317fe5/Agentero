@@ -352,6 +352,15 @@ function throwIfTaskCancelled(id: string, signal: AbortSignal): void {
 let globalProgressUnlisten: UnlistenFn | null = null;
 let globalProgressAttachPromise: Promise<void> | null = null;
 
+/**
+ * Attach the progress listener without enqueuing a legacy task: Host runners
+ * and renderer executors report byte/batch progress under their JobCenter job
+ * id, and the projected panel rows consume it.
+ */
+export function startBackgroundTaskProgressListener(): void {
+	ensureGlobalProgressListener();
+}
+
 function ensureGlobalProgressListener(): void {
 	if (!isTauri() || globalProgressUnlisten || globalProgressAttachPromise) {
 		return;

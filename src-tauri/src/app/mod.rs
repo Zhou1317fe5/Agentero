@@ -104,6 +104,7 @@ pub fn run() {
 
     let settings_store = AppSettingsStore::load();
     let layout_backend = settings_store.layout_backend();
+    let import_concurrency = settings_store.batch_import_concurrency();
     builder = builder
         .manage(settings_store)
         .manage(AgentRegistry::load())
@@ -114,9 +115,10 @@ pub fn run() {
         .manage(crate::features::agent::AskUserGate::new())
         .manage(crate::integration::bridge::BridgeController::new())
         .manage(crate::integration::bridge::BridgeClientController::new())
-        .manage(crate::features::jobs::JobCenter::with_layout_backend(
-            &layout_backend,
-        ))
+        .manage(
+            crate::features::jobs::JobCenter::with_layout_backend(&layout_backend)
+                .with_import_concurrency(import_concurrency),
+        )
         .manage(crate::features::paper::catalog::CapsCache::new())
         .manage(WikiIndexState::new())
         .manage(crate::features::vault::doctor::DoctorDirtyPathsState::default())
@@ -276,9 +278,11 @@ pub fn run() {
                         .inner()
                         .clone();
                     let backend = s.layout.backend.clone();
+                    let import_cap = s.batch_import_concurrency.max(1) as usize;
                     let app = handle.clone();
                     tauri::async_runtime::spawn(async move {
                         center.apply_layout_backend(&backend).await;
+                        center.apply_import_concurrency(import_cap).await;
                         center.drain_and_spawn(&app).await;
                     });
                 });

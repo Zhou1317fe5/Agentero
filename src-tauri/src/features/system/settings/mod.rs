@@ -537,6 +537,15 @@ impl AppSettingsStore {
             .unwrap_or_else(default_layout_backend)
     }
 
+    /// Magic-wand / import parallelism, seeded into the JobCenter `Import` cap.
+    pub fn batch_import_concurrency(&self) -> usize {
+        self.inner
+            .lock()
+            .ok()
+            .map(|guard| guard.batch_import_concurrency.max(1) as usize)
+            .unwrap_or_else(|| default_batch_import_concurrency() as usize)
+    }
+
     /// PAPER.md body-parse engine backend (`local` when unset).
     pub fn parser_backend(&self) -> String {
         self.inner

@@ -16,6 +16,11 @@ import { startTaskRuntime } from "@/lib/core/tasks";
 import { isTauri } from "@/lib/core/tauri";
 import { initLifecycleBridge, lifecycle } from "@/lib/lifecycle";
 import { registerLifecycleHandlers } from "@/lib/lifecycle/register";
+import {
+	registerConnectorTaskExecutor,
+	startConnectorProgressRelay,
+} from "@/lib/paper/import/connector-tasks";
+import { registerImportTaskExecutor } from "@/lib/paper/import/import-tasks";
 import { startJobCompletionRefresh } from "@/lib/paper/job-refresh";
 import { refreshLibrary } from "@/lib/paper/library-store";
 import { registerLayoutTaskExecutor } from "@/lib/pdf/layout/enqueue-paper-layout";
@@ -106,10 +111,14 @@ export function useAppBootstrap(): void {
 	useEffect(() => {
 		if (!isTauri()) return;
 		registerLayoutTaskExecutor();
+		registerImportTaskExecutor();
+		registerConnectorTaskExecutor();
 		const disposeRuntime = startTaskRuntime();
+		const disposeConnector = startConnectorProgressRelay();
 		const disposeRefresh = startJobCompletionRefresh();
 		return () => {
 			disposeRuntime();
+			disposeConnector();
 			disposeRefresh();
 		};
 	}, []);

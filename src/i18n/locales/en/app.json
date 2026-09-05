@@ -223,6 +223,7 @@
 		"clearFinished": "Clear finished",
 		"cancel": "Cancel",
 		"cancelled": "Cancelled",
+		"failed": "Task failed",
 		"empty": "No tasks",
 		"idle": "Done",
 		"activeCount": "{{count}} running",

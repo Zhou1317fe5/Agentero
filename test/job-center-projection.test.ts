@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { backgroundTasksStore } from "@/lib/core/background-tasks";
+import {
+	backgroundTasksStore,
+	updateBackgroundTask,
+} from "@/lib/core/background-tasks";
 import {
 	type JobChangedSnapshot,
 	projectJobToBackgroundTask,
@@ -137,6 +140,46 @@ function layoutJob(
 	};
 }
 
+function importJob(
+	overrides: Partial<JobChangedSnapshot> = {},
+): JobChangedSnapshot {
+	return {
+		id: "job-import-1",
+		kind: "import",
+		state: "running",
+		vaultPath: "/vault",
+		paperPath: "papers",
+		progress: null,
+		phase: null,
+		params: { mode: "lookup", text: "https://arxiv.org/abs/1706.03762" },
+		...overrides,
+	};
+}
+
+function connectorJob(
+	overrides: Partial<JobChangedSnapshot> = {},
+): JobChangedSnapshot {
+	return {
+		id: "job-connector-1",
+		kind: "connectorSync",
+		state: "running",
+		vaultPath: "/vault",
+		paperPath: "papers/a",
+		progress: null,
+		phase: null,
+		params: {
+			key: "session-1:papers/a",
+			title: "Attention Is All You Need",
+			detail: "Saving browser PDF",
+		},
+		...overrides,
+	};
+}
+
+function task(id: string) {
+	return backgroundTasksStore.getState().tasks.find((item) => item.id === id);
+}
+
 describe("job task projection", () => {
 	afterEach(async () => {
 		stopJobTaskProjection();
@@ -251,5 +294,123 @@ describe("job task projection", () => {
 		await flush();
 		await flush();
 		expect(mocks.bindingFor("jobChanged").listeners).toHaveLength(0);
+	});
+
+	it("projects an import job from its params and keeps the reported status text", () => {
+		projectJobToBackgroundTask(importJob({ state: "queued", phase: "queued" }));
+		expect(task("job-import-1")?.kind).toBe("lookup");
+		expect(task("job-import-1")?.title).toBe("Add paper");
+		expect(task("job-import-1")?.detail).toBe(
+			"https://arxiv.org/abs/1706.03762",
+		);
+		expect(task("job-import-1")?.status).toBe("queued");
+		// No numeric progress yet → the ring stays indeterminate.
+		expect(task("job-import-1")?.progress).toBeNull();
+
+		projectJobToBackgroundTask(
+			importJob({ phase: "Fetching metadata & assets… · 1706.03762" }),
+		);
+		expect(task("job-import-1")?.detail).toBe(
+			"Fetching metadata & assets… · 1706.03762",
+		);
+
+		// Host byte progress owns the bar; a job:changed without progress must
+		// not reset it.
+		updateBackgroundTask("job-import-1", { progress: 42 });
+		projectJobToBackgroundTask(importJob({ phase: "Downloading PDF" }));
+		expect(task("job-import-1")?.progress).toBe(42);
+
+		projectJobToBackgroundTask(
+			importJob({
+				state: "succeeded",
+				phase: "Imported 1 PDFs",
+				progress: 100,
+			}),
+		);
+		expect(task("job-import-1")?.status).toBe("completed");
+		expect(task("job-import-1")?.detail).toBe("Imported 1 PDFs");
+	});
+
+	it("maps every import mode onto the panel identity its legacy row had", () => {
+		const cases: Array<[Record<string, unknown>, string, string]> = [
+			[{ mode: "lookup", text: "10.1234/xyz" }, "lookup", "Add paper"],
+			[
+				{ mode: "plaza", id: "abc", title: "A Paper" },
+				"lookup",
+				"Import into library",
+			],
+			[
+				{ mode: "coolNotes", title: "A Paper" },
+				"parse",
+				"Fetch Cool Papers notes",
+			],
+			[
+				{ mode: "localPdf", entries: [{ filePath: "/tmp/a.pdf" }] },
+				"import",
+				"Import PDF",
+			],
+			[{ mode: "skill" }, "import", "Install Skills"],
+		];
+		for (const [params, kind, title] of cases) {
+			backgroundTasksStore.setState({ tasks: [], expanded: false });
+			projectJobToBackgroundTask(
+				importJob({ id: `job-${kind}-${title}`, params }),
+			);
+			const row = task(`job-${kind}-${title}`);
+			expect(row?.kind).toBe(kind);
+			expect(row?.title).toBe(title);
+		}
+	});
+
+	it("shows the extra local PDFs as a count on the import row", () => {
+		projectJobToBackgroundTask(
+			importJob({
+				id: "job-import-many",
+				params: {
+					mode: "localPdf",
+					entries: [{ filePath: "/tmp/a.pdf" }, { filePath: "/tmp/b.pdf" }],
+				},
+			}),
+		);
+		expect(task("job-import-many")?.detail).toBe("a.pdf +1");
+	});
+
+	it("projects a connector save as its own row and relays the terminal detail", () => {
+		projectJobToBackgroundTask(
+			connectorJob({ state: "queued", phase: "queued" }),
+		);
+		expect(task("job-connector-1")?.kind).toBe("connector");
+		expect(task("job-connector-1")?.title).toBe("Attention Is All You Need");
+		expect(task("job-connector-1")?.detail).toBe("Saving browser PDF");
+		expect(task("job-connector-1")?.progress).toBeNull();
+
+		projectJobToBackgroundTask(connectorJob({ phase: "Browser PDF saved" }));
+		expect(task("job-connector-1")?.detail).toBe("Browser PDF saved");
+
+		projectJobToBackgroundTask(
+			connectorJob({ state: "succeeded", phase: "Browser PDF saved" }),
+		);
+		expect(task("job-connector-1")?.status).toBe("completed");
+		expect(task("job-connector-1")?.detail).toBe("Browser PDF saved");
+	});
+
+	it("falls back to the generic connector title and surfaces save failures", () => {
+		projectJobToBackgroundTask(
+			connectorJob({ id: "job-connector-2", params: { key: "s:papers/b" } }),
+		);
+		expect(task("job-connector-2")?.title).toBe("Saving Connector attachment");
+
+		projectJobToBackgroundTask(
+			connectorJob({ id: "job-connector-3", phase: "Saving browser PDF" }),
+		);
+		projectJobToBackgroundTask(
+			connectorJob({
+				id: "job-connector-3",
+				state: "failed",
+				error: "Browser PDF save failed",
+			}),
+		);
+		expect(task("job-connector-3")?.status).toBe("failed");
+		expect(task("job-connector-3")?.error).toBe("Browser PDF save failed");
 	});
 });

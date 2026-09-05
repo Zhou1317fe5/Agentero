@@ -12,7 +12,7 @@ use tokio_util::sync::CancellationToken;
 pub const JOB_CHANGED_EVENT: &str = "job:changed";
 pub const JOB_OFFER_EVENT: &str = "job:offer";
 
-const LAYOUT_ANALYZE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+const RENDERER_JOB_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15 * 60);
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
@@ -41,12 +41,17 @@ pub enum JobKind {
     PageCount,
     WikiReindex,
     RecognizeMetadata,
+    Import,
+    ConnectorSync,
 }
 
 impl JobKind {
     /// Dedupe fingerprint for enqueued jobs. The strings are part of the
-    /// active-key contract and must stay stable (tests assert them).
-    fn fingerprint(self, force: bool) -> String {
+    /// active-key contract and must stay stable (tests assert them). When
+    /// `params` are present they are folded in so otherwise-identical jobs
+    /// carrying different payloads (e.g. two import URLs) do not dedupe, while
+    /// the same payload does.
+    fn fingerprint(self, force: bool, params: Option<&serde_json::Value>) -> String {
         let label = match self {
             JobKind::ParseRefs => "parseRefs",
             JobKind::ParseBody => "parseBody",
@@ -56,6 +61,8 @@ impl JobKind {
             JobKind::PageCount => "pageCount",
             JobKind::WikiReindex => "wikiReindex",
             JobKind::RecognizeMetadata => "recognizeMetadata",
+            JobKind::Import => "import",
+            JobKind::ConnectorSync => "connectorSync",
         };
         // ParseRefs always runs with online lookup enabled; the segment is
         // kept for fingerprint compatibility with pre-refactor jobs.
@@ -64,14 +71,27 @@ impl JobKind {
         } else {
             ""
         };
-        format!("{label}:v1{online}:force:{force}")
+        let base = format!("{label}:v1{online}:force:{force}");
+        match params {
+            // Tauri enables serde_json's `preserve_order`, so `to_string`
+            // keeps insertion order; each call site builds its params with a
+            // fixed key order, so identical payloads digest identically.
+            Some(value) => {
+                use std::hash::{Hash, Hasher};
+                let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                value.to_string().hash(&mut hasher);
+                format!("{base}:params:{:016x}", hasher.finish())
+            }
+            None => base,
+        }
     }
 
-    /// Execution host of the kind's business logic: `LayoutAnalyze` is offered
-    /// to the renderer (`job:offer`); every other kind runs a Rust runner.
+    /// Execution host of the kind's business logic: `LayoutAnalyze`, `Import`
+    /// and `ConnectorSync` are offered to the renderer (`job:offer`); every
+    /// other kind runs a Rust runner.
     pub fn exec_host(self) -> ExecHost {
         match self {
-            JobKind::LayoutAnalyze => ExecHost::Renderer,
+            JobKind::LayoutAnalyze | JobKind::Import | JobKind::ConnectorSync => ExecHost::Renderer,
             _ => ExecHost::Host,
         }
     }
@@ -320,6 +340,8 @@ struct JobCenterInner {
     cancel_tokens: HashMap<JobId, CancellationToken>,
     /// `LayoutAnalyze` cap: 1 for local ONNX, unlimited for the remote API.
     layout_analyze_cap: LayoutAnalyzeCap,
+    /// `Import` cap: seeded from the `batch_import_concurrency` setting.
+    import_cap: ImportCap,
     /// Per-kind runners registered by business domains at app startup.
     runners: HashMap<JobKind, JobRunner>,
     /// Registered by the app assembly; re-read by `refresh_layout_backend`.
@@ -340,6 +362,7 @@ impl std::fmt::Debug for JobCenterInner {
                 &self.cancel_tokens.keys().collect::<Vec<_>>(),
             )
             .field("layout_analyze_cap", &self.layout_analyze_cap)
+            .field("import_cap", &self.import_cap)
             .field("runners", &self.runners.keys().collect::<Vec<_>>())
             .field(
                 "layout_backend_source",
@@ -363,6 +386,18 @@ impl Default for LayoutAnalyzeCap {
     }
 }
 
+/// Default `Import` cap when unseeded (headless / tests); the app seeds it from
+/// the `batch_import_concurrency` setting. `Default` on `usize` would stall the
+/// queue at 0.
+#[derive(Debug, Clone, Copy)]
+struct ImportCap(usize);
+
+impl Default for ImportCap {
+    fn default() -> Self {
+        Self(3)
+    }
+}
+
 /// Per-kind concurrency cap (§7.3). `usize::MAX` = uncapped at the JobCenter
 /// level (the kind is either not yet scheduled here or throttled elsewhere).
 fn kind_concurrency(inner: &JobCenterInner, kind: JobKind) -> usize {
@@ -376,6 +411,12 @@ fn kind_concurrency(inner: &JobCenterInner, kind: JobKind) -> usize {
         // (pdf_parse::MAX_CONCURRENT_PDF_PARSE); the kind cap keeps queue
         // order fair when many PDFs are imported at once.
         JobKind::RecognizeMetadata => 2,
+        // Renderer-orchestrated imports (magic wand / local PDF / plaza /
+        // papers.cool); seeded from the `batch_import_concurrency` setting.
+        JobKind::Import => inner.import_cap.0,
+        // One Connector attachment save at a time: the rows are per-attachment
+        // and the browser drives them sequentially anyway.
+        JobKind::ConnectorSync => 1,
         JobKind::PageCount | JobKind::WikiReindex => usize::MAX,
     }
 }
@@ -491,10 +532,12 @@ impl JobCenter {
         let center = Self {
             inner: Arc::new(Mutex::new(JobCenterInner::default())),
         };
-        // Renderer-executed layout analysis is part of the scheduler's
-        // offer/report protocol (no business feature involved), so this
-        // runner is built in instead of registered by a domain.
-        center.register_runner(JobKind::LayoutAnalyze, Arc::new(layout_analyze_runner));
+        // Renderer-executed kinds are part of the scheduler's offer/report
+        // protocol (no business feature involved), so this runner is built in
+        // instead of registered by a domain.
+        center.register_runner(JobKind::LayoutAnalyze, Arc::new(renderer_offer_runner));
+        center.register_runner(JobKind::Import, Arc::new(renderer_offer_runner));
+        center.register_runner(JobKind::ConnectorSync, Arc::new(renderer_offer_runner));
         center
     }
 
@@ -511,8 +554,21 @@ impl JobCenter {
         center
     }
 
+    /// Seed the `Import` concurrency cap (chainable after
+    /// [`JobCenter::with_layout_backend`]).
+    pub fn with_import_concurrency(self, cap: usize) -> Self {
+        if let Ok(mut inner) = self.inner.try_lock() {
+            inner.import_cap = ImportCap(cap.max(1));
+        }
+        self
+    }
+
     pub async fn set_layout_analyze_cap(&self, cap: usize) {
         self.inner.lock().await.layout_analyze_cap = LayoutAnalyzeCap(cap.max(1));
+    }
+
+    pub async fn apply_import_concurrency(&self, cap: usize) {
+        self.inner.lock().await.import_cap = ImportCap(cap.max(1));
     }
 
     pub async fn apply_layout_backend(&self, backend: &str) {
@@ -643,6 +699,46 @@ impl JobCenter {
         .await
     }
 
+    /// Enqueue a renderer-orchestrated import. `params` (mode + source
+    /// identifiers) participates in the dedupe fingerprint so the same import
+    /// is not enqueued twice while distinct ones are not collapsed. `path` is
+    /// the vault-relative destination folder (imports have no paper dir yet).
+    pub async fn enqueue_import(
+        &self,
+        vault: impl Into<PathBuf>,
+        path: impl Into<String>,
+        lane: JobLane,
+        force: bool,
+        params: Option<serde_json::Value>,
+    ) -> JobSnapshot {
+        self.enqueue_core(JobKind::Import, vault, path, lane, force, None, params)
+            .await
+    }
+
+    /// Enqueue a Zotero Connector attachment save. The Host writes the file and
+    /// streams `connector:progress`; the renderer relays that stream into this
+    /// job, so `params` carries the progress key (and title) and joins the
+    /// dedupe fingerprint. `path` is the paper folder the attachment lands in.
+    pub async fn enqueue_connector_sync(
+        &self,
+        vault: impl Into<PathBuf>,
+        path: impl Into<String>,
+        lane: JobLane,
+        force: bool,
+        params: Option<serde_json::Value>,
+    ) -> JobSnapshot {
+        self.enqueue_core(
+            JobKind::ConnectorSync,
+            vault,
+            path,
+            lane,
+            force,
+            None,
+            params,
+        )
+        .await
+    }
+
     /// Shared enqueue path for every kind: normalize, dedupe on
     /// (kind, vault, paper, fingerprint), then register on the lane.
     /// Adding a new kind only needs a `JobKind` variant (with fingerprint +
@@ -674,7 +770,7 @@ impl JobCenter {
                 Err(_) => raw_vault,
             };
         let paper_path = path.into();
-        let fingerprint = kind.fingerprint(force);
+        let fingerprint = kind.fingerprint(force, params.as_ref());
         let key = JobKey {
             kind,
             vault_path: vault_path.clone(),
@@ -1300,18 +1396,20 @@ impl Default for JobCenter {
     }
 }
 
-/// Built-in runner for [`JobKind::LayoutAnalyze`]: offer the job to the
-/// frontend and wait for a terminal `job_report`. The renderer runs the ONNX
-/// model and calls back with progress / success / failure. Lives in the
-/// scheduler (not a business domain) because it is the renderer-offer
-/// protocol itself.
-fn layout_analyze_runner(
+/// Built-in runner for renderer-executed kinds ([`ExecHost::Renderer`], e.g.
+/// `LayoutAnalyze` / `Import`): offer the job to the frontend and wait for a
+/// terminal `job_report`. The renderer runs the work (ONNX model, or the
+/// multi-command import orchestration) and calls back with progress / success /
+/// failure. Lives in the scheduler (not a business domain) because it is the
+/// renderer-offer protocol itself.
+fn renderer_offer_runner(
     center: JobCenter,
     app: tauri::AppHandle,
     started: StartedJob,
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
     center.run_job(app, started, |center, app, started| async move {
         let job_id = started.snapshot.id.clone();
+        let kind = started.snapshot.kind;
         let params = started.snapshot.params.clone();
         let StartedJob {
             vault_path,
@@ -1321,7 +1419,7 @@ fn layout_analyze_runner(
         } = started;
         let offer = JobOfferPayload {
             job_id: job_id.clone(),
-            kind: JobKind::LayoutAnalyze,
+            kind,
             vault_path: vault_path.to_string_lossy().to_string(),
             paper_path: Some(paper_path),
             force,
@@ -1330,13 +1428,13 @@ fn layout_analyze_runner(
         let _ = app.emit(JOB_OFFER_EVENT, offer);
 
         match center
-            .wait_for_terminal(&job_id, LAYOUT_ANALYZE_TIMEOUT)
+            .wait_for_terminal(&job_id, RENDERER_JOB_TIMEOUT)
             .await
         {
             Some(JobState::Succeeded) => RunOutcome::Succeeded,
             Some(JobState::Failed) => RunOutcome::Failed(center.take_error(&job_id).await),
             Some(JobState::Cancelled) => RunOutcome::Cancelled,
-            _ => RunOutcome::Failed(Some("layout analyze report timeout".into())),
+            _ => RunOutcome::Failed(Some("renderer job report timeout".into())),
         }
     })
 }
@@ -2231,6 +2329,138 @@ mod tests {
         assert_eq!(first.kind, JobKind::DownloadAssets);
         assert_eq!(first.fingerprint, "downloadAssets:v1:force:false");
         assert_eq!(center.list(None, None).await.len(), 1);
+    }
+
+    /// Import jobs dedupe on their `params` payload: the same source (URL /
+    /// identifier) collapses to one active job, a different source does not.
+    #[tokio::test]
+    async fn enqueue_dedupes_import_job_by_params() {
+        let center = JobCenter::new();
+        let vault = vault("dedupe-import");
+        let params_a =
+            serde_json::json!({ "mode": "lookup", "text": "https://arxiv.org/abs/1706.03762" });
+        let first = center
+            .enqueue_import(
+                vault.clone(),
+                "",
+                JobLane::Normal,
+                false,
+                Some(params_a.clone()),
+            )
+            .await;
+        let duplicate = center
+            .enqueue_import(vault.clone(), "", JobLane::Normal, false, Some(params_a))
+            .await;
+        let other = center
+            .enqueue_import(
+                vault.clone(),
+                "",
+                JobLane::Normal,
+                false,
+                Some(serde_json::json!({ "mode": "lookup", "text": "10.1234/xyz" })),
+            )
+            .await;
+
+        assert_eq!(first.id, duplicate.id);
+        assert_eq!(first.kind, JobKind::Import);
+        assert_eq!(first.host, ExecHost::Renderer);
+        assert!(first
+            .fingerprint
+            .starts_with("import:v1:force:false:params:"));
+        assert_ne!(first.id, other.id);
+        assert_eq!(center.list(None, None).await.len(), 2);
+    }
+
+    /// The `Import` cap defaults to 3 and is re-applied from the settings value;
+    /// a freed slot lets the queued import start.
+    #[tokio::test]
+    async fn import_concurrency_cap_gates_queue() {
+        let center = JobCenter::new();
+        center.apply_import_concurrency(1).await;
+        let vault = vault("conc-import");
+        let a = center
+            .enqueue_import(
+                vault.clone(),
+                "",
+                JobLane::Normal,
+                false,
+                Some(serde_json::json!({ "mode": "lookup", "text": "a" })),
+            )
+            .await;
+        let b = center
+            .enqueue_import(
+                vault.clone(),
+                "",
+                JobLane::Normal,
+                false,
+                Some(serde_json::json!({ "mode": "lookup", "text": "b" })),
+            )
+            .await;
+
+        match center.try_start(&a.id).await {
+            StartOutcome::Started(..) => {}
+            other => panic!("expected a Started, got {other:?}"),
+        }
+        match center.try_start(&b.id).await {
+            StartOutcome::Waiting => {}
+            other => panic!("expected b Waiting at cap, got {other:?}"),
+        }
+
+        center
+            .job_report(&a.id, Some(100.0), None, None, Some(JobState::Succeeded))
+            .await;
+        match center.try_start(&b.id).await {
+            StartOutcome::Started(..) => {}
+            other => panic!("expected b Started after slot freed, got {other:?}"),
+        }
+    }
+
+    /// Connector saves are renderer-relayed, dedupe on the `connector:progress`
+    /// key in `params`, and run one at a time.
+    #[tokio::test]
+    async fn enqueue_dedupes_connector_sync_job_by_params() {
+        let center = JobCenter::new();
+        let vault = vault("connector-sync");
+        let key = serde_json::json!({ "key": "session-1:papers/a" });
+        let first = center
+            .enqueue_connector_sync(
+                vault.clone(),
+                "papers/a",
+                JobLane::Normal,
+                false,
+                Some(key.clone()),
+            )
+            .await;
+        let duplicate = center
+            .enqueue_connector_sync(vault.clone(), "papers/a", JobLane::Normal, false, Some(key))
+            .await;
+        let other = center
+            .enqueue_connector_sync(
+                vault.clone(),
+                "papers/b",
+                JobLane::Normal,
+                false,
+                Some(serde_json::json!({ "key": "session-1:papers/b" })),
+            )
+            .await;
+
+        assert_eq!(first.id, duplicate.id);
+        assert_eq!(first.kind, JobKind::ConnectorSync);
+        assert_eq!(first.host, ExecHost::Renderer);
+        assert!(first
+            .fingerprint
+            .starts_with("connectorSync:v1:force:false:params:"));
+        assert_ne!(first.id, other.id);
+        assert_eq!(center.list(None, None).await.len(), 2);
+
+        match center.try_start(&first.id).await {
+            StartOutcome::Started(..) => {}
+            other => panic!("expected Started, got {other:?}"),
+        }
+        match center.try_start(&other.id).await {
+            StartOutcome::Waiting => {}
+            other => panic!("expected the second save Waiting at cap 1, got {other:?}"),
+        }
     }
 
     /// A panicked runner task surfaces as a join error, exactly how the

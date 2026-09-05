@@ -223,6 +223,7 @@
 		"clearFinished": "清除已完成",
 		"cancel": "取消",
 		"cancelled": "已取消",
+		"failed": "任务失败",
 		"empty": "暂无任务",
 		"idle": "已完成",
 		"activeCount": "{{count}} 个进行中",

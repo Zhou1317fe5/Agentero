@@ -70,6 +70,18 @@ export const commands = {
 	jobLayoutAnalyzeEnqueue: (args: JobEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_layout_analyze_enqueue", { args })),
 	jobDownloadAssetsEnqueue: (args: JobEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_download_assets_enqueue", { args })),
 	/**
+	 *  Enqueue a renderer-orchestrated import (magic wand / local PDF / plaza /
+	 *  papers.cool). Only the vault is resolved — the paper folder does not exist
+	 *  yet — and the frontend executor drives the multi-command orchestration.
+	 */
+	jobImportEnqueue: (args: JobImportEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_import_enqueue", { args })),
+	/**
+	 *  Enqueue a Zotero Connector attachment save. The Host writes the attachment
+	 *  and streams `connector:progress`; the renderer relays that stream into this
+	 *  job so the task panel row comes from the JobCenter projection.
+	 */
+	jobConnectorSyncEnqueue: (args: JobConnectorSyncEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_connector_sync_enqueue", { args })),
+	/**
 	 *  Per-paper reconcile (pipeline-orchestration §7.4 入口②): backfill a
 	 *  `ParseBody` job when the paper has a PDF but no TeX and no `PAPER.md`, and
 	 *  a `ParseRefs` job when the cite sidecar is absent. Returns the enqueued
@@ -2429,6 +2441,20 @@ export type JobCompletedEvent_Deserialize = JobTerminalPayload_Deserialize;
 
 export type JobCompletedEvent_Serialize = JobTerminalPayload_Serialize;
 
+export type JobConnectorSyncEnqueueArgs = {
+	vaultPath: string,
+	/**
+	 *  Vault-relative paper folder the attachment lands in. Not validated
+	 *  against the catalog: the Connector commits the paper and starts the
+	 *  attachment save in the same request, so the row may not be visible yet.
+	 */
+	path?: string | null,
+	lane?: JobLane | null,
+	force?: boolean,
+	/**  `connector:progress` key + title; participates in the dedupe fingerprint. */
+	params?: Json | null,
+};
+
 /**
  *  Shared enqueue args for kinds that take no extra parameters
  *  (ParseRefs / LayoutAnalyze / DownloadAssets).
@@ -2451,7 +2477,20 @@ export type JobFocusPaperArgs = {
 	path: string,
 };
 
-export type JobKind = "parseRefs" | "parseBody" | "layoutAnalyze" | "layoutTranslate" | "downloadAssets" | "pageCount" | "wikiReindex" | "recognizeMetadata";
+export type JobImportEnqueueArgs = {
+	vaultPath: string,
+	/**
+	 *  Vault-relative destination folder (`parentDir`); imports have no paper
+	 *  dir yet, so this is not validated against the catalog.
+	 */
+	path?: string | null,
+	lane?: JobLane | null,
+	force?: boolean,
+	/**  Mode + source identifiers; participates in the dedupe fingerprint. */
+	params?: Json | null,
+};
+
+export type JobKind = "parseRefs" | "parseBody" | "layoutAnalyze" | "layoutTranslate" | "downloadAssets" | "pageCount" | "wikiReindex" | "recognizeMetadata" | "import" | "connectorSync";
 
 export type JobLane = "focus" | "normal" | "idle";
 

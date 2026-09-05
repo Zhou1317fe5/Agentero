@@ -87,18 +87,23 @@ export {
 	writeJsonStorage,
 } from "@/lib/core/storage";
 export {
+	awaitTaskSettled,
 	cancelTask,
 	enqueueTask,
+	enqueueTaskSettled,
+	isTerminalJobState,
 	type JobKind,
 	type JobSnapshot,
 	type JobState,
 	registerTaskExecutor,
+	reportTaskPhase,
 	runLocalActivity,
 	startTaskRuntime,
 	type TaskExecutor,
 	type TaskExecutorContext,
 	type TaskReportArgs,
 	type TaskSpec,
+	throwIfTaskCancelled,
 } from "@/lib/core/tasks";
 export {
 	getPlatformOS,
