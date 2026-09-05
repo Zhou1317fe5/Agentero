@@ -6,7 +6,7 @@
 use crate::core::error::{map_err, ApiResult, AppError};
 use crate::core::fs::{FsDirEntry, WriteOpts};
 use crate::core::log_util::{trunc, OpTimer};
-use crate::features::paper::catalog::papers::{self, PaperKind, PaperRecord};
+use crate::features::paper::catalog::papers::{self, PaperRecord};
 use crate::features::vault::CreateVaultResult;
 use crate::integration::remote::{ensure_remote_vault_skills, RemoteRegistry, RemoteSessionInfo};
 use serde::Deserialize;
@@ -596,47 +596,10 @@ async fn remote_rescan_impl(
             let path = dir.clone();
             let id = path.rsplit('/').next().unwrap_or("paper").to_string();
             let existing = papers::get_by_path(&session.work_root, &path)?;
-            let mut rec = existing.unwrap_or_else(|| PaperRecord {
-                path: path.clone(),
-                id: id.clone(),
-                paper_type: PaperKind::Doi,
-                title: id.clone(),
-                authors: vec![],
-                creators: None,
-                year: None,
-                date: None,
-                abstract_text: None,
-                tags: vec![],
-                arxiv_id: None,
-                doi: None,
-                isbn: None,
-                issn: None,
-                pmid: None,
-                publication: None,
-                volume: None,
-                issue: None,
-                pages: None,
-                publisher: None,
-                place: None,
-                series: None,
-                language: None,
-                pdf_url: None,
-                html_url: None,
-                source_url: None,
-                body_source: None,
-                body_quality: None,
-                bibtex_key: None,
-                citation_count: None,
-                zotero_item_type: None,
-                meta_source: Some("remote_rescan".into()),
-                extra: None,
-                summary: None,
-                status: "unread".into(),
-                is_read: false,
-                zotero_item_id: None,
-                zotero_last_synced: None,
-                added_at: now.clone(),
-                updated_at: now.clone(),
+            let mut rec = existing.unwrap_or_else(|| {
+                let mut rec = PaperRecord::local_pdf(id.clone(), id.clone()).at_path(&path);
+                rec.meta_source = Some("remote_rescan".into());
+                rec
             });
             if let Ok(bytes) = session.fs.read(&format!("{path}/NOTES.md")).await {
                 if let Ok(text) = String::from_utf8(bytes) {
