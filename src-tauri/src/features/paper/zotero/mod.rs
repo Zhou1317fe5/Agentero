@@ -1,9 +1,8 @@
 //! Zotero integration: local library scan/migration, catalog ↔ bibliography
 //! file export/import via the Translator Runtime, and the sync-note codec.
 //!
-//! Bidirectional sync lives in the sibling [`crate::features::zotero_sync`]
-//! feature (desktop-only), which builds on this feature's [`db`] readers and
-//! the codec in `agentero_core`.
+//! Bidirectional sync lives in the [`sync`] submodule (desktop-only), which
+//! builds on this feature's [`db`] readers and the codec in `agentero_core`.
 //!
 //! The tauri-free codec/io body lives in
 //! `agentero_core::features::paper::import::sources::zotero`; the desktop-only
@@ -15,6 +14,8 @@ pub use agentero_core::features::paper::import::sources::zotero::*;
 pub mod commands;
 #[cfg(feature = "desktop")]
 pub mod db;
+#[cfg(feature = "desktop")]
+pub mod sync;
 
 #[cfg(feature = "desktop")]
 pub use db::{

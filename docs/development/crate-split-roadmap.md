@@ -21,7 +21,7 @@
 | `features::paper::catalog`（别名 `features::catalog`） | catalog.sqlite schema、papers 存取、sidecar、`move_paper_under` |
 | `features::paper::capabilities` | `probe_paper_caps` / `CapsCache` / 本地 pdf·tex·PAPER.md 探测 |
 | `features::paper::import`（别名 `features::import`） | 魔棒入库主管线：`import_by_identifier*`、`download_paper_assets*`、`import_local_pdfs`、`paper_import::paper_commit`、assets 下载、batch/map/parse/resolver、skill_import、title_search、api_mapper |
-| `features::paper::import::sources::zotero`（别名 `features::zotero`） | codec（NOTES ↔ Zotero HTML）、io（Translator `/export` `/import`） |
+| `features::paper::zotero`（别名 `features::zotero`） | codec/io（core glob 再导出，NOTES ↔ Zotero HTML、Translator `/export` `/import`）、本地库 `db`、Tauri commands、`sync/` 双向同步 |
 | `features::paper::scholar_api` | arXiv / Crossref / OpenAlex / S2 / Unpaywall / EasyScholar / Translator 客户端与评分 |
 | `features::paper::analyze::parse`（别名 `features::import::pdf_parse`） | liteparse worker、`parse_paper_body`、`run_pdf_locate`、probe/render、engine 框架（trait + 注册表 + 本地引擎） |
 | `features::paper::analyze::refs`（别名 `features::refs`) | 引用解析（bbl/bib/latex/online/citing）与 `agentero-cite.json` sidecar |
@@ -57,7 +57,7 @@ parse 引擎同理：远端引擎（MinerU/Paddle/OpenAI-compatible，依赖 `la
 | `features/agent`、`cli_install` | ACP 子进程 + tauri shell/state/事件，全 desktop |
 | `features/vault/watcher`、`markdown/search`、`pdf/export`、`system/settings`、`paper::catalog::commands`（paper_move） | notify/AppHandle/tauri command/settings store |
 | `features/paper/import`：`commands`、`job_runners`、`remote_ops`、`chain_resolve`、`pdf_recognize`、`recognize_apply`、`site_proxy` | tauri command/State、JobCenter、`tauri::http`（自定义协议代理）、AppHandle 事件 |
-| `features/paper/import/sources/zotero`：`db`、`commands`；`zotero_sync` | `tauri::AppHandle`（jobs spawn）、Channel IPC |
+| `features/paper/zotero`：`db`、`commands`、`sync/` | `tauri::AppHandle`（jobs spawn）、Channel IPC |
 | `features/paper/analyze/layout`（hosted/model_assets）、`remote_engines` | settings store 凭据、模型资产下载任务、tauri command |
 | `features/paper/discovery`：`coolpapers`、`recommend`、`arxiv_proxy`、`modelscope_proxy` | tauri command / `tauri::http` 站点代理 |
 | `markdown/wiki`：`commands`、`heading_rename` | tauri State（`WikiIndexState` manage）、watcher 协同 |

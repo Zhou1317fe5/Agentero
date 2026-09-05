@@ -1,5 +1,4 @@
-//! Paper import: identifier lookup, Translator, Zotero migrate, local PDF,
-//! PAPER.md parse.
+//! Paper import: identifier lookup, Translator, local PDF, PAPER.md parse.
 //!
 //! The tauri-free pipeline lives in `agentero_core::features::paper::import`
 //! and is glob-re-exported here; this module keeps the desktop-only shells:
@@ -11,8 +10,6 @@
 //! @see docs/backend/paper-import-pipeline.md
 
 pub use agentero_core::features::paper::import::*;
-
-pub mod sources;
 
 #[cfg(feature = "desktop")]
 pub(crate) mod chain_resolve;

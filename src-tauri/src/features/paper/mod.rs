@@ -9,6 +9,7 @@ pub mod analyze;
 pub mod catalog;
 pub mod discovery;
 pub mod import;
+pub mod zotero;
 
 pub use agentero_core::features::paper::capabilities;
 pub use agentero_core::features::paper::scholar_api;

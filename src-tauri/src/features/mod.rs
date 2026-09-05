@@ -63,6 +63,6 @@ pub use paper::discovery::modelscope_proxy;
 pub use paper::discovery::recommend;
 #[cfg(feature = "desktop")]
 pub use paper::import::site_proxy;
-pub use paper::import::sources::zotero;
+pub use paper::zotero;
 #[cfg(feature = "desktop")]
-pub use paper::import::sources::zotero_sync;
+pub use paper::zotero::sync as zotero_sync;
