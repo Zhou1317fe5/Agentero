@@ -26,6 +26,7 @@ impl AcademicApi for CrossrefApi {
         ApiCapability::SEARCH_BY_TITLE
             | ApiCapability::FETCH_BY_DOI
             | ApiCapability::PROVIDE_ABSTRACT
+            | ApiCapability::PROVIDE_CITATION_COUNT
             | ApiCapability::PROVIDE_VENUE
     }
 
@@ -47,7 +48,7 @@ async fn fetch_by_doi(doi: &str) -> Result<ApiPaper, ApiError> {
 
 async fn search_by_title(title: &str, limit: usize) -> Result<Vec<ApiPaper>, ApiError> {
     let url = format!(
-        "{API_BASE}?query.title={}&rows={}&select=title,author,published-print,published-online,container-title,volume,issue,page,DOI,publisher,URL,type,abstract",
+        "{API_BASE}?query.title={}&rows={}&select=title,author,published-print,published-online,container-title,volume,issue,page,DOI,publisher,URL,type,abstract,is-referenced-by-count",
         urlencoding::encode(title),
         limit
     );
@@ -140,7 +141,9 @@ fn map_work(message: &Value, known_doi: Option<&str>) -> Option<ApiPaper> {
             html: Some(format!("https://doi.org/{doi}")),
             landing: Some(format!("https://doi.org/{doi}")),
         },
-        citation_count: None,
+        citation_count: message
+            .get("is-referenced-by-count")
+            .and_then(|v| v.as_i64()),
         language: str_or_first(message, "language"),
         source: SOURCE,
     })
@@ -207,5 +210,28 @@ mod tests {
             Some("The dominant sequence transduction models.")
         );
         assert_eq!(paper.authors, vec!["Ashish Vaswani", "Noam Shazeer"]);
+    }
+
+    #[test]
+    fn maps_citation_count() {
+        let message = json!({
+            "title": ["Attention Is All You Need"],
+            "DOI": "10.48550/arXiv.1706.03762",
+            "type": "journal-article",
+            "container-title": ["NeurIPS"],
+            "is-referenced-by-count": 121363
+        });
+        let paper = map_work(&message, None).expect("mapped");
+        assert_eq!(paper.citation_count, Some(121_363));
+
+        let without = json!({
+            "title": ["Attention Is All You Need"],
+            "DOI": "10.48550/arXiv.1706.03762",
+            "type": "journal-article"
+        });
+        assert_eq!(
+            map_work(&without, None).expect("mapped").citation_count,
+            None
+        );
     }
 }

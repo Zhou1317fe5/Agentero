@@ -42,7 +42,7 @@ pub fn api_paper_to_meta(paper: &ApiPaper) -> PaperRecord {
     meta.html_url = paper.urls.html.clone();
     meta.source_url = paper.urls.landing.clone();
     meta.meta_source = Some(paper.source.into());
-    // TODO: `paper.citation_count` is still dropped here.
+    meta.citation_count = paper.citation_count;
 
     // Ensure canonical arXiv URLs when we have an arXiv id.
     enrich_remote_urls(&mut meta);
@@ -85,6 +85,11 @@ pub fn merge_api_papers(base: &ApiPaper, other: &ApiPaper) -> PaperRecord {
         merged.html_url = other.urls.html.clone().or(other.urls.landing.clone());
         merged.source_url = other.urls.landing.clone();
     }
+    // Same quantity, different coverage: the larger count is the tighter lower bound.
+    merged.citation_count = match (merged.citation_count, other.citation_count) {
+        (Some(a), Some(b)) => Some(a.max(b)),
+        (a, b) => a.or(b),
+    };
 
     merged.meta_source = Some(format!("{}+{}", base.source, other.source));
 
@@ -104,4 +109,67 @@ pub fn best_match<'a>(candidates: &'a [ApiPaper], norm_query: &str) -> Option<&'
     candidates
         .iter()
         .max_by_key(|c| score_against_query(c, norm_query))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::features::scholar_api::{PaperIdentifiers, PaperUrls};
+
+    fn api_paper(source: &'static str, citation_count: Option<i64>) -> ApiPaper {
+        ApiPaper {
+            identifiers: PaperIdentifiers {
+                doi: Some("10.1/attention".into()),
+                ..Default::default()
+            },
+            title: "Attention Is All You Need".into(),
+            authors: vec!["Vaswani".into()],
+            year: Some(2017),
+            date: None,
+            venue: Some("NeurIPS".into()),
+            volume: None,
+            issue: None,
+            pages: None,
+            publisher: None,
+            abstract_text: None,
+            urls: PaperUrls::default(),
+            citation_count,
+            language: None,
+            source,
+        }
+    }
+
+    #[test]
+    fn api_paper_to_meta_keeps_citation_count() {
+        let mapped = api_paper_to_meta(&api_paper("s2", Some(123_456)));
+        assert_eq!(mapped.citation_count, Some(123_456));
+        assert_eq!(mapped.meta_source.as_deref(), Some("s2"));
+
+        let unmapped = api_paper_to_meta(&api_paper("crossref", None));
+        assert_eq!(unmapped.citation_count, None);
+    }
+
+    #[test]
+    fn merge_api_papers_keeps_the_larger_citation_count() {
+        // Sources disagree in both directions; neither may downgrade the other.
+        let low = api_paper("s2", Some(900));
+        let high = api_paper("crossref", Some(1_500));
+        assert_eq!(merge_api_papers(&low, &high).citation_count, Some(1_500));
+        assert_eq!(merge_api_papers(&high, &low).citation_count, Some(1_500));
+
+        // A missing count never erases a known one.
+        let unknown = api_paper("openalex", None);
+        assert_eq!(
+            merge_api_papers(&high, &unknown).citation_count,
+            Some(1_500)
+        );
+        assert_eq!(
+            merge_api_papers(&unknown, &high).citation_count,
+            Some(1_500)
+        );
+        assert_eq!(
+            merge_api_papers(&api_paper("s2", None), &unknown).citation_count,
+            None
+        );
+    }
 }

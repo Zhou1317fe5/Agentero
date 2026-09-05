@@ -302,7 +302,7 @@ pub struct PaperRecord {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bibtex_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub citation_count: Option<i32>,
+    pub citation_count: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub zotero_item_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1921,6 +1921,63 @@ mod tests {
         assert_eq!(persisted.path, "papers/x");
         assert_eq!(get_by_path(&dir, "papers/x").unwrap().unwrap().title, "T");
         assert!(dir.join("papers/x/metadata.json").is_file());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn citation_count_survives_upsert_sidecar_and_partial_updates() {
+        let dir = env::temp_dir().join(format!("agentero-cites-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("papers/x")).unwrap();
+
+        // Wider than i32: the model and the INTEGER column are both i64.
+        const CITES: i64 = 3_000_000_000;
+        let mut record = PaperRecord::local_pdf("x".into(), "T".into()).at_path("papers/x");
+        record.citation_count = Some(CITES);
+        upsert_paper(&dir, &record).unwrap();
+        assert_eq!(
+            get_by_path(&dir, "papers/x")
+                .unwrap()
+                .unwrap()
+                .citation_count,
+            Some(CITES)
+        );
+        assert_eq!(
+            super::super::sidecar::read_sidecar(&dir, "papers/x")
+                .unwrap()
+                .citation_count,
+            Some(CITES)
+        );
+
+        // The upsert SQL overwrites every column from `excluded`, so each of
+        // these partial updates must read the row first to keep the count.
+        set_is_read(&dir, "papers/x", true).unwrap();
+        set_tags(&dir, "papers/x", &[PaperTag::new("nlp")]).unwrap();
+        update_meta(
+            &dir,
+            "papers/x",
+            &PaperMetaPatch {
+                publication: Some("NeurIPS".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let row = get_by_path(&dir, "papers/x").unwrap().unwrap();
+        assert!(row.is_read);
+        assert_eq!(row.publication.as_deref(), Some("NeurIPS"));
+        assert_eq!(row.citation_count, Some(CITES));
+
+        // A lost row is rebuilt from the sidecar projection, count included.
+        delete_under_path(&dir, "papers/x").unwrap();
+        assert_eq!(rebuild_from_disk(&dir).unwrap(), 1);
+        assert_eq!(
+            get_by_path(&dir, "papers/x")
+                .unwrap()
+                .unwrap()
+                .citation_count,
+            Some(CITES)
+        );
 
         let _ = fs::remove_dir_all(&dir);
     }

@@ -24,7 +24,10 @@ impl AcademicApi for OpenAlexApi {
     }
 
     fn capabilities(&self) -> ApiCapability {
-        ApiCapability::SEARCH_BY_TITLE | ApiCapability::FETCH_BY_DOI | ApiCapability::PROVIDE_VENUE
+        ApiCapability::SEARCH_BY_TITLE
+            | ApiCapability::FETCH_BY_DOI
+            | ApiCapability::PROVIDE_CITATION_COUNT
+            | ApiCapability::PROVIDE_VENUE
     }
 
     async fn fetch(&self, query: &ApiQuery) -> Result<Vec<ApiPaper>, ApiError> {
@@ -38,7 +41,7 @@ impl AcademicApi for OpenAlexApi {
 
 async fn fetch_by_doi(doi: &str) -> Result<ApiPaper, ApiError> {
     let url = format!(
-        "{API_BASE}/doi:{}?select=title,display_name,publication_year,doi,authorships,primary_location,biblio,id",
+        "{API_BASE}/doi:{}?select=title,display_name,publication_year,doi,authorships,primary_location,biblio,cited_by_count,id",
         urlencoding::encode(doi.trim())
     );
     let value = client::get_json(&url).await?;
@@ -47,7 +50,7 @@ async fn fetch_by_doi(doi: &str) -> Result<ApiPaper, ApiError> {
 
 async fn search_by_title(title: &str, limit: usize) -> Result<Vec<ApiPaper>, ApiError> {
     let url = format!(
-        "{API_BASE}?search={}&per_page={}&select=title,display_name,publication_year,doi,authorships,primary_location,biblio,id&mailto={}",
+        "{API_BASE}?search={}&per_page={}&select=title,display_name,publication_year,doi,authorships,primary_location,biblio,cited_by_count,id&mailto={}",
         urlencoding::encode(title),
         limit,
         MAILTO
@@ -136,7 +139,7 @@ fn map_work(work: &Value) -> Option<ApiPaper> {
         publisher: None,
         abstract_text: None,
         urls: PaperUrls::default(),
-        citation_count: None,
+        citation_count: work.get("cited_by_count").and_then(|v| v.as_i64()),
         language: None,
         source: SOURCE,
     })
@@ -182,5 +185,24 @@ mod tests {
             Some("Neural Information Processing Systems")
         );
         assert_eq!(paper.pages.as_deref(), Some("5998--6008"));
+    }
+
+    #[test]
+    fn maps_citation_count() {
+        let work = json!({
+            "id": "https://openalex.org/W2741809807",
+            "display_name": "Attention Is All You Need",
+            "publication_year": 2017,
+            "doi": "https://doi.org/10.48550/arXiv.1706.03762",
+            "cited_by_count": 121363
+        });
+        let paper = map_work(&work).expect("mapped");
+        assert_eq!(paper.citation_count, Some(121_363));
+
+        let without = json!({
+            "id": "https://openalex.org/W2741809807",
+            "display_name": "Attention Is All You Need"
+        });
+        assert_eq!(map_work(&without).expect("mapped").citation_count, None);
     }
 }
