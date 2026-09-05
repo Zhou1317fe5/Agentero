@@ -37,6 +37,8 @@
 - 论文资源下载的总体进度按顺序聚合 PDF 与 TeX：PDF 占前 50%，TeX 占后 50%，避免切换阶段时进度回退。
 - 版面解析 / 引用解析 / 正文解析 / 资源下载 / 元数据识别 / 论文导入（魔棒、本地 PDF、Skill、广场、Cool Papers）/ Connector 附件保存 / 库级批量操作（引用扫描、书目导入导出、批量元数据刷新）/ 版面模型下载由 JobCenter 投影到任务条（前端门面 `src/lib/core/tasks.ts`，投影/执行器桥接在其内部模块 `job-center.ts`）。取消走 `job_cancel`；迟到的 `running` 事件不得把已取消/已完成的行复活。
 - 导入与 Connector 是 Renderer-host job：Rust 只负责调度（并发、去重、取消），编排在渲染端执行器里（`src/lib/paper/import/import-tasks.ts` 按 `params.mode` 分发；`connector-tasks.ts` 把 `connector:progress` 中继成 job）。库级批量操作同理（`src/lib/paper/library-tasks.ts`：`citingScan` / `libraryIo` 按 `params.op` / `metadataRefresh` 按 `params.papers` 逐项上报 N/M）。job id 同时作为 Host 的 `task_id`，字节/批次进度与协作取消因此复用同一条链路。版面模型下载（`modelDownload`）是 Host runner job：全局资源、cap 1，重复触发按 fingerprint 合并。
+- 打开论文时的资源自动下载（`src/lib/workspace/tabs/resources.ts`）同样是 JobCenter `downloadAssets` job：Host runner 下载后续接 PAPER.md / 版面分析，去重合并同篇的并发下载。
+- 纯前端 UI 本地活动不进 JobCenter（无去重/依赖/重启恢复语义）：paper-reader、Zotero 迁移向导、散落 PDF 的 viewer 内版面分析经门面 `runLocalActivity`（`src/lib/core/tasks.ts`）创建本地任务行，取消/进度语义与旧 runner 一致；调用点不得直接 import `enqueueBackgroundTask`（其实现暂留在 `background-tasks.ts`，阶段三移除）。
 - 实现：`src/lib/core/background-tasks.ts` + `background-tasks-panel.tsx`。
 
 ## 弹层栈

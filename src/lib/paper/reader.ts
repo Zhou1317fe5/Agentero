@@ -22,12 +22,10 @@ import {
 	type RunOnceAccepted,
 	runOnce,
 } from "@/lib/agent";
-import {
-	enqueueBackgroundTask,
-	updateBackgroundTask,
-} from "@/lib/core/background-tasks";
+import { updateBackgroundTask } from "@/lib/core/background-tasks";
 import { commands } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
+import { runLocalActivity } from "@/lib/core/tasks";
 import { isTauri } from "@/lib/core/tauri";
 import { setPaperIsRead } from "@/lib/paper/api";
 import { loadPaperMetadata } from "@/lib/paper/load-meta";
@@ -185,7 +183,7 @@ export async function runPaperReaderWorkflow(opts: {
 	inflightReads.add(paperRel);
 
 	try {
-		await enqueueBackgroundTask(
+		await runLocalActivity(
 			{
 				kind: "paperRead",
 				title: i18n.t("app:tasks.paperRead"),

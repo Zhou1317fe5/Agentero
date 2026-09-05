@@ -6,7 +6,6 @@ export {
 	cancelBackgroundTask,
 	clearFinishedBackgroundTasks,
 	completeBackgroundTask,
-	enqueueBackgroundTask,
 	failBackgroundTask,
 	formatBytes,
 	getActiveBackgroundTasks,

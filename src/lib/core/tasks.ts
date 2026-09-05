@@ -10,6 +10,8 @@
 import i18n from "@/i18n";
 import {
 	BackgroundTaskCancelledError,
+	type BackgroundTaskKind,
+	enqueueBackgroundTask,
 	startBackgroundTaskProgressListener,
 } from "@/lib/core/background-tasks";
 import {
@@ -36,9 +38,41 @@ import {
 import { logger } from "@/lib/core/logger";
 import { listenEventSafe } from "@/lib/core/tauri-events";
 
-/** Local (non-Host) UI activity: legacy panel row + AbortController runner. */
-export { enqueueBackgroundTask as runLocalActivity } from "@/lib/core/background-tasks";
 export type { JobKind, JobSnapshot, JobState };
+
+export type LocalActivityInput = {
+	kind: BackgroundTaskKind;
+	title: string;
+	detail?: string;
+};
+
+export type LocalActivityContext = {
+	id: string;
+	signal: AbortSignal;
+	setProgress: (n: number | null) => void;
+	setDetail: (d: string) => void;
+};
+
+export type LocalActivityOptions = {
+	/** Same-kind frontend semaphore cap; without it the activity starts now. */
+	concurrency?: number;
+	/** Fires synchronously with the panel-row id before any queueing. */
+	onTaskId?: (id: string) => void;
+};
+
+/**
+ * Local (non-Host) UI activity: legacy panel row + AbortController runner.
+ * Interactive, lifecycle-bound work that deliberately stays outside the
+ * JobCenter (no dedupe / dependency / restart-recovery semantics). Delegates
+ * to the legacy store runner; call sites must go through this facade.
+ */
+export function runLocalActivity<T>(
+	input: LocalActivityInput,
+	fn: (ctx: LocalActivityContext) => Promise<T>,
+	options?: LocalActivityOptions,
+): Promise<T> {
+	return enqueueBackgroundTask(input, fn, options);
+}
 
 export type TaskSpec = {
 	kind:
