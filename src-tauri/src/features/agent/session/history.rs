@@ -2,7 +2,7 @@
 
 use crate::core::error::AppError;
 use crate::features::agent::acp::client::{
-    client_initialize_request, timed_acp_request, to_acp_agent,
+    client_initialize_request, timed_acp_initialize, timed_acp_request, to_acp_agent,
 };
 use crate::features::agent::acp::interaction::permission_response;
 use crate::features::agent::acp::terminal::{AcpTerminalHandler, AcpTerminalManager};
@@ -482,8 +482,7 @@ pub async fn load_acp_session(
             let sid = session_id.clone();
             let last_replay = last_replay.clone();
             move |connection: ConnectionTo<Agent>| async move {
-                timed_acp_request(
-                    "initialize",
+                timed_acp_initialize(
                     connection
                         .send_request(client_initialize_request())
                         .block_task(),
