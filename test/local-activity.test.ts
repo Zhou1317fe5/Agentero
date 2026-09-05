@@ -136,7 +136,7 @@ describe("runLocalActivity facade", () => {
 	it("survives panel cancellation like the legacy runner", async () => {
 		let taskId = "";
 		const run = runLocalActivity(
-			{ kind: "import", title: "migrate" },
+			{ kind: "zoteroMigrate", title: "migrate" },
 			({ signal }) =>
 				new Promise<string>((_resolve, reject) => {
 					signal.addEventListener("abort", () =>
@@ -154,7 +154,7 @@ describe("runLocalActivity facade", () => {
 	it("fails the row and rethrows when the activity throws", async () => {
 		let taskId = "";
 		const run = runLocalActivity(
-			{ kind: "other", title: "boom" },
+			{ kind: "layoutRun", title: "boom" },
 			async () => {
 				throw new Error("nope");
 			},

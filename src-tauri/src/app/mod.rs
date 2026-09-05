@@ -186,6 +186,9 @@ pub fn run() {
             center.set_layout_backend_source(move || {
                 handle.state::<AppSettingsStore>().layout_backend()
             });
+            // Deep agentero-core pollers (pdf parse, asset downloads, citing
+            // scans) check cancellation through the JobCenter task-id registry.
+            crate::core::cancel::install_cancel_probe(crate::features::jobs::is_task_cancelled);
         }
         let settings_store = app.state::<AppSettingsStore>();
         let agents = app.state::<AgentRegistry>();

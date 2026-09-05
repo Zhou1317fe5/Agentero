@@ -305,7 +305,7 @@ export function ZoteroMigrateDialog({
 		try {
 			const res = await runLocalActivity(
 				{
-					kind: "import",
+					kind: "zoteroMigrate",
 					title: t("sidebar:zoteroMigrate.task"),
 					detail: dir,
 				},

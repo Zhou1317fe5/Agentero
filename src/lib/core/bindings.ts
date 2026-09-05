@@ -57,8 +57,6 @@ export const commands = {
 	agentProbeCatalog: (templateId: string) => typedError<ApiResult<ProbeResult_Serialize>, string>(__TAURI_INVOKE("agent_probe_catalog", { templateId })),
 	/**  Request cooperative cancellation for a currently streaming ACP session. */
 	agentCancelRun: (sessionId: string) => __TAURI_INVOKE<ApiResult<boolean>>("agent_cancel_run", { sessionId }),
-	/**  Request cooperative cancellation for a frontend background task. */
-	backgroundTaskCancel: (taskId: string) => __TAURI_INVOKE<ApiResult<boolean>>("background_task_cancel", { taskId }),
 	jobParseRefsEnqueue: (args: JobEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_parse_refs_enqueue", { args })),
 	jobParseBodyEnqueue: (args: JobParseBodyEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_parse_body_enqueue", { args })),
 	jobLayoutAnalyzeEnqueue: (args: JobEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_layout_analyze_enqueue", { args })),
@@ -227,7 +225,7 @@ export const commands = {
 	paperImportLocalPdf: (args: ImportLocalPdfArgs) => typedError<ApiResult<ImportLocalPdfResult_Serialize>, string>(__TAURI_INVOKE("paper_import_local_pdf", { args })),
 	/**
 	 *  Parse a paper's local PDF into `PAPER.md` using liteparse.
-	 *  Runs as a standalone background task; `task_id` is used for cancellation.
+	 *  `task_id` is the cooperative-cancel polling id (the JobCenter job id).
 	 */
 	paperParseBody: (args: PaperParseBodyArgs) => typedError<ApiResult<PaperParseResult_Serialize>, string>(__TAURI_INVOKE("paper_parse_body", { args })),
 	/**
@@ -381,6 +379,11 @@ export const commands = {
 	 *  Blocking work runs on a worker thread so the async runtime is not stalled.
 	 */
 	agentRunToolLifecycle: (templateId: string, action: string, taskId: string | null) => typedError<ApiResult<Json>, string>(__TAURI_INVOKE("agent_run_tool_lifecycle", { templateId, action, taskId })),
+	/**
+	 *  Request cooperative cancellation of an in-flight tool lifecycle run; the
+	 *  Host supervision loop kills the installer child process.
+	 */
+	agentLifecycleCancel: (taskId: string) => __TAURI_INVOKE<ApiResult<boolean>>("agent_lifecycle_cancel", { taskId }),
 	/**
 	 *  What a silent uninstall of this template would remove (npm commands and
 	 *  managed dirs); null when the template has no managed uninstall.
@@ -542,7 +545,6 @@ export const events = {
 	agentStream: makeEvent<AgentStreamEvt>("agent:stream"),
 	agentTool: makeEvent<AgentToolEvt_Deserialize>("agent:tool"),
 	agentUsage: makeEvent<AgentUsageEvt>("agent:usage"),
-	backgroundTaskProgress: makeEvent<BackgroundTaskProgressEvent_Deserialize>("background-task:progress"),
 	bridgeHostStatus: makeEvent<BridgeHostStatusEvent>("bridge:host-status"),
 	bridgePairRequest: makeEvent<BridgePairRequestEvent>("bridge:pair-request"),
 	connectorError: makeEvent<ConnectorErrorEvent>("connector:error"),
@@ -553,6 +555,7 @@ export const events = {
 	jobCompleted: makeEvent<JobCompletedEvent_Deserialize>("job:completed"),
 	jobFailed: makeEvent<JobFailedEvent_Deserialize>("job:failed"),
 	jobOffer: makeEvent<JobOfferEvent>("job:offer"),
+	jobProgress: makeEvent<JobProgressEvent_Deserialize>("job:progress"),
 	layoutRemoteProgress: makeEvent<LayoutRemoteProgressEvent_Deserialize>("layout-remote:progress"),
 	mcpStatus: makeEvent<McpStatusEvent>("mcp:status"),
 	mcpTunnelStatus: makeEvent<McpTunnelStatusEvent>("mcp:tunnel-status"),
@@ -1456,12 +1459,6 @@ export type AssetDownloadResult = {
 	paperMd?: boolean,
 	messages: string[],
 };
-
-export type BackgroundTaskProgressEvent = BackgroundTaskProgressEvent_Serialize | BackgroundTaskProgressEvent_Deserialize;
-
-export type BackgroundTaskProgressEvent_Deserialize = AssetDownloadProgress_Deserialize;
-
-export type BackgroundTaskProgressEvent_Serialize = AssetDownloadProgress_Serialize;
 
 export type BacklinksResponse = BacklinksResponse_Serialize | BacklinksResponse_Deserialize;
 
@@ -2372,7 +2369,7 @@ export type ImportLocalPdfArgs = {
 	filePaths?: string[],
 	/**  Preferred: path + optional title/authors/year/identifiers from the confirm dialog. */
 	entries?: LocalPdfImportEntry[],
-	/**  Frontend background-task id for parse-phase progress. */
+	/**  JobCenter job id (task id) for parse-phase `job:progress` events. */
 	taskId?: string | null,
 };
 
@@ -2546,6 +2543,12 @@ export type JobParseBodyEnqueueArgs = {
 	force?: boolean,
 	taskId?: string | null,
 };
+
+export type JobProgressEvent = JobProgressEvent_Serialize | JobProgressEvent_Deserialize;
+
+export type JobProgressEvent_Deserialize = AssetDownloadProgress_Deserialize;
+
+export type JobProgressEvent_Serialize = AssetDownloadProgress_Serialize;
 
 export type JobReconcilePaperArgs = {
 	vaultPath: string,
@@ -3045,7 +3048,7 @@ export type PaperDownloadAssetsArgs = {
 	vaultPath: string,
 	/**  Vault-relative paper folder, e.g. `papers/1706.03762`. */
 	path: string,
-	/**  Frontend background-task id for byte-level download progress events. */
+	/**  JobCenter job id (task id) for byte-level `job:progress` events. */
 	taskId?: string | null,
 };
 
@@ -3206,7 +3209,7 @@ export type PaperParseBodyArgs = {
 	path: string,
 	/**  When true, overwrite existing `PAPER.md`. Default false. */
 	force?: boolean,
-	/**  Frontend background-task id; passed to the isolated parser worker for cancellation. */
+	/**  JobCenter job id (task id); passed to the isolated parser worker for cancellation. */
 	taskId?: string | null,
 };
 

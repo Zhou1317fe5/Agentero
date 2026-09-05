@@ -148,8 +148,8 @@ L2 方案实测对比（阈值统一取自己论文 p10）：
 
 扫描是 JobCenter `citingScan` Renderer-host job（触发在 `discoverCitingPapers`，`src/lib/paper/library-actions.ts`；执行器在 `src/lib/paper/library-tasks.ts`），执行器把 job id 作为 `taskId` 传给命令，Host 用它做两件事：
 
-- **进度**：抓取阶段按完成数 emit `background-task:progress`（带 `currentCount`/`totalCount`），投影行显示「引用 · 12/38」。只有带计数的阶段才 emit——没有计数的阶段会掉进面板的字节格式化分支
-- **取消**：面板走 `job_cancel`，cancel token 经桥接注册到同一 id；每个种子请求前轮询 `core::background_tasks::is_cancelled`，命中即返回且不写缓存；命令出口无条件 `finish()` 清标记，否则残留的取消标记会秒杀下一个复用该 id 的任务
+- **进度**：抓取阶段按完成数 emit `job:progress`（带 `currentCount`/`totalCount`），投影行显示「引用 · 12/38」。只有带计数的阶段才 emit——没有计数的阶段会掉进面板的字节格式化分支
+- **取消**：面板走 `job_cancel`，job 的 cancel token 由 JobCenter 按同一 id 索引（`features::jobs::is_task_cancelled`，注入为 `agentero_core::cancel` 探针）；每个种子请求前轮询，命中即返回且不写缓存。注册随 runner 退出清理，残留取消状态不会波及复用该 id 的下一个任务
 
 库级 I/O 互斥复用 `libraryStore.ioBusy`。结果属于扫描时那个 vault，执行器比对 `getVaultPath()` 不一致就不弹窗。
 

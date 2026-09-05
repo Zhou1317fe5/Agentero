@@ -217,7 +217,7 @@ export function usePdfLayoutRun({
 			if (opts?.asBackgroundTask) {
 				void runLocalActivity(
 					{
-						kind: "parse",
+						kind: "layoutRun",
 						title: i18n.t("app:tasks.layoutAnalysis"),
 						detail: paperLabel,
 					},

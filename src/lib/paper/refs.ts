@@ -130,8 +130,8 @@ export type CitingScanResult = {
  * Reverse citations — who cites *my* library. The opposite direction from the
  * rest of this module, and online-only: local TeX/`.bbl` cannot know it.
  *
- * `taskId` is the background-task id; Host routes progress events to it and
- * polls it for cancellation.
+ * `taskId` is the JobCenter job id; Host routes `job:progress` events to it
+ * and polls it for cancellation.
  */
 export async function libraryCitingScan(
 	vaultPath: string,

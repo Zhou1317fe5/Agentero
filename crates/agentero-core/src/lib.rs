@@ -8,8 +8,8 @@
 //! route through [`app_handle::HostHooks`].
 
 pub mod app_handle;
-pub mod background_tasks;
 pub mod blocking;
+pub mod cancel;
 pub mod error;
 pub mod features;
 pub mod frontmatter;

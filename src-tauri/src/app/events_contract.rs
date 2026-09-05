@@ -19,11 +19,13 @@
 //! `integration::bridge::client`) are intentionally excluded — they exist only
 //! in the iOS branch, mirroring the command exclusion in `bindings_test.rs`.
 //!
-//! `background-task:progress` is emitted from three sites with structurally
-//! compatible payloads (`AssetDownloadProgress`, model-assets `ProgressEvent`,
+//! `job:progress` is emitted from several sites with structurally compatible
+//! payloads (`AssetDownloadProgress`, model-assets `ProgressEvent`,
 //! citing-scan `CitingScanProgress`); `AssetDownloadProgress` is the canonical
 //! wire shape (superset; the citing-scan variant additionally omits null
-//! `totalBytes`/counters, which TS already treats as optional).
+//! `totalBytes`/counters, which TS already treats as optional). The wire name
+//! lives in `assets::JOB_PROGRESS_EVENT`; Host emitters route through
+//! `features::jobs::emit_job_progress`, core emitters use the constant.
 
 // Contract-only types: their fields are consumed by the specta exporter, never
 // read by Rust code.
@@ -97,8 +99,8 @@ pub struct VaultFileChangedEvent(pub crate::features::vault::watcher::FileChange
 pub struct SettingsChangedEvent(pub crate::features::system::settings::AppSettings);
 
 #[derive(specta::Type, tauri_specta::Event)]
-#[tauri_specta(event_name = "background-task:progress")]
-pub struct BackgroundTaskProgressEvent(
+#[tauri_specta(event_name = "job:progress")]
+pub struct JobProgressEvent(
     pub agentero_core::features::paper::import::assets::AssetDownloadProgress,
 );
 
@@ -398,7 +400,7 @@ fn registered_event_names() -> BTreeSet<String> {
         WindowClosedEvent::NAME,
         VaultFileChangedEvent::NAME,
         SettingsChangedEvent::NAME,
-        BackgroundTaskProgressEvent::NAME,
+        JobProgressEvent::NAME,
         LayoutRemoteProgressEvent::NAME,
         AgentLifecycleProgressEvent::NAME,
         AgentRegistryChangedEvent::NAME,

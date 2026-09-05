@@ -46,12 +46,11 @@ fn parse_body_runner(
                 vault_path: vault.to_string_lossy().to_string(),
                 path,
                 force,
-                task_id: Some(task_id.clone()),
+                task_id: Some(task_id),
             },
             Some(&cache),
         )
         .await;
-        crate::core::background_tasks::finish(&task_id);
         // A skipped or successful parse returns Ok with no error; a real
         // liteparse failure also returns Ok, carrying the reason.
         match result {
@@ -66,7 +65,7 @@ fn parse_body_runner(
 
 /// Runner for [`JobKind::DownloadAssets`]: download PDF/TeX for a paper, then
 /// backfill `PAPER.md` + layout for the freshly-downloaded assets. Byte-level
-/// progress flows via `background-task:progress` (task_id defaults to the job
+/// progress flows via `job:progress` (task_id defaults to the job
 /// id) to the projected "download" row.
 fn download_assets_runner(
     center: JobCenter,
@@ -183,7 +182,6 @@ fn recognize_metadata_runner(
                 Some(&task_id),
             )
             .await;
-        crate::core::background_tasks::finish(&task_id);
 
         // Cancelled mid-probe: land nothing; the paper keeps its placeholder.
         if probe.status == "error"

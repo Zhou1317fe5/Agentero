@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::Duration;
 use tauri::http::{header, Response, StatusCode};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 use tokio::sync::Mutex;
 
 const TARGET: &str = "agentero::layout::model_assets";
@@ -50,8 +50,8 @@ pub struct LayoutModelStatus {
     pub file_name: String,
 }
 
-/// Byte progress for the projected JobCenter row (frontend
-/// `background-task:progress`, task id = job id).
+/// Byte progress for the projected JobCenter row (`job:progress`, task id =
+/// job id).
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ProgressEvent {
@@ -74,7 +74,7 @@ impl ProgressCtx<'_> {
     fn check_cancelled(&self) -> Result<(), AppError> {
         if self
             .task_id
-            .is_some_and(crate::core::background_tasks::is_cancelled)
+            .is_some_and(crate::features::jobs::is_task_cancelled)
         {
             return Err(AppError::message("background task cancelled"));
         }
@@ -91,9 +91,9 @@ impl ProgressCtx<'_> {
                 .checked_div(t)
                 .map(|p| p.min(100) as u8)
         });
-        let _ = app.emit(
-            "background-task:progress",
-            ProgressEvent {
+        crate::features::jobs::emit_job_progress(
+            app,
+            &ProgressEvent {
                 task_id: task_id.to_string(),
                 phase: PROGRESS_PHASE.to_string(),
                 downloaded_bytes: downloaded,
@@ -162,8 +162,8 @@ pub fn status() -> LayoutModelStatus {
 ///
 /// Process-wide lock so concurrent jobs / analyze paths do not double-download.
 /// Tries ModelScope first, then HuggingFace. `task_id` is the JobCenter job id:
-/// byte progress is emitted as `background-task:progress` under it and
-/// cancellation is polled through the job's cancel-token bridge.
+/// byte progress is emitted as `job:progress` under it and cancellation is
+/// polled through the JobCenter task-id registry.
 pub async fn ensure(
     app: Option<&AppHandle>,
     task_id: Option<&str>,
@@ -301,7 +301,7 @@ pub fn register_job_runners(center: &crate::features::jobs::JobCenter) {
 }
 
 /// Runner for [`JobKind::ModelDownload`]: download the ONNX model into the XDG
-/// cache. Byte progress flows via `background-task:progress` (task id = job id)
+/// cache. Byte progress flows via `job:progress` (task id = job id)
 /// to the projected "download" row; the terminal report carries the
 /// `{source} · {bytes}` detail the legacy panel row showed on completion.
 fn model_download_runner(

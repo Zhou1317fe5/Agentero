@@ -1,24 +1,29 @@
 /**
- * Renderer-side executor registry for Rust JobCenter jobs.
+ * Renderer-side executor registry + task-panel projection for Rust JobCenter
+ * jobs.
  *
  * Rust emits `job:offer` when a renderer-executed job (e.g. layout analysis)
- * starts. This module routes offers to the matching frontend executor and
- * provides helpers to report progress / completion back via `job_report`.
+ * starts. This module routes offers to the matching frontend executor,
+ * provides helpers to report progress / completion back via `job_report`,
+ * mirrors `job:changed` into the background-tasks panel and renders
+ * byte/count `job:progress` events onto the projected rows.
  *
  * Internal bridge: the public facade for background work is `tasks.ts`.
  */
 
 import i18n from "@/i18n";
 import {
-	type BackgroundTaskKind,
+	type BackgroundTaskIcon,
 	cancelBackgroundTask,
 	completeBackgroundTask,
 	failBackgroundTask,
+	formatBytes,
 	getBackgroundTasksSnapshot,
 	isFinishedBackgroundTask,
+	mapDownloadProgress,
+	phaseLabel,
 	registerBackgroundTaskCancelHandler,
-	registerBackgroundTaskCancellation,
-	releaseBackgroundTaskCancellation,
+	releaseBackgroundTaskCancelHandler,
 	startBackgroundTask,
 	updateBackgroundTask,
 } from "@/lib/core/background-tasks";
@@ -27,6 +32,7 @@ import {
 	events,
 	type JobKind,
 	type JobOfferPayload,
+	type JobProgressEvent,
 	type JobReportArgs,
 	type JobSnapshot,
 	type JobState,
@@ -160,43 +166,46 @@ export type JobChangedSnapshot = JobSnapshot;
 
 /**
  * Job kinds projected into the background-tasks panel (§7.6). Kinds absent
- * here (pageCount / wikiReindex) stay silent to avoid idle-lane noise.
+ * here (pageCount / wikiReindex / layoutTranslate) stay silent to avoid
+ * idle-lane noise.
  */
-const PROJECTED_JOB_KINDS: Partial<Record<JobKind, BackgroundTaskKind>> = {
-	layoutAnalyze: "layout",
-	parseRefs: "parse",
-	parseBody: "pdfParse",
-	downloadAssets: "download",
-	recognizeMetadata: "recognize",
-	import: "import",
-	connectorSync: "connector",
-	modelDownload: "download",
-	citingScan: "lookup",
-	metadataRefresh: "other",
-};
+const PROJECTED_JOB_KINDS: ReadonlySet<JobKind> = new Set([
+	"layoutAnalyze",
+	"parseRefs",
+	"parseBody",
+	"downloadAssets",
+	"recognizeMetadata",
+	"import",
+	"connectorSync",
+	"modelDownload",
+	"citingScan",
+	"libraryIo",
+	"metadataRefresh",
+]);
 
 /**
- * Import flows keep the icon their legacy row had (`lookup` for the magic wand
- * and 广场, `parse` for Cool Papers notes).
+ * Import rows keep the icon their legacy row had (`search` for the magic wand
+ * and 广场, `layout` for Cool Papers notes).
  */
-function importTaskKind(params: unknown): BackgroundTaskKind {
+function importRowIcon(params: unknown): BackgroundTaskIcon {
 	switch (jobParams(params).mode) {
 		case "lookup":
 		case "plaza":
-			return "lookup";
+			return "search";
 		case "coolNotes":
-			return "parse";
+			return "layout";
 		default:
-			return "import";
+			return "fileUp";
 	}
 }
 
-function projectedTaskKind(job: JobChangedSnapshot): BackgroundTaskKind | null {
-	if (job.kind === "import") return importTaskKind(job.params);
+/** Params-dependent icon hint; other kinds derive their icon from the kind. */
+function jobRowIcon(job: JobChangedSnapshot): BackgroundTaskIcon | undefined {
+	if (job.kind === "import") return importRowIcon(job.params);
 	if (job.kind === "libraryIo") {
-		return jobParams(job.params).op === "export" ? "export" : "import";
+		return jobParams(job.params).op === "export" ? "package" : "fileUp";
 	}
-	return PROJECTED_JOB_KINDS[job.kind] ?? null;
+	return undefined;
 }
 
 /** Scheduler-owned phase words carry no user-facing status. */
@@ -375,10 +384,10 @@ export function stopJobTaskProjection(): void {
 }
 
 export function projectJobToBackgroundTask(job: JobChangedSnapshot): void {
-	const taskKind = projectedTaskKind(job);
-	if (!taskKind) return;
+	if (!PROJECTED_JOB_KINDS.has(job.kind)) return;
 	const title = jobPanelTitle(job);
 	const detail = jobPanelDetail(job);
+	const icon = jobRowIcon(job);
 	const status = statusDetail(job);
 	const progress = panelProgress(job);
 	switch (job.state) {
@@ -395,9 +404,10 @@ export function projectJobToBackgroundTask(job: JobChangedSnapshot): void {
 			}
 			startBackgroundTask({
 				id: job.id,
-				kind: taskKind,
+				kind: job.kind,
 				title,
 				detail,
+				icon,
 				running: job.state === "running",
 				progress,
 			});
@@ -406,7 +416,7 @@ export function projectJobToBackgroundTask(job: JobChangedSnapshot): void {
 				job.id,
 				{
 					status: job.state === "running" ? "running" : "queued",
-					// Byte progress (`background-task:progress`) owns the bar for
+					// Byte progress (`job:progress`) owns the bar for
 					// download/import rows, so an absent job progress must not
 					// reset it to indeterminate.
 					...(progress === null ? {} : { progress }),
@@ -446,12 +456,69 @@ export function requestJobCancel(jobId: string): void {
 function wireJobCancellation(jobId: string): void {
 	if (wiredJobCancels.has(jobId)) return;
 	wiredJobCancels.add(jobId);
-	registerBackgroundTaskCancellation(jobId);
 	registerBackgroundTaskCancelHandler(jobId, () => requestJobCancel(jobId));
 }
 
 function releaseJobCancellation(jobId: string): void {
 	if (!wiredJobCancels.has(jobId)) return;
 	wiredJobCancels.delete(jobId);
-	releaseBackgroundTaskCancellation(jobId);
+	releaseBackgroundTaskCancelHandler(jobId);
+}
+
+let progressSubscription: (() => void) | null = null;
+
+/**
+ * Single global `job:progress` listener, routed by task id (= job id) onto
+ * the projected panel rows. Host runners (model download) and Host commands
+ * driven by renderer executors (asset downloads, citing scans, import
+ * batches) report byte/count progress under their JobCenter job id.
+ */
+export function startJobProgressListener(): void {
+	if (progressSubscription) return;
+	if (isTauri()) {
+		progressSubscription = toSafeDisposer(
+			events.jobProgress.listen((event) => handleJobProgress(event.payload)),
+		);
+	} else {
+		progressSubscription = () => undefined;
+	}
+}
+
+function handleJobProgress(payload: JobProgressEvent): void {
+	const id = payload.taskId;
+	const task = getBackgroundTasksSnapshot().tasks.find((t) => t.id === id);
+	if (!task) return;
+	const { downloadedBytes, totalBytes, currentCount, totalCount } = payload;
+	if (payload.phase === "parse") {
+		updateBackgroundTask(id, {
+			progress: mapDownloadProgress(payload.phase, payload.progress),
+			detail: phaseLabel(payload.phase),
+		});
+		return;
+	}
+	if (currentCount != null && totalCount != null) {
+		updateBackgroundTask(id, {
+			progress: payload.progress,
+			detail: i18n.t("app:tasks.batchProgress", {
+				phase: phaseLabel(payload.phase),
+				current: currentCount,
+				total: totalCount,
+			}),
+		});
+		return;
+	}
+	updateBackgroundTask(id, {
+		progress: mapDownloadProgress(payload.phase, payload.progress),
+		detail:
+			totalBytes == null
+				? i18n.t("app:tasks.downloadBytesUnknown", {
+						phase: phaseLabel(payload.phase),
+						downloaded: formatBytes(downloadedBytes),
+					})
+				: i18n.t("app:tasks.downloadBytes", {
+						phase: phaseLabel(payload.phase),
+						downloaded: formatBytes(downloadedBytes),
+						total: formatBytes(totalBytes),
+					}),
+	});
 }

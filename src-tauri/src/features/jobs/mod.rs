@@ -189,8 +189,8 @@ pub struct StartedJob {
     /// Per-job cancellation signal, fired by [`JobCenter::cancel`]. Fresh for
     /// every started job and dropped when the job settles, so cancel state can
     /// neither leak from a crashed job nor poison a later job reusing the same
-    /// task id. Deep cooperative pollers (`background_tasks::is_cancelled`)
-    /// see it through the task-id bridge registered by `run_started`.
+    /// task id. Deep cooperative pollers see it through the task-id registry
+    /// ([`is_task_cancelled`]) populated by `run_started`.
     pub cancel_token: CancellationToken,
 }
 
@@ -940,9 +940,9 @@ impl JobCenter {
                 // Signal the executing runner through the job's own token and
                 // drop the registry entry in the same step: cancel state dies
                 // with the job instead of leaking into a global flag set.
-                // `run_started` bridges the token to the task-id polling
-                // surface (`background_tasks::is_cancelled`) used by the
-                // ParseBody liteparse worker; the layout renderer executor
+                // `run_started` indexes the token by task id
+                // (`is_task_cancelled`) for the ParseBody liteparse worker and
+                // other cooperative pollers; the layout renderer executor
                 // aborts on the `job:changed(cancelled)` event emitted by the
                 // caller.
                 if let Some(token) = inner.cancel_tokens.remove(&id) {
@@ -1159,9 +1159,9 @@ impl JobCenter {
     /// kind's concurrency slot and dedupe key forever, wedging every later job
     /// of that kind in `Queued`. On crash the job is marked `Failed`,
     /// `job:changed` is emitted and freed slots drain the queue. The job's
-    /// cancel token is bridged to the task-id polling surface for the runner's
-    /// lifetime and cleaned up on every exit path. Kinds without a registered
-    /// runner are no-ops (they never start backend-side).
+    /// cancel token is indexed by task id ([`is_task_cancelled`]) for the
+    /// runner's lifetime and cleaned up on every exit path. Kinds without a
+    /// registered runner are no-ops (they never start backend-side).
     pub async fn run_started(&self, app: &tauri::AppHandle, started: StartedJob) {
         let runner = {
             let inner = self.inner.lock().await;
@@ -1171,16 +1171,17 @@ impl JobCenter {
             return;
         };
         let job_id = started.snapshot.id.clone();
-        let bridge = CancelTokenBridge::new(&started);
+        let registration = TaskCancelRegistration::new(&started);
         let center = self.handle();
         let runner_app = app.clone();
         let join = tauri::async_runtime::spawn(async move {
             runner(center, runner_app, started).await;
         })
         .await;
-        // Drop the bridge before settling: a successor reusing the task id may
-        // register its own token as soon as the freed slot drains the queue.
-        drop(bridge);
+        // Drop the registration before settling: a successor reusing the task
+        // id may register its own token as soon as the freed slot drains the
+        // queue.
+        drop(registration);
         if let Err(err) = join {
             if let Some(snapshot) = self.settle_crashed_runner(&job_id, &err).await {
                 emit_job_changed(app, snapshot);
@@ -1524,6 +1525,17 @@ pub fn emit_job_changed(app: &tauri::AppHandle, job: JobSnapshot) {
     crate::features::lifecycle::emit_job_terminal(app, &payload.job);
 }
 
+/// Byte/count progress for a projected job row. Host-side emitters (model
+/// download runner, citing-scan command) go through this; `agentero-core`
+/// emitters (asset downloads, import batches) share the event-name constant
+/// because core cannot reach the JobCenter.
+pub fn emit_job_progress(app: &tauri::AppHandle, payload: &impl Serialize) {
+    let _ = app.emit(
+        agentero_core::features::paper::import::assets::JOB_PROGRESS_EVENT,
+        payload,
+    );
+}
+
 pub fn parse_lane(lane: Option<JobLane>) -> JobLane {
     lane.unwrap_or_default()
 }
@@ -1587,33 +1599,54 @@ pub fn spawn_recognize_metadata(app: Option<&tauri::AppHandle>, vault: &Path, pa
     });
 }
 
-/// RAII bridge between a job's own [`CancellationToken`] and the task-id
-/// keyed cooperative polling surface ([`crate::core::background_tasks`]) that
-/// deep business code (pdf parse engines, asset downloaders, recognizer
-/// probes) polls via `is_cancelled(task_id)`. Registration replaces any stale
-/// entry for the id; the drop cleanup runs on every runner exit path (success
-/// / failure / panic / dropped future) and also clears a legacy flag that may
-/// have been set for the id before the token was registered, so cancel state
-/// can neither leak nor poison a later task reusing the same id.
-struct CancelTokenBridge {
+/// Cancel tokens of running jobs indexed by the cooperative-polling task id
+/// (the job's own id, or its explicit `task_id` override). Host command chains
+/// poll [`is_task_cancelled`] directly, and the app assembly installs the same
+/// lookup as the `agentero_core::cancel` probe so deep core code (pdf parse
+/// engines, asset downloaders, citing scans) sees job cancellation too.
+/// Registration replaces any stale entry for the id; the drop cleanup runs on
+/// every runner exit path (success / failure / panic / dropped future), so
+/// cancel state can neither leak nor poison a later task reusing the same id.
+static TASK_CANCEL_TOKENS: std::sync::LazyLock<
+    std::sync::Mutex<HashMap<String, CancellationToken>>,
+> = std::sync::LazyLock::new(|| std::sync::Mutex::new(HashMap::new()));
+
+/// Whether the running job polled as `task_id` has been cancelled. Sync
+/// lookup over a short-lived lock for cooperative polling loops (chunk
+/// downloads, worker supervision); unknown or settled ids are never
+/// cancelled.
+pub fn is_task_cancelled(task_id: &str) -> bool {
+    TASK_CANCEL_TOKENS.lock().is_ok_and(|tokens| {
+        tokens
+            .get(task_id)
+            .is_some_and(|token| token.is_cancelled())
+    })
+}
+
+/// RAII task-id registration of a running job's cancel token; see
+/// [`TASK_CANCEL_TOKENS`].
+struct TaskCancelRegistration {
     task_id: String,
 }
 
-impl CancelTokenBridge {
+impl TaskCancelRegistration {
     fn new(started: &StartedJob) -> Self {
         let task_id = started
             .task_id
             .clone()
             .unwrap_or_else(|| started.snapshot.id.clone());
-        crate::core::background_tasks::register_token(&task_id, started.cancel_token.clone());
+        if let Ok(mut tokens) = TASK_CANCEL_TOKENS.lock() {
+            tokens.insert(task_id.clone(), started.cancel_token.clone());
+        }
         Self { task_id }
     }
 }
 
-impl Drop for CancelTokenBridge {
+impl Drop for TaskCancelRegistration {
     fn drop(&mut self) {
-        crate::core::background_tasks::unregister_token(&self.task_id);
-        crate::core::background_tasks::finish(&self.task_id);
+        if let Ok(mut tokens) = TASK_CANCEL_TOKENS.lock() {
+            tokens.remove(&self.task_id);
+        }
     }
 }
 
@@ -2715,7 +2748,7 @@ mod tests {
     #[tokio::test]
     async fn cancel_running_job_signals_token_and_cleans_up_on_exit() {
         let center = JobCenter::new();
-        let task_id = "cancel-bridge-task";
+        let task_id = "cancel-registry-task";
         let job = center
             .enqueue_parse_body(
                 vault("cancel-token"),
@@ -2730,22 +2763,23 @@ mod tests {
             other => panic!("expected Started, got {other:?}"),
         };
         let token = started.cancel_token.clone();
-        // Mirror `run_started`: bridge the job token to the task-id surface.
-        let bridge = CancelTokenBridge::new(&started);
+        // Mirror `run_started`: index the job token by task id.
+        let registration = TaskCancelRegistration::new(&started);
         assert!(!token.is_cancelled());
-        assert!(!crate::core::background_tasks::is_cancelled(task_id));
+        assert!(!is_task_cancelled(task_id));
 
         assert!(center.cancel(&job.id).await);
 
         // The runner sees the cancellation on both surfaces; the JobCenter
         // keeps no cancel entry once the job settled.
         assert!(token.is_cancelled());
-        assert!(crate::core::background_tasks::is_cancelled(task_id));
+        assert!(is_task_cancelled(task_id));
         assert_eq!(center.cancel_token_count_for_test().await, 0);
 
-        // Runner exit drops the bridge: all cancel state for the id is gone.
-        drop(bridge);
-        assert!(!crate::core::background_tasks::is_cancelled(task_id));
+        // Runner exit drops the registration: all cancel state for the id is
+        // gone.
+        drop(registration);
+        assert!(!is_task_cancelled(task_id));
     }
 
     /// A job reusing the task id (and even the same dedupe key) of a
@@ -2757,7 +2791,7 @@ mod tests {
         let vault = vault("reuse-id");
         let task_id = "shared-task-id";
 
-        // First run: cancelled mid-flight, then the runner exits (bridge drop).
+        // First run: cancelled mid-flight, then the runner exits.
         let first = center
             .enqueue_parse_body(
                 vault.clone(),
@@ -2771,10 +2805,10 @@ mod tests {
             StartOutcome::Started(started) => started,
             other => panic!("expected Started, got {other:?}"),
         };
-        let bridge_first = CancelTokenBridge::new(&started_first);
+        let registration_first = TaskCancelRegistration::new(&started_first);
         assert!(center.cancel(&first.id).await);
-        assert!(crate::core::background_tasks::is_cancelled(task_id));
-        drop(bridge_first);
+        assert!(is_task_cancelled(task_id));
+        drop(registration_first);
 
         // Second run reuses the task id and the dedupe key of the cancelled
         // job: it must get a new id and a fresh, uncancelled token.
@@ -2793,8 +2827,8 @@ mod tests {
             other => panic!("expected Started, got {other:?}"),
         };
         assert!(!started_second.cancel_token.is_cancelled());
-        let bridge_second = CancelTokenBridge::new(&started_second);
-        assert!(!crate::core::background_tasks::is_cancelled(task_id));
+        let registration_second = TaskCancelRegistration::new(&started_second);
+        assert!(!is_task_cancelled(task_id));
 
         // A crash of the second runner also leaves no cancel state behind.
         let join = tauri::async_runtime::spawn(async { panic!("runner boom") }).await;
@@ -2804,8 +2838,8 @@ mod tests {
             .await
             .expect("crash settle returned the terminal snapshot");
         assert_eq!(snapshot.state, JobState::Failed);
-        drop(bridge_second);
-        assert!(!crate::core::background_tasks::is_cancelled(task_id));
+        drop(registration_second);
+        assert!(!is_task_cancelled(task_id));
         assert_eq!(center.cancel_token_count_for_test().await, 0);
     }
 }

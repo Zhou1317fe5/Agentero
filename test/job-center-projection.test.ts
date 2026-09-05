@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+	type BackgroundTaskIcon,
 	backgroundTasksStore,
 	updateBackgroundTask,
 } from "@/lib/core/background-tasks";
@@ -230,7 +231,7 @@ describe("job task projection", () => {
 		const task = backgroundTasksStore
 			.getState()
 			.tasks.find((item) => item.id === "job-layout-1");
-		expect(task?.kind).toBe("layout");
+		expect(task?.kind).toBe("layoutAnalyze");
 		expect(task?.status).toBe("running");
 		expect(task?.progress).toBe(40);
 	});
@@ -329,7 +330,8 @@ describe("job task projection", () => {
 
 	it("projects an import job from its params and keeps the reported status text", () => {
 		projectJobToBackgroundTask(importJob({ state: "queued", phase: "queued" }));
-		expect(task("job-import-1")?.kind).toBe("lookup");
+		expect(task("job-import-1")?.kind).toBe("import");
+		expect(task("job-import-1")?.icon).toBe("search");
 		expect(task("job-import-1")?.title).toBe("Add paper");
 		expect(task("job-import-1")?.detail).toBe(
 			"https://arxiv.org/abs/1706.03762",
@@ -363,32 +365,34 @@ describe("job task projection", () => {
 	});
 
 	it("maps every import mode onto the panel identity its legacy row had", () => {
-		const cases: Array<[Record<string, unknown>, string, string]> = [
-			[{ mode: "lookup", text: "10.1234/xyz" }, "lookup", "Add paper"],
+		const cases: Array<[Record<string, unknown>, BackgroundTaskIcon, string]> =
 			[
-				{ mode: "plaza", id: "abc", title: "A Paper" },
-				"lookup",
-				"Import into library",
-			],
-			[
-				{ mode: "coolNotes", title: "A Paper" },
-				"parse",
-				"Fetch Cool Papers notes",
-			],
-			[
-				{ mode: "localPdf", entries: [{ filePath: "/tmp/a.pdf" }] },
-				"import",
-				"Import PDF",
-			],
-			[{ mode: "skill" }, "import", "Install Skills"],
-		];
-		for (const [params, kind, title] of cases) {
+				[{ mode: "lookup", text: "10.1234/xyz" }, "search", "Add paper"],
+				[
+					{ mode: "plaza", id: "abc", title: "A Paper" },
+					"search",
+					"Import into library",
+				],
+				[
+					{ mode: "coolNotes", title: "A Paper" },
+					"layout",
+					"Fetch Cool Papers notes",
+				],
+				[
+					{ mode: "localPdf", entries: [{ filePath: "/tmp/a.pdf" }] },
+					"fileUp",
+					"Import PDF",
+				],
+				[{ mode: "skill" }, "fileUp", "Install Skills"],
+			];
+		for (const [params, icon, title] of cases) {
 			backgroundTasksStore.setState({ tasks: [], expanded: false });
 			projectJobToBackgroundTask(
-				importJob({ id: `job-${kind}-${title}`, params }),
+				importJob({ id: `job-${icon}-${title}`, params }),
 			);
-			const row = task(`job-${kind}-${title}`);
-			expect(row?.kind).toBe(kind);
+			const row = task(`job-${icon}-${title}`);
+			expect(row?.kind).toBe("import");
+			expect(row?.icon).toBe(icon);
 			expect(row?.title).toBe(title);
 		}
 	});
@@ -410,7 +414,7 @@ describe("job task projection", () => {
 		projectJobToBackgroundTask(
 			connectorJob({ state: "queued", phase: "queued" }),
 		);
-		expect(task("job-connector-1")?.kind).toBe("connector");
+		expect(task("job-connector-1")?.kind).toBe("connectorSync");
 		expect(task("job-connector-1")?.title).toBe("Attention Is All You Need");
 		expect(task("job-connector-1")?.detail).toBe("Saving browser PDF");
 		expect(task("job-connector-1")?.progress).toBeNull();
@@ -447,7 +451,7 @@ describe("job task projection", () => {
 
 	it("projects the model download as the legacy layout-model row", () => {
 		projectJobToBackgroundTask(modelJob({ state: "queued", phase: "queued" }));
-		expect(task("job-model-1")?.kind).toBe("download");
+		expect(task("job-model-1")?.kind).toBe("modelDownload");
 		expect(task("job-model-1")?.title).toBe("Download layout model");
 		expect(task("job-model-1")?.detail).toBe(
 			"ModelScope → HuggingFace · PP-DocLayoutV3",
@@ -464,14 +468,16 @@ describe("job task projection", () => {
 		projectJobToBackgroundTask(
 			libraryJob({ id: "job-lib-export", params: { op: "export" } }),
 		);
-		expect(task("job-lib-export")?.kind).toBe("export");
+		expect(task("job-lib-export")?.kind).toBe("libraryIo");
+		expect(task("job-lib-export")?.icon).toBe("package");
 		expect(task("job-lib-export")?.title).toBe("Export library");
 		expect(task("job-lib-export")?.detail).toBeUndefined();
 
 		projectJobToBackgroundTask(
 			libraryJob({ id: "job-lib-import", params: { op: "import" } }),
 		);
-		expect(task("job-lib-import")?.kind).toBe("import");
+		expect(task("job-lib-import")?.kind).toBe("libraryIo");
+		expect(task("job-lib-import")?.icon).toBe("fileUp");
 		expect(task("job-lib-import")?.title).toBe("Import bibliography");
 
 		projectJobToBackgroundTask({
@@ -483,7 +489,7 @@ describe("job task projection", () => {
 			progress: null,
 			phase: "Reading library metadata…",
 		} as JobChangedSnapshot);
-		expect(task("job-citing-1")?.kind).toBe("lookup");
+		expect(task("job-citing-1")?.kind).toBe("citingScan");
 		expect(task("job-citing-1")?.title).toBe("Find papers citing your library");
 		expect(task("job-citing-1")?.detail).toBe("Reading library metadata…");
 	});
@@ -499,7 +505,7 @@ describe("job task projection", () => {
 			phase: "queued",
 			params: { papers: [{ path: "papers/a" }, { path: "papers/b" }] },
 		} as JobChangedSnapshot);
-		expect(task("job-refresh-1")?.kind).toBe("other");
+		expect(task("job-refresh-1")?.kind).toBe("metadataRefresh");
 		expect(task("job-refresh-1")?.title).toBe("Refresh metadata");
 		expect(task("job-refresh-1")?.detail).toContain("0 / 2");
 
