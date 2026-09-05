@@ -3,7 +3,7 @@
 //!
 //! Coverage: every command registered for desktop in `app::handlers`
 //! (`common_commands!` + the desktop-only extras) is collected here, and every
-//! event emitted on desktop is declared in `app::events_contract` (43 events;
+//! event emitted on desktop is declared in `app::events_contract` (42 events;
 //! `event_name` matches the emit literal, emit sites unchanged). The iOS-only
 //! bridge client commands (`integration::bridge::client_commands`) and client
 //! events (`bridge:status` / `bridge:progress` / `bridge:pair-pending`) are
@@ -30,7 +30,6 @@ fn export_typescript_bindings() {
             crate::features::system::settings::commands::easy_scholar_probe,
             crate::features::system::settings::commands::easy_scholar_get_rank,
             crate::features::paper::analyze::layout::model_assets::commands::layout_model_status,
-            crate::features::paper::analyze::layout::model_assets::commands::layout_model_ensure,
             crate::features::paper::analyze::layout::hosted::commands::layout_remote_analyze_pdf,
             crate::features::paper::analyze::layout::hosted::commands::layout_remote_probe,
             crate::features::agent::commands::agent_list_agents,
@@ -52,6 +51,11 @@ fn export_typescript_bindings() {
             crate::features::jobs::commands::job_download_assets_enqueue,
             crate::features::jobs::commands::job_import_enqueue,
             crate::features::jobs::commands::job_connector_sync_enqueue,
+            crate::features::jobs::commands::job_citing_scan_enqueue,
+            crate::features::jobs::commands::job_library_io_enqueue,
+            crate::features::jobs::commands::job_metadata_refresh_enqueue,
+            crate::features::jobs::commands::job_model_download_enqueue,
+            crate::features::jobs::commands::job_paper_assets_status,
             crate::features::jobs::commands::job_reconcile_paper,
             crate::features::jobs::commands::job_reconcile_vault,
             crate::features::jobs::commands::job_papers_needing_assets,
@@ -228,7 +232,6 @@ fn export_typescript_bindings() {
             crate::app::events_contract::SettingsChangedEvent,
             crate::app::events_contract::BackgroundTaskProgressEvent,
             crate::app::events_contract::LayoutRemoteProgressEvent,
-            crate::app::events_contract::LayoutModelTaskEvent,
             crate::app::events_contract::AgentLifecycleProgressEvent,
             crate::app::events_contract::AgentRegistryChangedEvent,
             crate::app::events_contract::AskUserRequestEvt,

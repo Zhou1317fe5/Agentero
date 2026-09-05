@@ -89,15 +89,15 @@ LayoutAnalysisPluginPackage: {
 | 项 | 值 |
 |---|---|
 | 路径 | `$XDG_CACHE_HOME/agentero/models/pp-doclayoutv3.onnx`（Unix 默认 `~/.cache/agentero/models/`） |
-| 启动 | Host `spawn_background_download`（task id 固定 `layout-model`；已有文件则跳过） |
-| 面板 | App `useLayoutModelPrefetch` 监听 `layout-model:task` / 进度，写入左下角后台任务（可取消） |
+| 启动 | Host `spawn_background_download` 入队 JobCenter `modelDownload` job（已有文件则跳过；并发触发按 fingerprint 去重） |
+| 面板 | JobCenter 投影成 download 行（字节进度 `background-task:progress`，task id = job id；取消走 `job_cancel`） |
 | 代理 | 设置里的 `networkProxyEnabled` / `networkProxyUrl`（`core::http::client_builder`） |
 | 源顺序 | **ModelScope 优先** → HuggingFace 回退 |
 | ModelScope | `greatv/oar-ocr` → `pp-doclayoutv3.onnx` |
 | HuggingFace | EmbedPDF `PP-DocLayoutV3-ONNX/model_fp16.onnx` |
 | 来源标记 | 同目录 `pp-doclayoutv3.onnx.source` |
 | 前端 | `agentero-model://…/pp-doclayoutv3.onnx`（Windows：`http://agentero-model.localhost/…`） |
-| Commands | `layout_model_status` / `layout_model_ensure({ progressTaskId? })` |
+| Commands | `layout_model_status` / `job_model_download_enqueue` |
 
 实现：`src-tauri/src/features/paper/analyze/layout/model_assets/`、`src/lib/pdf/layout/model.ts`、`ai-runtime.ts`。
 

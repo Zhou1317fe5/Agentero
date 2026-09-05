@@ -176,6 +176,37 @@ function connectorJob(
 	};
 }
 
+function modelJob(
+	overrides: Partial<JobChangedSnapshot> = {},
+): JobChangedSnapshot {
+	return {
+		id: "job-model-1",
+		kind: "modelDownload",
+		state: "running",
+		vaultPath: "",
+		paperPath: "",
+		progress: null,
+		phase: null,
+		...overrides,
+	};
+}
+
+function libraryJob(
+	overrides: Partial<JobChangedSnapshot> = {},
+): JobChangedSnapshot {
+	return {
+		id: "job-library-1",
+		kind: "libraryIo",
+		state: "running",
+		vaultPath: "/vault",
+		paperPath: "",
+		progress: null,
+		phase: null,
+		params: { op: "export" },
+		...overrides,
+	};
+}
+
 function task(id: string) {
 	return backgroundTasksStore.getState().tasks.find((item) => item.id === id);
 }
@@ -412,5 +443,79 @@ describe("job task projection", () => {
 		);
 		expect(task("job-connector-3")?.status).toBe("failed");
 		expect(task("job-connector-3")?.error).toBe("Browser PDF save failed");
+	});
+
+	it("projects the model download as the legacy layout-model row", () => {
+		projectJobToBackgroundTask(modelJob({ state: "queued", phase: "queued" }));
+		expect(task("job-model-1")?.kind).toBe("download");
+		expect(task("job-model-1")?.title).toBe("Download layout model");
+		expect(task("job-model-1")?.detail).toBe(
+			"ModelScope → HuggingFace · PP-DocLayoutV3",
+		);
+
+		projectJobToBackgroundTask(
+			modelJob({ state: "succeeded", phase: "modelscope · 130 bytes" }),
+		);
+		expect(task("job-model-1")?.status).toBe("completed");
+		expect(task("job-model-1")?.detail).toBe("modelscope · 130 bytes");
+	});
+
+	it("projects the library-scope kinds onto their legacy rows", () => {
+		projectJobToBackgroundTask(
+			libraryJob({ id: "job-lib-export", params: { op: "export" } }),
+		);
+		expect(task("job-lib-export")?.kind).toBe("export");
+		expect(task("job-lib-export")?.title).toBe("Export library");
+		expect(task("job-lib-export")?.detail).toBeUndefined();
+
+		projectJobToBackgroundTask(
+			libraryJob({ id: "job-lib-import", params: { op: "import" } }),
+		);
+		expect(task("job-lib-import")?.kind).toBe("import");
+		expect(task("job-lib-import")?.title).toBe("Import bibliography");
+
+		projectJobToBackgroundTask({
+			id: "job-citing-1",
+			kind: "citingScan",
+			state: "running",
+			vaultPath: "/vault",
+			paperPath: "",
+			progress: null,
+			phase: "Reading library metadata…",
+		} as JobChangedSnapshot);
+		expect(task("job-citing-1")?.kind).toBe("lookup");
+		expect(task("job-citing-1")?.title).toBe("Find papers citing your library");
+		expect(task("job-citing-1")?.detail).toBe("Reading library metadata…");
+	});
+
+	it("projects a metadata refresh batch with its N/M counter", () => {
+		projectJobToBackgroundTask({
+			id: "job-refresh-1",
+			kind: "metadataRefresh",
+			state: "queued",
+			vaultPath: "/vault",
+			paperPath: "",
+			progress: null,
+			phase: "queued",
+			params: { papers: [{ path: "papers/a" }, { path: "papers/b" }] },
+		} as JobChangedSnapshot);
+		expect(task("job-refresh-1")?.kind).toBe("other");
+		expect(task("job-refresh-1")?.title).toBe("Refresh metadata");
+		expect(task("job-refresh-1")?.detail).toContain("0 / 2");
+
+		projectJobToBackgroundTask({
+			id: "job-refresh-1",
+			kind: "metadataRefresh",
+			state: "running",
+			vaultPath: "/vault",
+			paperPath: "",
+			progress: 50,
+			phase: "1 / 2 · 1 updated · 0 failed · 0 not found",
+			params: { papers: [{ path: "papers/a" }, { path: "papers/b" }] },
+		} as JobChangedSnapshot);
+		expect(task("job-refresh-1")?.progress).toBe(50);
+		expect(task("job-refresh-1")?.detail).toBe(
+			"1 / 2 · 1 updated · 0 failed · 0 not found",
+		);
 	});
 });

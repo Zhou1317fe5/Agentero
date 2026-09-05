@@ -47,7 +47,11 @@ export type TaskSpec = {
 		| "layoutAnalyze"
 		| "downloadAssets"
 		| "import"
-		| "connectorSync";
+		| "connectorSync"
+		| "modelDownload"
+		| "citingScan"
+		| "libraryIo"
+		| "metadataRefresh";
 	vaultPath: string;
 	path: string;
 	lane?: JobLane;
@@ -55,8 +59,8 @@ export type TaskSpec = {
 	/** parseBody only: Host-side cooperative-cancel polling id. */
 	taskId?: string | null;
 	/**
-	 * import / connectorSync: JSON-serializable mode + source identifiers;
-	 * feeds the dedupe fingerprint.
+	 * import / connectorSync / libraryIo / metadataRefresh: JSON-serializable
+	 * mode / op / batch payload; feeds the dedupe fingerprint.
 	 */
 	params?: unknown;
 };
@@ -90,6 +94,32 @@ export async function enqueueTask(spec: TaskSpec): Promise<JobSnapshot> {
 				case "connectorSync":
 					return commands.jobConnectorSyncEnqueue({
 						...args,
+						params: (spec.params ?? null) as Json | null,
+					});
+				case "modelDownload":
+					return commands.jobModelDownloadEnqueue({
+						lane: spec.lane ?? null,
+						force: spec.force ?? false,
+					});
+				case "citingScan":
+					return commands.jobCitingScanEnqueue({
+						vaultPath: spec.vaultPath,
+						lane: spec.lane ?? null,
+						force: spec.force ?? false,
+						params: (spec.params ?? null) as Json | null,
+					});
+				case "libraryIo":
+					return commands.jobLibraryIoEnqueue({
+						vaultPath: spec.vaultPath,
+						lane: spec.lane ?? null,
+						force: spec.force ?? false,
+						params: (spec.params ?? null) as Json | null,
+					});
+				case "metadataRefresh":
+					return commands.jobMetadataRefreshEnqueue({
+						vaultPath: spec.vaultPath,
+						lane: spec.lane ?? null,
+						force: spec.force ?? false,
 						params: (spec.params ?? null) as Json | null,
 					});
 			}

@@ -146,12 +146,12 @@ L2 方案实测对比（阈值统一取自己论文 p10）：
 
 ### 7.5 生命周期与进度
 
-前端 `enqueueBackgroundTask` 建任务行（`discoverCitingPapers`，`src/lib/paper/library-actions.ts`），把任务 id 作为 `taskId` 传给命令，Host 用它做两件事：
+扫描是 JobCenter `citingScan` Renderer-host job（触发在 `discoverCitingPapers`，`src/lib/paper/library-actions.ts`；执行器在 `src/lib/paper/library-tasks.ts`），执行器把 job id 作为 `taskId` 传给命令，Host 用它做两件事：
 
-- **进度**：抓取阶段按完成数 emit `background-task:progress`（带 `currentCount`/`totalCount`），面板显示「引用 · 12/38」。只有带计数的阶段才 emit——没有计数的阶段会掉进面板的字节格式化分支
-- **取消**：每个种子请求前轮询 `core::background_tasks::is_cancelled`，命中即返回且不写缓存；命令出口无条件 `finish()` 清标记，否则残留的取消标记会秒杀下一个复用该 id 的任务
+- **进度**：抓取阶段按完成数 emit `background-task:progress`（带 `currentCount`/`totalCount`），投影行显示「引用 · 12/38」。只有带计数的阶段才 emit——没有计数的阶段会掉进面板的字节格式化分支
+- **取消**：面板走 `job_cancel`，cancel token 经桥接注册到同一 id；每个种子请求前轮询 `core::background_tasks::is_cancelled`，命中即返回且不写缓存；命令出口无条件 `finish()` 清标记，否则残留的取消标记会秒杀下一个复用该 id 的任务
 
-库级 I/O 互斥复用 `libraryStore.ioBusy`。结果属于扫描时那个 vault，完成回调比对 `getVaultPath()` 不一致就不弹窗。
+库级 I/O 互斥复用 `libraryStore.ioBusy`。结果属于扫描时那个 vault，执行器比对 `getVaultPath()` 不一致就不弹窗。
 
 ### 7.6 实测（53 篇 vault）
 

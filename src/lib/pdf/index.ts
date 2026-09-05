@@ -119,7 +119,6 @@ export {
 export type { PdfHighlight } from "@/lib/pdf/highlight/types";
 export {
 	applyLayoutTranslateSidecar,
-	attachLayoutModelTaskListener,
 	compareLayoutReadingOrder,
 	currentLayoutTranslateCacheKey,
 	dedupeLayoutRegions,

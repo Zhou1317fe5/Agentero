@@ -397,6 +397,153 @@ pub async fn job_connector_sync_enqueue(
     Ok(ApiResult::ok(start_or_hold(&app, &center, snapshot).await))
 }
 
+/// Shared args for the vault-scope renderer kinds (`CitingScan` / `LibraryIo`
+/// / `MetadataRefresh`): the target is the vault (or an operation on it), not
+/// a single paper, so `path` stays empty and `params` carries the payload that
+/// feeds the dedupe fingerprint.
+#[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct JobVaultScopeEnqueueArgs {
+    pub vault_path: String,
+    #[serde(default)]
+    pub lane: Option<JobLane>,
+    #[serde(default)]
+    pub force: bool,
+    #[specta(type = Option<crate::core::json::Json>)]
+    #[serde(default)]
+    pub params: Option<serde_json::Value>,
+}
+
+/// Enqueue the reverse-citation scan ("papers citing my library"). The
+/// renderer executor drives `library_citing_scan` under the job id.
+#[tauri::command]
+#[specta::specta]
+pub async fn job_citing_scan_enqueue(
+    app: tauri::AppHandle,
+    center: State<'_, JobCenter>,
+    args: JobVaultScopeEnqueueArgs,
+) -> Result<ApiResult<JobSnapshot>, String> {
+    let vault = match crate::core::fs::resolve_vault(&args.vault_path) {
+        Ok(vault) => vault,
+        Err(err) => return Ok(map_err(err)),
+    };
+    let snapshot = center
+        .enqueue_citing_scan(&vault, parse_lane(args.lane), args.force, args.params)
+        .await;
+    Ok(ApiResult::ok(start_or_hold(&app, &center, snapshot).await))
+}
+
+/// Enqueue a bibliography import / export (`params.op`); dialog-driven, so the
+/// renderer executor owns the flow.
+#[tauri::command]
+#[specta::specta]
+pub async fn job_library_io_enqueue(
+    app: tauri::AppHandle,
+    center: State<'_, JobCenter>,
+    args: JobVaultScopeEnqueueArgs,
+) -> Result<ApiResult<JobSnapshot>, String> {
+    let vault = match crate::core::fs::resolve_vault(&args.vault_path) {
+        Ok(vault) => vault,
+        Err(err) => return Ok(map_err(err)),
+    };
+    let snapshot = center
+        .enqueue_library_io(&vault, parse_lane(args.lane), args.force, args.params)
+        .await;
+    Ok(ApiResult::ok(start_or_hold(&app, &center, snapshot).await))
+}
+
+/// Enqueue a bulk metadata refresh; `params.papers` (`[{ path, query }]`)
+/// joins the dedupe fingerprint and drives the renderer executor's batch.
+#[tauri::command]
+#[specta::specta]
+pub async fn job_metadata_refresh_enqueue(
+    app: tauri::AppHandle,
+    center: State<'_, JobCenter>,
+    args: JobVaultScopeEnqueueArgs,
+) -> Result<ApiResult<JobSnapshot>, String> {
+    let vault = match crate::core::fs::resolve_vault(&args.vault_path) {
+        Ok(vault) => vault,
+        Err(err) => return Ok(map_err(err)),
+    };
+    let snapshot = center
+        .enqueue_metadata_refresh(&vault, parse_lane(args.lane), args.force, args.params)
+        .await;
+    Ok(ApiResult::ok(start_or_hold(&app, &center, snapshot).await))
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct JobModelDownloadEnqueueArgs {
+    #[serde(default)]
+    pub lane: Option<JobLane>,
+    #[serde(default)]
+    pub force: bool,
+}
+
+/// Enqueue the global layout-model download (XDG cache; no vault/paper
+/// target). Concurrent triggers dedupe into one active `ModelDownload` job
+/// whose Host runner streams byte progress under the job id.
+#[tauri::command]
+#[specta::specta]
+pub async fn job_model_download_enqueue(
+    app: tauri::AppHandle,
+    center: State<'_, JobCenter>,
+    args: JobModelDownloadEnqueueArgs,
+) -> Result<ApiResult<JobSnapshot>, String> {
+    let snapshot = center
+        .enqueue_model_download(parse_lane(args.lane), args.force)
+        .await;
+    Ok(ApiResult::ok(start_or_hold(&app, &center, snapshot).await))
+}
+
+#[derive(Debug, Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct JobPaperAssetsStatusArgs {
+    pub vault_path: String,
+    pub path: String,
+}
+
+/// Local asset presence for one paper (post-`DownloadAssets` follow-ups:
+/// paper-reader gate + activity telemetry).
+#[derive(Debug, Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct PaperAssetsStatus {
+    pub pdf: bool,
+    pub tex: bool,
+    pub paper_md: bool,
+}
+
+#[tauri::command]
+#[specta::specta]
+pub async fn job_paper_assets_status(
+    caps: State<'_, crate::features::paper::catalog::CapsCache>,
+    args: JobPaperAssetsStatusArgs,
+) -> Result<ApiResult<PaperAssetsStatus>, String> {
+    let (vault, path) = match validate_job_paper(&args.vault_path, &args.path) {
+        Ok(valid) => valid,
+        Err(e) => return Ok(map_err(e)),
+    };
+    let caps_handle = (*caps).clone();
+    let status = match tauri::async_runtime::spawn_blocking(move || {
+        let paper_caps = caps_handle.caps_for(&vault, &path);
+        PaperAssetsStatus {
+            pdf: paper_caps.has_pdf(),
+            tex: paper_caps.has_tex,
+            paper_md: paper_caps.has_paper_md,
+        }
+    })
+    .await
+    {
+        Ok(status) => status,
+        Err(e) => {
+            return Ok(map_err(AppError::message(format!(
+                "paper assets status failed: {e}"
+            ))))
+        }
+    };
+    Ok(ApiResult::ok(status))
+}
+
 #[tauri::command]
 #[specta::specta]
 pub async fn job_focus_paper(

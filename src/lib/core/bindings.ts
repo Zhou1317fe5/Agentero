@@ -41,12 +41,6 @@ export const commands = {
 	 */
 	easyScholarGetRank: (publicationName: string) => __TAURI_INVOKE<ApiResult<Json>>("easy_scholar_get_rank", { publicationName }),
 	layoutModelStatus: () => __TAURI_INVOKE<ApiResult<LayoutModelStatus>>("layout_model_status"),
-	/**
-	 *  Download (if needed) into XDG cache. Pass `progressTaskId` from
-	 *  `enqueueBackgroundTask` so the Host can emit `background-task:progress`
-	 *  and honor cancel.
-	 */
-	layoutModelEnsure: (progressTaskId: string | null) => __TAURI_INVOKE<ApiResult<LayoutModelStatus>>("layout_model_ensure", { progressTaskId }),
 	layoutRemoteAnalyzePdf: (args: LayoutRemoteAnalyzePdfArgs) => __TAURI_INVOKE<ApiResult<LayoutRemoteAnalyzePdfResult>>("layout_remote_analyze_pdf", { args }),
 	layoutRemoteProbe: (args: LayoutRemoteProbeArgs) => __TAURI_INVOKE<ApiResult<LayoutRemoteProbeResult>>("layout_remote_probe", { args }),
 	agentListAgents: () => __TAURI_INVOKE<ApiResult<AgentListResponse_Serialize>>("agent_list_agents"),
@@ -81,6 +75,28 @@ export const commands = {
 	 *  job so the task panel row comes from the JobCenter projection.
 	 */
 	jobConnectorSyncEnqueue: (args: JobConnectorSyncEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_connector_sync_enqueue", { args })),
+	/**
+	 *  Enqueue the reverse-citation scan ("papers citing my library"). The
+	 *  renderer executor drives `library_citing_scan` under the job id.
+	 */
+	jobCitingScanEnqueue: (args: JobVaultScopeEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_citing_scan_enqueue", { args })),
+	/**
+	 *  Enqueue a bibliography import / export (`params.op`); dialog-driven, so the
+	 *  renderer executor owns the flow.
+	 */
+	jobLibraryIoEnqueue: (args: JobVaultScopeEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_library_io_enqueue", { args })),
+	/**
+	 *  Enqueue a bulk metadata refresh; `params.papers` (`[{ path, query }]`)
+	 *  joins the dedupe fingerprint and drives the renderer executor's batch.
+	 */
+	jobMetadataRefreshEnqueue: (args: JobVaultScopeEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_metadata_refresh_enqueue", { args })),
+	/**
+	 *  Enqueue the global layout-model download (XDG cache; no vault/paper
+	 *  target). Concurrent triggers dedupe into one active `ModelDownload` job
+	 *  whose Host runner streams byte progress under the job id.
+	 */
+	jobModelDownloadEnqueue: (args: JobModelDownloadEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_model_download_enqueue", { args })),
+	jobPaperAssetsStatus: (args: JobPaperAssetsStatusArgs) => typedError<ApiResult<PaperAssetsStatus>, string>(__TAURI_INVOKE("job_paper_assets_status", { args })),
 	/**
 	 *  Per-paper reconcile (pipeline-orchestration §7.4 入口②): backfill a
 	 *  `ParseBody` job when the paper has a PDF but no TeX and no `PAPER.md`, and
@@ -537,7 +553,6 @@ export const events = {
 	jobCompleted: makeEvent<JobCompletedEvent_Deserialize>("job:completed"),
 	jobFailed: makeEvent<JobFailedEvent_Deserialize>("job:failed"),
 	jobOffer: makeEvent<JobOfferEvent>("job:offer"),
-	layoutModelTask: makeEvent<LayoutModelTaskEvent>("layout-model:task"),
 	layoutRemoteProgress: makeEvent<LayoutRemoteProgressEvent_Deserialize>("layout-remote:progress"),
 	mcpStatus: makeEvent<McpStatusEvent>("mcp:status"),
 	mcpTunnelStatus: makeEvent<McpTunnelStatusEvent>("mcp:tunnel-status"),
@@ -2490,13 +2505,18 @@ export type JobImportEnqueueArgs = {
 	params?: Json | null,
 };
 
-export type JobKind = "parseRefs" | "parseBody" | "layoutAnalyze" | "layoutTranslate" | "downloadAssets" | "pageCount" | "wikiReindex" | "recognizeMetadata" | "import" | "connectorSync";
+export type JobKind = "parseRefs" | "parseBody" | "layoutAnalyze" | "layoutTranslate" | "downloadAssets" | "pageCount" | "wikiReindex" | "recognizeMetadata" | "import" | "connectorSync" | "modelDownload" | "citingScan" | "libraryIo" | "metadataRefresh";
 
 export type JobLane = "focus" | "normal" | "idle";
 
 export type JobListArgs = {
 	vaultPath?: string | null,
 	path?: string | null,
+};
+
+export type JobModelDownloadEnqueueArgs = {
+	lane?: JobLane | null,
+	force?: boolean,
 };
 
 export type JobOfferEvent = JobOfferPayload;
@@ -2508,6 +2528,11 @@ export type JobOfferPayload = {
 	paperPath: string | null,
 	force: boolean,
 	params: Json | null,
+};
+
+export type JobPaperAssetsStatusArgs = {
+	vaultPath: string,
+	path: string,
 };
 
 export type JobPapersNeedingAssetsArgs = {
@@ -2589,6 +2614,19 @@ export type JobTerminalPayload_Serialize = {
 	error?: string | null,
 };
 
+/**
+ *  Shared args for the vault-scope renderer kinds (`CitingScan` / `LibraryIo`
+ *  / `MetadataRefresh`): the target is the vault (or an operation on it), not
+ *  a single paper, so `path` stays empty and `params` carries the payload that
+ *  feeds the dedupe fingerprint.
+ */
+export type JobVaultScopeEnqueueArgs = {
+	vaultPath: string,
+	lane?: JobLane | null,
+	force?: boolean,
+	params?: Json | null,
+};
+
 /**  TypeScript-side representation of arbitrary JSON values. */
 export type Json = 
 /**  JSON `null`. */
@@ -2611,20 +2649,6 @@ export type LayoutModelStatus = {
 	source: string | null,
 	/**  Relative path segment for the `agentero-model` URI scheme. */
 	fileName: string,
-};
-
-/**
- *  Owned mirror of the private `LayoutModelTaskEvent` in
- *  `features::paper::analyze::layout::model_assets`.
- */
-export type LayoutModelTaskEvent = {
-	taskId: string,
-	/**  `running` | `completed` | `failed` | `cancelled` */
-	status: string,
-	progress: number | null,
-	detail: string | null,
-	error: string | null,
-	source: string | null,
 };
 
 export type LayoutProviderConfig = {
@@ -2967,6 +2991,16 @@ export type PairingRequest = {
 };
 
 export type PaperAssetsReadyEvent = PaperFactPayload;
+
+/**
+ *  Local asset presence for one paper (post-`DownloadAssets` follow-ups:
+ *  paper-reader gate + activity telemetry).
+ */
+export type PaperAssetsStatus = {
+	pdf: boolean,
+	tex: boolean,
+	paperMd: boolean,
+};
 
 export type PaperBackfillPublicationArgs = {
 	vaultPath: string,

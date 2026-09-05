@@ -115,21 +115,6 @@ pub struct LayoutRemoteProgressEvent {
     pub request_id: Option<String>,
 }
 
-/// Owned mirror of the private `LayoutModelTaskEvent` in
-/// `features::paper::analyze::layout::model_assets`.
-#[derive(serde::Serialize, specta::Type, tauri_specta::Event)]
-#[serde(rename_all = "camelCase")]
-#[tauri_specta(event_name = "layout-model:task")]
-pub struct LayoutModelTaskEvent {
-    pub task_id: String,
-    /// `running` | `completed` | `failed` | `cancelled`
-    pub status: String,
-    pub progress: Option<u8>,
-    pub detail: Option<String>,
-    pub error: Option<String>,
-    pub source: Option<String>,
-}
-
 /// Owned mirror of the private `ToolLifecycleProgress` in
 /// `features::agent::registry::lifecycle`.
 #[derive(serde::Serialize, specta::Type, tauri_specta::Event)]
@@ -402,7 +387,7 @@ use std::path::{Path, PathBuf};
 /// Every event name registered in this file (the desktop contract surface).
 fn registered_event_names() -> BTreeSet<String> {
     use tauri_specta::Event as _;
-    let names: [&str; 43] = [
+    let names: [&str; 42] = [
         JobOfferEvent::NAME,
         JobChangedEvent::NAME,
         JobCompletedEvent::NAME,
@@ -415,7 +400,6 @@ fn registered_event_names() -> BTreeSet<String> {
         SettingsChangedEvent::NAME,
         BackgroundTaskProgressEvent::NAME,
         LayoutRemoteProgressEvent::NAME,
-        LayoutModelTaskEvent::NAME,
         AgentLifecycleProgressEvent::NAME,
         AgentRegistryChangedEvent::NAME,
         AskUserRequestEvt::NAME,

@@ -23,6 +23,7 @@ import {
 import { registerImportTaskExecutor } from "@/lib/paper/import/import-tasks";
 import { startJobCompletionRefresh } from "@/lib/paper/job-refresh";
 import { refreshLibrary } from "@/lib/paper/library-store";
+import { registerLibraryTaskExecutors } from "@/lib/paper/library-tasks";
 import { registerLayoutTaskExecutor } from "@/lib/pdf/layout/enqueue-paper-layout";
 import { applyDocumentChrome } from "@/lib/settings";
 import { validateRestoredVault } from "@/lib/vault/actions";
@@ -113,6 +114,7 @@ export function useAppBootstrap(): void {
 		registerLayoutTaskExecutor();
 		registerImportTaskExecutor();
 		registerConnectorTaskExecutor();
+		registerLibraryTaskExecutors();
 		const disposeRuntime = startTaskRuntime();
 		const disposeConnector = startConnectorProgressRelay();
 		const disposeRefresh = startJobCompletionRefresh();

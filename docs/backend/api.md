@@ -2187,23 +2187,22 @@ Windows：未设 `XDG_CONFIG_HOME` 时回退 `%APPDATA%/agentero/`。旧版 macO
 ### 3.10.1 版面模型（PP-DocLayoutV3）
 
 - **路径**：`$XDG_CACHE_HOME/agentero/models/pp-doclayoutv3.onnx`
-- **启动**：`setup` 在代理配置后 `spawn_background_download`（固定 task id `layout-model`）
+- **启动**：`setup` 在代理配置后 `spawn_background_download` 入队 JobCenter `modelDownload` job（已有文件则跳过）
 - **下载源**：ModelScope（`greatv/oar-ocr`）优先，失败则 HuggingFace EmbedPDF `model_fp16.onnx`
 - **代理**：走 Host 全局 `core::http::client_builder`（与设置 Network proxy 一致）
 - **协议**：`agentero-model` URI scheme 把本地文件喂给 `onnxruntime-web`
-- **后台任务**：
-  - `emit("layout-model:task", { taskId, status, progress, detail, error, source })`
-  - `emit("background-task:progress", { taskId: "layout-model", phase: "layout-model", … })`
-  - 取消：`background_task_cancel` + task id `layout-model`
+- **后台任务**：Host runner job（全局资源：vault/paper 为空，cap 1；重复触发按 fingerprint 去重合并）
+  - 面板行来自 JobCenter 投影；字节进度 `emit("background-task:progress", { taskId: <job id>, phase: "layout-model", … })`
+  - 取消：`job_cancel`（cancel token 桥接到 `background_tasks::is_cancelled(job id)`）
 
 #### `layout_model_status`（已实现）
 
 - **返回** `ApiResult<LayoutModelStatus>`：`{ ready, path, sizeBytes, source, fileName }`
 
-#### `layout_model_ensure`（已实现）
+#### `job_model_download_enqueue`（已实现）
 
-- **参数**：`{ progressTaskId?: string }`（来自 `enqueueBackgroundTask` 的 id）
-- **返回**：`LayoutModelStatus`；未就绪则下载（进程锁；支持取消与字节进度）
+- **参数**：`{ lane?, force? }`（无 vault/paper 目标）
+- **返回**：`ApiResult<JobSnapshot>`；未就绪则由 Host runner 下载（进程锁；支持取消与字节进度），并发触发合并为同一 job
 
 ### 3.10.2 版面解析后端（本地 ONNX / 远程 Provider）
 

@@ -43,6 +43,10 @@ pub enum JobKind {
     RecognizeMetadata,
     Import,
     ConnectorSync,
+    ModelDownload,
+    CitingScan,
+    LibraryIo,
+    MetadataRefresh,
 }
 
 impl JobKind {
@@ -63,6 +67,10 @@ impl JobKind {
             JobKind::RecognizeMetadata => "recognizeMetadata",
             JobKind::Import => "import",
             JobKind::ConnectorSync => "connectorSync",
+            JobKind::ModelDownload => "modelDownload",
+            JobKind::CitingScan => "citingScan",
+            JobKind::LibraryIo => "libraryIo",
+            JobKind::MetadataRefresh => "metadataRefresh",
         };
         // ParseRefs always runs with online lookup enabled; the segment is
         // kept for fingerprint compatibility with pre-refactor jobs.
@@ -86,12 +94,18 @@ impl JobKind {
         }
     }
 
-    /// Execution host of the kind's business logic: `LayoutAnalyze`, `Import`
-    /// and `ConnectorSync` are offered to the renderer (`job:offer`); every
-    /// other kind runs a Rust runner.
+    /// Execution host of the kind's business logic: `LayoutAnalyze`, `Import`,
+    /// `ConnectorSync`, `CitingScan`, `LibraryIo` and `MetadataRefresh` are
+    /// offered to the renderer (`job:offer`); every other kind runs a Rust
+    /// runner.
     pub fn exec_host(self) -> ExecHost {
         match self {
-            JobKind::LayoutAnalyze | JobKind::Import | JobKind::ConnectorSync => ExecHost::Renderer,
+            JobKind::LayoutAnalyze
+            | JobKind::Import
+            | JobKind::ConnectorSync
+            | JobKind::CitingScan
+            | JobKind::LibraryIo
+            | JobKind::MetadataRefresh => ExecHost::Renderer,
             _ => ExecHost::Host,
         }
     }
@@ -417,6 +431,12 @@ fn kind_concurrency(inner: &JobCenterInner, kind: JobKind) -> usize {
         // One Connector attachment save at a time: the rows are per-attachment
         // and the browser drives them sequentially anyway.
         JobKind::ConnectorSync => 1,
+        // Global one-shot download (XDG cache); dedupe collapses re-triggers,
+        // the cap guards distinct force-enqueues.
+        JobKind::ModelDownload => 1,
+        // Online scans / dialog-driven file IO / polite metadata batches:
+        // one library-scope renderer job of each kind at a time.
+        JobKind::CitingScan | JobKind::LibraryIo | JobKind::MetadataRefresh => 1,
         JobKind::PageCount | JobKind::WikiReindex => usize::MAX,
     }
 }
@@ -538,6 +558,9 @@ impl JobCenter {
         center.register_runner(JobKind::LayoutAnalyze, Arc::new(renderer_offer_runner));
         center.register_runner(JobKind::Import, Arc::new(renderer_offer_runner));
         center.register_runner(JobKind::ConnectorSync, Arc::new(renderer_offer_runner));
+        center.register_runner(JobKind::CitingScan, Arc::new(renderer_offer_runner));
+        center.register_runner(JobKind::LibraryIo, Arc::new(renderer_offer_runner));
+        center.register_runner(JobKind::MetadataRefresh, Arc::new(renderer_offer_runner));
         center
     }
 
@@ -731,6 +754,62 @@ impl JobCenter {
             JobKind::ConnectorSync,
             vault,
             path,
+            lane,
+            force,
+            None,
+            params,
+        )
+        .await
+    }
+
+    /// Enqueue the global layout-model download. The model lives in the XDG
+    /// cache (no vault / paper target), so every trigger shares the empty
+    /// scope and concurrent re-triggers dedupe into one active job.
+    pub async fn enqueue_model_download(&self, lane: JobLane, force: bool) -> JobSnapshot {
+        self.enqueue_core(JobKind::ModelDownload, "", "", lane, force, None, None)
+            .await
+    }
+
+    /// Enqueue the reverse-citation scan of a vault (renderer executor drives
+    /// the Host `library_citing_scan` command under the job id).
+    pub async fn enqueue_citing_scan(
+        &self,
+        vault: impl Into<PathBuf>,
+        lane: JobLane,
+        force: bool,
+        params: Option<serde_json::Value>,
+    ) -> JobSnapshot {
+        self.enqueue_core(JobKind::CitingScan, vault, "", lane, force, None, params)
+            .await
+    }
+
+    /// Enqueue a bibliography import / export (`params.op`). Dialog-driven,
+    /// so the renderer executor owns the flow.
+    pub async fn enqueue_library_io(
+        &self,
+        vault: impl Into<PathBuf>,
+        lane: JobLane,
+        force: bool,
+        params: Option<serde_json::Value>,
+    ) -> JobSnapshot {
+        self.enqueue_core(JobKind::LibraryIo, vault, "", lane, force, None, params)
+            .await
+    }
+
+    /// Enqueue a bulk metadata refresh; `params` carries the paper list
+    /// (`[{ path, query }]`) and joins the dedupe fingerprint so re-triggering
+    /// the same selection collapses while distinct selections do not.
+    pub async fn enqueue_metadata_refresh(
+        &self,
+        vault: impl Into<PathBuf>,
+        lane: JobLane,
+        force: bool,
+        params: Option<serde_json::Value>,
+    ) -> JobSnapshot {
+        self.enqueue_core(
+            JobKind::MetadataRefresh,
+            vault,
+            "",
             lane,
             force,
             None,
@@ -2461,6 +2540,125 @@ mod tests {
             StartOutcome::Waiting => {}
             other => panic!("expected the second save Waiting at cap 1, got {other:?}"),
         }
+    }
+
+    /// The layout-model download is a global Host job: every trigger shares
+    /// the empty vault/paper scope, so concurrent re-triggers collapse into
+    /// one active job.
+    #[tokio::test]
+    async fn enqueue_dedupes_model_download_job_globally() {
+        let center = JobCenter::new();
+        let first = center.enqueue_model_download(JobLane::Normal, false).await;
+        let duplicate = center.enqueue_model_download(JobLane::Normal, false).await;
+
+        assert_eq!(first.id, duplicate.id);
+        assert_eq!(first.kind, JobKind::ModelDownload);
+        assert_eq!(first.host, ExecHost::Host);
+        assert_eq!(first.fingerprint, "modelDownload:v1:force:false");
+        assert_eq!(first.paper_path.as_deref(), Some(""));
+        assert_eq!(center.list(None, None).await.len(), 1);
+
+        // Settled jobs release the key: a later trigger starts a fresh job.
+        center.mark_succeeded_for_test(&first.id).await;
+        let next = center.enqueue_model_download(JobLane::Normal, false).await;
+        assert_ne!(next.id, first.id);
+    }
+
+    /// Bulk metadata refresh is renderer-executed and dedupes on its paper
+    /// list: the same selection collapses, a distinct selection does not.
+    #[tokio::test]
+    async fn enqueue_dedupes_metadata_refresh_job_by_params() {
+        let center = JobCenter::new();
+        let vault = vault("metadata-refresh");
+        let params_a = serde_json::json!({ "papers": [{ "path": "papers/a", "query": "10.1/x" }] });
+        let first = center
+            .enqueue_metadata_refresh(
+                vault.clone(),
+                JobLane::Normal,
+                false,
+                Some(params_a.clone()),
+            )
+            .await;
+        let duplicate = center
+            .enqueue_metadata_refresh(vault.clone(), JobLane::Normal, false, Some(params_a))
+            .await;
+        let other = center
+            .enqueue_metadata_refresh(
+                vault.clone(),
+                JobLane::Normal,
+                false,
+                Some(serde_json::json!({ "papers": [{ "path": "papers/b", "query": "10.1/y" }] })),
+            )
+            .await;
+
+        assert_eq!(first.id, duplicate.id);
+        assert_eq!(first.kind, JobKind::MetadataRefresh);
+        assert_eq!(first.host, ExecHost::Renderer);
+        assert!(first
+            .fingerprint
+            .starts_with("metadataRefresh:v1:force:false:params:"));
+        assert_ne!(first.id, other.id);
+
+        // Cap 1: the distinct selection waits while the first batch runs.
+        match center.try_start(&first.id).await {
+            StartOutcome::Started(..) => {}
+            other => panic!("expected Started, got {other:?}"),
+        }
+        match center.try_start(&other.id).await {
+            StartOutcome::Waiting => {}
+            other => panic!("expected the second batch Waiting at cap 1, got {other:?}"),
+        }
+    }
+
+    /// Library import and export are distinct jobs (`params.op`), both
+    /// renderer-executed; a re-triggered op dedupes.
+    #[tokio::test]
+    async fn library_io_jobs_dedupe_per_op() {
+        let center = JobCenter::new();
+        let vault = vault("library-io");
+        let export = center
+            .enqueue_library_io(
+                vault.clone(),
+                JobLane::Normal,
+                false,
+                Some(serde_json::json!({ "op": "export" })),
+            )
+            .await;
+        let export_again = center
+            .enqueue_library_io(
+                vault.clone(),
+                JobLane::Normal,
+                false,
+                Some(serde_json::json!({ "op": "export" })),
+            )
+            .await;
+        let import = center
+            .enqueue_library_io(
+                vault.clone(),
+                JobLane::Normal,
+                false,
+                Some(serde_json::json!({ "op": "import" })),
+            )
+            .await;
+
+        assert_eq!(export.id, export_again.id);
+        assert_ne!(export.id, import.id);
+        assert_eq!(export.kind, JobKind::LibraryIo);
+        assert_eq!(export.host, ExecHost::Renderer);
+        assert!(export
+            .fingerprint
+            .starts_with("libraryIo:v1:force:false:params:"));
+
+        let citing = center
+            .enqueue_citing_scan(vault.clone(), JobLane::Normal, false, None)
+            .await;
+        assert_eq!(citing.kind, JobKind::CitingScan);
+        assert_eq!(citing.host, ExecHost::Renderer);
+        assert_eq!(citing.fingerprint, "citingScan:v1:force:false");
+        let citing_again = center
+            .enqueue_citing_scan(vault, JobLane::Normal, false, None)
+            .await;
+        assert_eq!(citing.id, citing_again.id);
     }
 
     /// A panicked runner task surfaces as a join error, exactly how the

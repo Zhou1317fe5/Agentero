@@ -181,6 +181,7 @@ pub fn run() {
             let center = app.state::<crate::features::jobs::JobCenter>();
             crate::features::paper::analyze::refs::register_job_runners(&center);
             crate::features::paper::import::job_runners::register_job_runners(&center);
+            crate::features::paper::analyze::layout::model_assets::register_job_runners(&center);
             let handle = app.handle().clone();
             center.set_layout_backend_source(move || {
                 handle.state::<AppSettingsStore>().layout_backend()
@@ -298,8 +299,8 @@ pub fn run() {
             settings.network_proxy_enabled,
             settings.network_proxy_url.clone(),
         );
-        // Prefetch PP-DocLayoutV3 into XDG as fixed background-task id
-        // (`layout-model`); frontend maps `layout-model:task` into the panel.
+        // Prefetch PP-DocLayoutV3 into XDG as a JobCenter `modelDownload` job;
+        // the tasks-panel projection shows progress, concurrent triggers dedupe.
         crate::features::paper::analyze::layout::model_assets::spawn_background_download(
             app.handle().clone(),
         );

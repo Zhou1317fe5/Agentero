@@ -170,6 +170,9 @@ const PROJECTED_JOB_KINDS: Partial<Record<JobKind, BackgroundTaskKind>> = {
 	recognizeMetadata: "recognize",
 	import: "import",
 	connectorSync: "connector",
+	modelDownload: "download",
+	citingScan: "lookup",
+	metadataRefresh: "other",
 };
 
 /**
@@ -190,6 +193,9 @@ function importTaskKind(params: unknown): BackgroundTaskKind {
 
 function projectedTaskKind(job: JobChangedSnapshot): BackgroundTaskKind | null {
 	if (job.kind === "import") return importTaskKind(job.params);
+	if (job.kind === "libraryIo") {
+		return jobParams(job.params).op === "export" ? "export" : "import";
+	}
 	return PROJECTED_JOB_KINDS[job.kind] ?? null;
 }
 
@@ -234,6 +240,16 @@ function jobPanelTitle(job: JobChangedSnapshot): string {
 			return i18n.t("app:tasks.downloadPaper");
 		case "recognizeMetadata":
 			return i18n.t("app:tasks.recognizeMeta");
+		case "modelDownload":
+			return i18n.t("app:tasks.layoutModelDownload");
+		case "citingScan":
+			return i18n.t("app:tasks.citingScan");
+		case "metadataRefresh":
+			return i18n.t("sidebar:papersLibrary.refreshMetadataTaskTitle");
+		case "libraryIo":
+			return jobParams(job.params).op === "export"
+				? i18n.t("app:tasks.libraryExport")
+				: i18n.t("app:tasks.libraryImport");
 		default:
 			return i18n.t("app:tasks.layoutAnalysis");
 	}
@@ -251,6 +267,8 @@ type JobParams = {
 	id?: string;
 	detail?: string;
 	entries?: Array<{ filePath?: string }>;
+	op?: string;
+	papers?: unknown[];
 };
 
 function jobParams(params: unknown): JobParams {
@@ -302,6 +320,17 @@ function jobPanelDetail(job: JobChangedSnapshot): string | undefined {
 	if (job.kind === "connectorSync") {
 		return jobParams(job.params).detail?.slice(0, 80) || undefined;
 	}
+	if (job.kind === "modelDownload") {
+		return i18n.t("app:tasks.layoutModelDetail");
+	}
+	if (job.kind === "metadataRefresh") {
+		return i18n.t("sidebar:papersLibrary.refreshMetadataTaskDetail", {
+			current: 0,
+			total: jobParams(job.params).papers?.length ?? 0,
+		});
+	}
+	// Vault-scope kinds carry no paper target.
+	if (job.kind === "citingScan" || job.kind === "libraryIo") return undefined;
 	return job.paperPath ?? undefined;
 }
 
