@@ -110,6 +110,7 @@ Host 通过 Tauri event 向前端推送事件。文件系统、任务和菜单�
 
   另有 `event_names_match_emit_literals` 测试断言事件名与 emit 常量一致。改任何命令签名 / 事件 payload 后必须重新生成并提交 bindings.ts。
 - **`_Serialize` / `_Deserialize` 拆分**：specta 对 serde 不对称表示的忠实拆分——`X_Deserialize` 是 **TS→Rust 入参**形态（`#[serde(default)]` 字段可省略），`X_Serialize` 是 **Rust→TS 出参**形态（`skip_serializing_if` 字段可缺省）。二者一致时只生成单一 `X`。命令函数与 `events.*` 的签名已内嵌正确方向的类型，**调用点无需手写这些类型名**。
+- **论文域的派生范式**：`src/lib/paper/types.ts` 不再手写 `PaperRecord` 的孪生类型，而是 `PaperMetadata = Omit<PaperRecord_Serialize, …>`、`PaperLibraryRow = PaperMetadata & { has_pdf }`（源自 `PaperListRow_Serialize`）。只窄化四处：`status` / `body_source` / `body_quality`（Rust 侧仍是 `String` 列）与 `tags`（`PaperTag` 的序列化在无色时是裸字符串）。IPC → 域模型的唯一 unchecked 折叠点是 `src/lib/paper/wire.ts::paperFromWire`。给那三列加 Rust enum（照 `PaperKind` 先例：enum + `From<&str>` + `FromSql` + 未知值兜底）即可去掉窄化，列都是 TEXT，**不需要 schema migration**；代价清单见 [../development/import-api-abstraction.md](../development/import-api-abstraction.md) §11。
 - **前端调用形态（迁移说明）**：bindings 导出 `commands`（camelCase 命令函数）与 `events`（`events.jobChanged.listen(cb)` 等，payload 已按事件名类型化）。返回值有两种信封：
   - 命令返回 `ApiResult<T>`（如 `commands.settingsGet()`）：Promise 直接 resolve 信封，判错看 `r.ok === false` 时读 `r.error`（`{ code, message, details? }`）；`r.data` 类型为 `T | null`。
   - 命令返回 `Result<ApiResult<T>, String>`（如 `commands.jobReport(args)`）：bindings 包了一层 `typedError`，resolve 为 `{ status: "ok", data: ApiResult<T> } | { status: "error", error: string }`；先判 `status`（外层 IPC 级错误，对应 Rust `Err(String)`），再判 `data.ok`（业务错误信封）。
@@ -945,7 +946,7 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
 
   其中 `LookupImportResult` 为单条入库结果（含 `paperDir`、`path`、`id`、`title`、`usedTranslator`、`translatorBaseUrl`、`pdf?`、`tex?`、`paperMd?`、`assetMessages?`）。
   `skills` 为魔棒直接安装的 Skill（当前仅当来源含 `--skill` 等明确过滤且候选唯一时可能非空）；`skillCandidates` 为需要前端弹窗确认的候选列表，见下方 `skill_install` / `skill_discard`。
-  `searchCandidates` 为标题/关键词搜索结果（见 [`identifier-lookup.md` § 标题搜索回退](identifier-lookup.md)）；`PaperSearchCandidate` 含 `title`、`authors`、`year?`、`venue?`、`doi?`、`arxivId?`、`citationCount?`、`url?`、`identifier`、`source`（`'s2' | 'arxiv'`）。`identifier` 是用户选中后回填给本命令的文本，因此**不存在**没有 DOI/arXiv ID 的候选。
+  `searchCandidates` 为标题/关键词搜索结果（见 [`identifier-lookup.md` § 标题搜索回退](identifier-lookup.md)）；`PaperSearchCandidate` 含 `title`、`authors`、`year | null`、`venue | null`、`doi | null`、`arxivId | null`、`citationCount | null`、`url | null`、`identifier`、`source`（生成为 `string`，实际取值 `"s2"` / `"arxiv"`）。`identifier` 是用户选中后回填给本命令的文本，因此**不存在**没有 DOI/arXiv ID 的候选。注意 `src/lib/paper/lookup.ts` 仍保留一份手写孪生类型，其 `citationCount?: number` 与 wire 的 `number | null` 不一致（见 [../development/import-api-abstraction.md](../development/import-api-abstraction.md) §11.5）。
 - **单条行为**：Translator 优先；失败且输入为 arXiv 时回退 export.arxiv.org；**catalog upsert**（权威）+ 写 `NOTES.md` 壳（摘要块优先经免费 MT 译为中文，失败则保留原文；catalog 中 `abstract` 仍为原文）；`metadata.json` 为 catalog 投影同步；**始终下载 PDF**；**arXiv 另下载 e-print 并解压 LaTeX** 到 `source/`。导入命令本身**不**再内联生成 `PAPER.md`；前端会在导入完成后对无 TeX 且有 PDF 的 paper 独立入队 `paper_parse_body` 后台任务，生成 `PAPER.md` 并更新 `body_source` / `body_quality`。
   当 `texts` 某条被识别为 Skill 来源（`skill` kind：GitHub URL、`npx skills add …`、`github:`、`skills.sh`）时，该条进入 Skill 解析管线，不写入 catalog/papers。
 - **行为**：
@@ -1033,9 +1034,10 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
       };
     }>;
     taskId?: string;      // 后台任务 id，用于显示 parse 阶段
-    translatorBaseUrl?: string; // 后台识别时的标识符解析
   }
   ```
+
+  > 后台识别阶段的 Translator 地址由 Host 直接读设置 `translatorBaseUrl`（`job_runners.rs`），不经本命令入参传入。
 
 - **返回**：`{ ok: true; data: { papers: LookupImportResult[]; errors: string[] } }`（`errors` 为 `"<文件>: <原因>"`；仅当**全部**失败才整体 `ok:false`）。
 - **行为**：每个 PDF → 标题优先用 `entries` 覆盖，否则文件名 stem；文件夹 id 按 arXiv ID slug → DOI slug → 文件名 stem 派生（与标识符导入命名一致，Host 仍做 `-2`/`-3` 去重）；带 `doi`/`arxivId`/`extra` 的 entries 记 `meta_source=manual`；无覆盖元数据的 entries（UI 默认路径）内联跑识别链路（见 [paper-import.md](paper-import.md) § PDF 元数据识别），命中则用解析出的元数据与标识符 slug 命名（`meta_source=recognize`），失败退回文件名 stem。复制到 `{slug}.pdf`；写 `NOTES.md` 壳 + catalog。导入任务本身**不**再等待 liteparse；前端会在导入完成后独立入队 `paper_parse_body` 后台任务生成 `PAPER.md`（无 TeX 且有 PDF 时）。不覆盖已存在文件夹（slug 去重）。
@@ -1123,7 +1125,7 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
   ```
 
 - **返回**：`{ ok: true; data: { format, content, count, filename } }`
-- **注意**：`/export` **要求 body 为 Zotero items 数组**，不是 Agentero `PaperMetadata` 蛇形字段；转换在 Host `zotero::io::paper_record_to_zotero_item`。
+- **注意**：`/export` **要求 body 为 Zotero items 数组**，不是 Agentero `PaperRecord` 蛇形字段；转换在 Host `zotero::io::paper_record_to_zotero_item`。
 
 #### `paper_import`
 
@@ -1267,7 +1269,7 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
 }
 ```
 
-- **返回**：`{ ok: true; data: PaperMetadata }`（含 `pdf_url` / `html_url` / `arxiv_id` 等）；未找到则 `ok: false`。
+- **返回**：`{ ok: true; data: PaperRecord }`（含 `pdf_url` / `html_url` / `arxiv_id` 等）；未找到则 `ok: false`。
 - **说明**：UI 预览链接从此接口读取；catalog 为唯一权威。
 
 #### `paper:get`（扩展规划）
@@ -1308,7 +1310,7 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
 }
 ```
 
-- **返回**：`{ ok: true; data: PaperMetadata[] }`（数组元素含 `path`、`title`、`authors`、`year`、`type`、标识符与远程 URL 等）。
+- **返回**：`{ ok: true; data: PaperListRow[] }`。`PaperListRow` = 扁平展开的 `PaperRecord`（`path`、`title`、`authors`、`year`、`type`、标识符与远程 URL 等）+ 列表专用的 `has_pdf`（对 `papers/<id>/` 的本地 PDF 探测）。前端 `PaperLibraryRow` 由此派生；`remote_paper_list` 返回裸 `PaperRecord`，故远程行的 `has_pdf` 为 `undefined`（"未探测"，不是"没有 PDF"）。
 - **前端**：`src/lib/paper/api.ts` → `listPapers`；UI 侧本地表头排序（不经由本命令传 sort 参数）。
 - **说明**：当前无 filter/pagination；扩展筛选/FTS 仍可用规划契约 `paper:list`（见下）。
 
@@ -1360,7 +1362,7 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
 }
 ```
 
-- **返回**：`{ ok: true; data: PaperMetadata }`（更新后的整行）。
+- **返回**：`{ ok: true; data: PaperRecord }`（更新后的整行）。
 - **前端**：`src/lib/paper/api.ts` → `setPaperIsRead`；paper-reader 工作流成功结束后置 `true`。
 - **说明**：与 `status`（入库态）无关；默认 `false`。触发路径：
   - **自动**：魔棒 `lookup_import_batch`（单条）/ 单篇 `paper_download_assets` 成功且资源就绪时，前端 `maybeAutoRunPaperReader`（批量导入/批量 Download 不连跑）。
@@ -1388,7 +1390,8 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
 }
 ```
 
-- **返回**：`{ ok: true; data: PaperMetadata }`（更新后的整行；`tags` 序列化：无色为字符串，有色为 `{name,color}`）。
+- **返回**：`{ ok: true; data: PaperRecord }`（更新后的整行；`tags` 序列化：无色为字符串，有色为 `{name,color}`）。
+- **契约缺口**：`impl Serialize for PaperTag`（`catalog/papers.rs`）在无色时输出**裸字符串**，而 specta 生成的类型是 `{ name, color }` 对象（`color: string | null`）。生成契约与真实 wire 形态不符，因此前端必须保留 `PaperTagInput[]` + `coercePaperTags`（`src/lib/paper/tags.ts`）而不能直接用生成类型。修法见 [../development/import-api-abstraction.md](../development/import-api-abstraction.md) §11。
 - **规范化**：trim 空白；丢弃空串；大小写不敏感去重（保留首次出现的写法与颜色；同名后续项仅在先无色时补色）；`color` 白名单校验。
 - **前端**：`src/lib/paper/api.ts` → `setPaperTags`；Paper Info 增删 + 色盘；Library 染色 chip + 筛选；`src/lib/ui/tag-colors.ts`。
 - **CLI**：`agentero paper tag set|add|rm <ref> …`（`set` 整表替换，`--clear` 清空；支持 `name:color`，颜色为 Apple 8 色 id）；`paper list --tag` 默认隐藏 `@zotero:` / `@arxiv:` 内部标签，`--all` 包含全部标签；`paper tag list` 同样支持 `--all`。另有 `paper move` 与 `trash list|restore|purge`。见 [`cli.md`](cli.md)。
@@ -2404,7 +2407,8 @@ CLI 对照：`agentero usage which|timeline|summary|clear`（见 [cli.md](cli.md
 
 - `VaultInfo` / `RecentVault`
 - `FileNode`
-- `Paper` / `PaperMetadata`
+- `PaperRecord`（唯一论文模型：catalog 行 / `metadata.json` sidecar / IPC 出参）/ `PaperKind`（`type` 列枚举）/ `PaperListRow`（`paper_list` 投影 = `PaperRecord` + `has_pdf`）
+- 前端 `PaperMetadata` 只是 `PaperRecord_Serialize` 的派生别名（`src/lib/paper/types.ts`），**不是** Rust 类型
 - `Highlight`
 - `ArxivCandidate` / `ArxivImportResult`
 - `PdfMetadataDraft` / `PdfImportResult`

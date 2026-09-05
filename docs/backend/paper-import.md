@@ -40,7 +40,7 @@ Skill 不写入 catalog、不创建 `papers/` 条目、不执行 `scripts/`。�
 ```text
 粘贴 arXiv ID / DOI / URL
   → arXiv 输入先规范为 `https://arxiv.org/abs/<id>`，再交给 Translator（或 arXiv Atom fallback）
-  → PaperMetadata → catalog upsert
+  → PaperRecord → catalog upsert
   → papers/<id>/ + 带 aliases frontmatter 的 NOTES.md 壳（不覆盖已有 NOTES）
   → PDF → {paper}/{id}.pdf
   → arXiv e-print → 解压 LaTeX 到 source/
