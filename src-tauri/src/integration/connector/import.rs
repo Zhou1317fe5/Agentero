@@ -7,7 +7,7 @@ use crate::features::paper::catalog::papers;
 use crate::features::paper::catalog::papers::is_internal_tag_name;
 use crate::features::paper::import::{
     enrich_remote_urls, ensure_paper_assets_with_cookies, map_zotero_item, normalize_parent_dir,
-    paper_record_from_meta, write_paper_shell_opts, NoteShellMode, PaperMeta,
+    write_paper_shell_opts, NoteShellMode,
 };
 use crate::features::paper::zotero::ZOTERO_INTERNAL_TAG_PREFIX;
 use crate::features::translate::{free_mt_to_zh, looks_mostly_cjk};
@@ -179,7 +179,7 @@ pub async fn import_connector_item_remote_with_cookies(
     }
     fs::create_dir_all(&staging)?;
     write_paper_shell_opts(&staging, &session.work_root, &meta, note_mode, false).await?;
-    let record = paper_record_from_meta(&path_rel, &meta);
+    let record = meta.clone().at_path(&path_rel);
     papers::upsert_paper(&session.work_root, &record)?;
 
     // Shell only first so Connector HTTP stays under timeout.
@@ -369,11 +369,14 @@ pub async fn move_paper_folder_remote(
 /// source, fall back to the captured page URI for source/html URLs, and prefer
 /// a browser-captured PDF attachment URL when the translator gave none —
 /// ACM/IEEE et al. often only expose the PDF through the page the user is on.
-fn connector_paper_meta(item: &Value, page_uri: Option<&str>) -> Result<PaperMeta, AppError> {
+fn connector_paper_meta(
+    item: &Value,
+    page_uri: Option<&str>,
+) -> Result<papers::PaperRecord, AppError> {
     let mut meta = map_zotero_item(item)?;
     for tag in &mut meta.tags {
-        if !tag.is_empty() && !is_internal_tag_name(tag) {
-            *tag = format!("{ZOTERO_INTERNAL_TAG_PREFIX}{tag}");
+        if !tag.name.is_empty() && !is_internal_tag_name(&tag.name) {
+            tag.name = format!("{ZOTERO_INTERNAL_TAG_PREFIX}{}", tag.name);
         }
     }
     meta.meta_source = Some("zotero-connector".into());
@@ -527,8 +530,7 @@ pub async fn import_standalone_attachment(
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "PDF".into());
     let base_id = crate::features::paper::import::slug_from_stem(&title);
-    let mut meta =
-        crate::features::paper::import::local_pdf_meta_for_import(base_id, title.clone());
+    let mut meta = papers::PaperRecord::local_pdf(base_id, title.clone());
     meta.meta_source = Some("zotero-connector".into());
     if let Some(u) = url.map(str::trim).filter(|s| !s.is_empty()) {
         meta.source_url = Some(u.to_string());
@@ -608,7 +610,7 @@ pub async fn import_standalone_attachment(
 async fn import_standalone_local(
     vault: &Path,
     parent_dir: &str,
-    meta: PaperMeta,
+    meta: papers::PaperRecord,
     bytes: &[u8],
     app: Option<&crate::core::app_handle::AppHandle>,
     note_mode: NoteShellMode,
@@ -662,7 +664,7 @@ async fn import_standalone_local(
 async fn import_standalone_remote(
     session: Arc<RemoteSession>,
     parent_dir: &str,
-    mut meta: PaperMeta,
+    mut meta: papers::PaperRecord,
     bytes: &[u8],
     note_mode: NoteShellMode,
 ) -> Result<ConnectorImportResult, AppError> {
@@ -697,7 +699,7 @@ async fn import_standalone_remote(
     fs::create_dir_all(&staging)?;
     fs::write(staging.join(format!("{folder_id}.pdf")), bytes)?;
     write_paper_shell_opts(&staging, &session.work_root, &meta, note_mode, false).await?;
-    let record = paper_record_from_meta(&path_rel, &meta);
+    let record = meta.clone().at_path(&path_rel);
     papers::upsert_paper(&session.work_root, &record)?;
     upload_tree(session.fs.as_ref(), &staging, &path_rel).await?;
     {
@@ -942,8 +944,8 @@ mod tests {
         assert_eq!(
             meta.tags,
             vec![
-                "@zotero:survey".to_string(),
-                "@zotero:machine learning".to_string()
+                papers::PaperTag::new("@zotero:survey"),
+                papers::PaperTag::new("@zotero:machine learning"),
             ]
         );
     }
@@ -963,8 +965,8 @@ mod tests {
         assert_eq!(
             meta.tags,
             vec![
-                "@arxiv:Computer Science - Machine Learning".to_string(),
-                "@zotero:survey".to_string()
+                papers::PaperTag::new("@arxiv:Computer Science - Machine Learning"),
+                papers::PaperTag::new("@zotero:survey"),
             ]
         );
     }

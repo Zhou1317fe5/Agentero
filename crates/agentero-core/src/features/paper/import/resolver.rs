@@ -14,7 +14,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 use crate::error::AppError;
-use crate::features::import::map::PaperMeta;
+use crate::features::catalog::papers::PaperRecord;
 use crate::features::import::parse;
 
 /// A recognized identifier: machine kind tag (e.g. `SkippedImport.kind`),
@@ -27,7 +27,7 @@ pub struct ResolvedIdentifier {
     pub catalog_column: Option<&'static str>,
 }
 
-type FallbackFuture<'a> = Pin<Box<dyn Future<Output = Result<PaperMeta, AppError>> + Send + 'a>>;
+type FallbackFuture<'a> = Pin<Box<dyn Future<Output = Result<PaperRecord, AppError>> + Send + 'a>>;
 
 pub(crate) trait PaperResolver: Send + Sync {
     /// Detection order when probing a text; lower runs first. The table is
@@ -243,7 +243,7 @@ pub(crate) fn extract(text: &str) -> Option<ResolvedIdentifier> {
 pub(crate) async fn fetch_direct_fallback(
     text: &str,
     task_id: Option<&str>,
-) -> Option<Result<PaperMeta, AppError>> {
+) -> Option<Result<PaperRecord, AppError>> {
     let t = text.trim();
     if t.is_empty() {
         return None;
@@ -332,11 +332,11 @@ use crate::features::scholar_api::ApiQuery;
 
 // --- Direct-connect clients (fallbacks behind the trait) ---
 
-/// `GET https://export.arxiv.org/api/query?id_list=…` (Atom) → `PaperMeta`.
+/// `GET https://export.arxiv.org/api/query?id_list=…` (Atom) → `PaperRecord`.
 pub async fn fetch_arxiv_metadata(
     arxiv_id: &str,
     task_id: Option<&str>,
-) -> Result<PaperMeta, AppError> {
+) -> Result<PaperRecord, AppError> {
     super::check_task_not_cancelled(task_id)?;
     let source = ArxivApi;
     let mut papers = source
@@ -349,8 +349,8 @@ pub async fn fetch_arxiv_metadata(
     Ok(super::api_paper_to_meta(&paper))
 }
 
-/// `GET https://api.crossref.org/works/{doi}` → `PaperMeta`.
-pub async fn fetch_crossref_metadata(doi: &str) -> Result<PaperMeta, AppError> {
+/// `GET https://api.crossref.org/works/{doi}` → `PaperRecord`.
+pub async fn fetch_crossref_metadata(doi: &str) -> Result<PaperRecord, AppError> {
     let source = CrossrefApi;
     let mut papers = source.fetch(&ApiQuery::Doi(doi.to_string())).await?;
     let paper = papers

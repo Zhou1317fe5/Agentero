@@ -380,8 +380,6 @@ fn placeholder_id_from_path(path_rel: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::features::paper::import::map::local_pdf_meta;
-    use crate::features::paper::import::paper_record_from_meta;
     use std::path::PathBuf;
 
     fn temp_vault() -> PathBuf {
@@ -396,8 +394,8 @@ mod tests {
         std::fs::create_dir_all(&dir).expect("create paper dir");
         std::fs::write(dir.join(format!("{id}.pdf")), b"%PDF-1.4 fake").expect("write pdf");
         std::fs::write(dir.join("NOTES.md"), "# Placeholder\n").expect("write notes");
-        let meta = local_pdf_meta(id.to_string(), "Placeholder Title".into());
-        let record = paper_record_from_meta(&format!("papers/{id}"), &meta);
+        let record = PaperRecord::local_pdf(id.to_string(), "Placeholder Title".into())
+            .at_path(&format!("papers/{id}"));
         papers::upsert_paper(vault, &record).expect("upsert placeholder")
     }
 
@@ -467,9 +465,10 @@ mod tests {
         let dir = vault.join("papers/1706.03762");
         std::fs::create_dir_all(&dir).expect("canonical dir");
         std::fs::write(dir.join("NOTES.md"), "# Canonical\n").expect("notes");
-        let mut meta = local_pdf_meta("1706.03762".into(), "Attention Is All You Need".into());
+        let mut meta =
+            PaperRecord::local_pdf("1706.03762".into(), "Attention Is All You Need".into());
         meta.arxiv_id = Some("1706.03762".into());
-        let canonical = paper_record_from_meta("papers/1706.03762", &meta);
+        let canonical = meta.at_path("papers/1706.03762");
         papers::upsert_paper(&vault, &canonical).expect("upsert canonical");
 
         let index = Arc::new(Mutex::new(WikiIndex::default()));

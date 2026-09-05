@@ -35,7 +35,7 @@ pub fn write_sidecar(vault_root: &Path, record: &PaperRecord) {
 /// Read `{vault}/{rel_path}/metadata.json` as a catalog row.
 /// `path` always comes from the on-disk location (sidecars move with their
 /// folder, so any embedded path may be stale). Tolerates the older
-/// `PaperMeta`-shaped files written by the Connector.
+/// Connector-era files (no `path`, bare-string tags).
 pub fn read_sidecar(vault_root: &Path, rel_path: &str) -> Option<PaperRecord> {
     let raw = fs::read_to_string(vault_root.join(rel_path).join(SIDECAR_FILE)).ok()?;
     let mut record: PaperRecord = serde_json::from_str(&raw).ok()?;

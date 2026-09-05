@@ -11,7 +11,7 @@ use crate::core::error::AppError;
 use crate::features::paper::catalog::papers;
 use crate::features::paper::import::{
     allocate_paper_path, enrich_remote_urls, map_zotero_item, normalize_parent_dir,
-    paper_record_from_meta, write_paper_shell, NoteShellMode, PaperMeta,
+    write_paper_shell, NoteShellMode,
 };
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
@@ -474,7 +474,7 @@ async fn migrate_one(
     if !blocks.is_empty() {
         append_markdown_blocks(&paper_dir.join("NOTES.md"), &blocks);
     }
-    let mut record = paper_record_from_meta(&path_rel, &meta);
+    let mut record = meta.clone().at_path(&path_rel);
     // Zotero sync linkage: fresh imports carry their source itemID so later
     // bidirectional syncs match exactly (fallback stays DOI/arXiv/title).
     record.zotero_item_id = Some(item.item_id);
@@ -639,12 +639,12 @@ impl Dedup {
         d
     }
 
-    fn contains(&self, meta: &PaperMeta) -> bool {
+    fn contains(&self, meta: &papers::PaperRecord) -> bool {
         self.existing_path(meta).is_some()
     }
 
     /// Vault-relative path of the already-present paper matching `meta`, if any.
-    fn existing_path(&self, meta: &PaperMeta) -> Option<String> {
+    fn existing_path(&self, meta: &papers::PaperRecord) -> Option<String> {
         if let Some(a) = meta.arxiv_id.as_deref().filter(|s| !s.is_empty()) {
             if let Some(p) = self.arxiv.get(&a.to_lowercase()) {
                 return Some(p.clone());
@@ -664,7 +664,7 @@ impl Dedup {
         None
     }
 
-    fn insert(&mut self, meta: &PaperMeta, path: &str) {
+    fn insert(&mut self, meta: &papers::PaperRecord, path: &str) {
         if let Some(a) = meta.arxiv_id.as_deref().filter(|s| !s.is_empty()) {
             self.arxiv.insert(a.to_lowercase(), path.to_string());
         }
@@ -1547,8 +1547,7 @@ mod tests {
         fs::write(vault.join(flat_rel).join("NOTES.md"), "# user notes\n").unwrap();
         let conn = seed_db();
         let (items, _c) = read_items_conn(&conn, Path::new("/nonexistent-zotero")).unwrap();
-        let meta = map_zotero_item(&items[0].json).unwrap();
-        let record = paper_record_from_meta(flat_rel, &meta);
+        let record = map_zotero_item(&items[0].json).unwrap().at_path(flat_rel);
         papers::upsert_paper(&vault, &record).unwrap();
 
         let out = migrate_zotero(

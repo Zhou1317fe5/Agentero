@@ -818,7 +818,7 @@ arXiv URL 推导：
 - 选错目录兜底：扫描报 `zotero.sqlite not found` 时，若所选目录的**父目录**含 `zotero.sqlite`（如误选 `storage/`），对话框提示一键改用父目录；否则显示本地化错误（不再透出后端原始英文串）。
 - Host：`zotero_scan`（只读预览：文献数 / 有本地 PDF 数）、`zotero_migrate`（执行）；实现在 `features/zotero/db.rs`。
 - 读库：把 `zotero.sqlite`（含 `-wal`/`-shm`）**拷到临时目录**再只读打开（容忍 Zotero 正在运行）；查 `items`/`itemData`/`creators`/`itemTags`/`itemAttachments`，跳过 `deletedItems` 与 attachment/note/annotation 类型，并排除插件产生的 `computerProgram` 垃圾条目（如标题为 "Addon Item" 的项）。
-- 映射：每条**拼装成 Zotero-API-JSON item** → 复用 `map_zotero_item` + `enrich_remote_urls` + `write_paper_shell` + `paper_record_from_meta` + catalog upsert，落到 `{parent_dir}/{id}/`（id/citekey 与魔棒 / 文件导入一致）。
+- 映射：每条**拼装成 Zotero-API-JSON item** → 复用 `map_zotero_item` + `enrich_remote_urls` + `write_paper_shell` + `PaperRecord::at_path` + catalog upsert，落到 `{parent_dir}/{id}/`（id/citekey 与魔棒 / 文件导入一致）。
 - 附件 PDF URL：`map_zotero_item` 未给出 `pdf_url` 时，采用 Connector `attachments[]` 里的 PDF 链接（浏览器侧捕获，ACM/IEEE 等常仅经此暴露）。
 - 中文摘要：为不超 Connector 15s 超时，壳先以原文写入；**后台**三引擎并行竞速翻译摘要，成功则安全替换 `NOTES.md` 的 `>` 摘要块（mtime 守卫，用户已编辑或 MT 全失败则跳过）。
 - 标签：用户标签原样保留；Zotero 自动标签（网络翻译器加的来源/状态标签，`itemTags.type ≠ 0`）保留并加 `@zotero:` 前缀，因此在 Agentero 的标签界面中隐藏。arXiv 学科分类（`Computer Science - Machine Learning` 等）无论来自魔棒 Translator 还是 Zotero 条目，都加 `@arxiv:` 前缀，同样隐藏。旧库无 `type` 列时回退为将全部标签视为用户标签。collection 名仍作为组织标签补充。

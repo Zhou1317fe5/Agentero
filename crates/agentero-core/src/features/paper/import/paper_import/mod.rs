@@ -1,7 +1,7 @@
 //! Unified paper commit: the single authoritative dedupe → path → shell →
 //! catalog → assets pipeline behind every local import entry (magic wand,
 //! Zotero Connector, local PDF, Bib/RIS). Entries stay thin source adapters
-//! that produce a mapped [`PaperMeta`] and pick policies here.
+//! that produce a mapped [`papers::PaperRecord`] and pick policies here.
 //!
 //! @see docs/backend/paper-import-pipeline.md
 
@@ -10,8 +10,7 @@ use crate::error::AppError;
 use crate::features::catalog::{papers, probe_paper_caps, CapsCache};
 use crate::features::import::{
     allocate_paper_path, ensure_paper_assets_with_progress, normalize_parent_dir,
-    paper_record_from_meta, write_paper_shell_opts, AssetDownloadResult, AssetProgressContext,
-    NoteShellMode, PaperMeta,
+    write_paper_shell_opts, AssetDownloadResult, AssetProgressContext, NoteShellMode,
 };
 use serde::Serialize;
 use std::fs;
@@ -107,7 +106,7 @@ pub struct PaperCommitResult {
 /// (adopting the possibly suffixed folder id into `meta.id`) → shell →
 /// catalog upsert → assets/liteparse → uniform result.
 pub async fn paper_commit(
-    mut meta: PaperMeta,
+    mut meta: papers::PaperRecord,
     opts: PaperCommitOptions<'_>,
 ) -> Result<PaperCommitResult, AppError> {
     let vault = opts.vault;
@@ -205,7 +204,7 @@ pub async fn paper_commit(
         .await?;
 
         // Catalog SQLite is authoritative; metadata.json is a projection.
-        let record = paper_record_from_meta(&path_rel, &meta);
+        let record = meta.clone().at_path(&path_rel);
         papers::upsert_paper(vault, &record)?;
         Ok(())
     };
@@ -327,7 +326,7 @@ fn existing_result(
 /// [`DedupePolicy::ByIdentifiers`].
 fn find_existing_by_identifiers(
     vault: &Path,
-    meta: &PaperMeta,
+    meta: &papers::PaperRecord,
 ) -> Result<Option<papers::PaperRecord>, AppError> {
     if let Some(existing) = papers::get_by_id(vault, &meta.id)? {
         return Ok(Some(existing));
@@ -358,7 +357,7 @@ async fn merge_pdf_into_existing(
     vault: &Path,
     mut existing: papers::PaperRecord,
     src: &Path,
-    meta: &PaperMeta,
+    meta: &papers::PaperRecord,
     cache: Option<&CapsCache>,
     app: Option<&AppHandle>,
 ) -> Result<PaperCommitResult, AppError> {
@@ -468,7 +467,6 @@ pub fn unique_attachment_path(dir: &Path, src: &Path) -> std::path::PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::features::import::{local_pdf_meta, paper_record_from_meta};
 
     fn tmp_vault(tag: &str) -> std::path::PathBuf {
         let vault = std::env::temp_dir().join(format!(
@@ -482,19 +480,20 @@ mod tests {
 
     /// Catalog row + folder for a paper imported by PMID without fulltext.
     fn seed_existing_without_pdf(vault: &Path) {
-        let mut meta = local_pdf_meta(
+        let mut meta = papers::PaperRecord::local_pdf(
             "pmid-12345".into(),
             "A Biomedical Paper Without Fulltext".into(),
         );
         meta.pmid = Some("12345".into());
-        let record = paper_record_from_meta("papers/pmid-12345", &meta);
+        let record = meta.at_path("papers/pmid-12345");
         papers::upsert_paper(vault, &record).unwrap();
         fs::create_dir_all(vault.join("papers/pmid-12345")).unwrap();
         fs::write(vault.join("papers/pmid-12345/NOTES.md"), "# Notes\n").unwrap();
     }
 
     async fn commit_pdf(vault: &Path, src: &Path, doi: &str) -> PaperCommitResult {
-        let mut meta = local_pdf_meta("fulltext-slug".into(), "Fulltext PDF".into());
+        let mut meta =
+            papers::PaperRecord::local_pdf("fulltext-slug".into(), "Fulltext PDF".into());
         meta.doi = Some(doi.into());
         meta.pmid = Some("12345".into());
         paper_commit(
@@ -566,7 +565,7 @@ mod tests {
         let src = vault.join("other.pdf");
         fs::write(&src, b"%PDF-1.4 other").unwrap();
 
-        let mut meta = local_pdf_meta("unrelated".into(), "Unrelated Paper".into());
+        let mut meta = papers::PaperRecord::local_pdf("unrelated".into(), "Unrelated Paper".into());
         meta.doi = Some("10.9999/unrelated".into());
         let res = paper_commit(
             meta,

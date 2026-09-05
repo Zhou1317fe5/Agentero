@@ -1,13 +1,14 @@
-//! Map [`ApiPaper`] candidates from `scholar_api` into storage [`PaperMeta`].
+//! Map [`ApiPaper`] candidates from `scholar_api` into [`PaperRecord`].
 
-use crate::features::import::map::{doi_slug, enrich_remote_urls, local_pdf_meta};
-use crate::features::import::{slug_from_stem, PaperMeta};
+use crate::features::catalog::papers::PaperRecord;
+use crate::features::import::map::{doi_slug, enrich_remote_urls};
+use crate::features::import::slug_from_stem;
 use crate::features::scholar_api::scoring::{normalize_title, title_similarity};
 use crate::features::scholar_api::ApiPaper;
 
-/// Convert a single API candidate into a `PaperMeta`, choosing an id and
+/// Convert a single API candidate into a `PaperRecord`, choosing an id and
 /// paper type from the available identifiers.
-pub fn api_paper_to_meta(paper: &ApiPaper) -> PaperMeta {
+pub fn api_paper_to_meta(paper: &ApiPaper) -> PaperRecord {
     let id = paper
         .identifiers
         .arxiv_id
@@ -23,7 +24,7 @@ pub fn api_paper_to_meta(paper: &ApiPaper) -> PaperMeta {
         "pdf"
     };
 
-    let mut meta = local_pdf_meta(id, paper.title.clone());
+    let mut meta = PaperRecord::local_pdf(id, paper.title.clone());
     meta.paper_type = paper_type.into();
     meta.authors = paper.authors.clone();
     meta.year = paper.year;
@@ -41,6 +42,7 @@ pub fn api_paper_to_meta(paper: &ApiPaper) -> PaperMeta {
     meta.html_url = paper.urls.html.clone();
     meta.source_url = paper.urls.landing.clone();
     meta.meta_source = Some(paper.source.into());
+    // TODO: `paper.citation_count` is still dropped here.
 
     // Ensure canonical arXiv URLs when we have an arXiv id.
     enrich_remote_urls(&mut meta);
@@ -49,9 +51,9 @@ pub fn api_paper_to_meta(paper: &ApiPaper) -> PaperMeta {
 }
 
 /// Merge `other` into `base`, preferring non-empty fields from `other`.
-/// The returned `PaperMeta` keeps `base.source` unless `other` contributes
+/// The returned `PaperRecord` keeps `base.source` unless `other` contributes
 /// identifiers or bibliographic fields.
-pub fn merge_api_papers(base: &ApiPaper, other: &ApiPaper) -> PaperMeta {
+pub fn merge_api_papers(base: &ApiPaper, other: &ApiPaper) -> PaperRecord {
     let mut merged = api_paper_to_meta(base);
 
     if other.identifiers.doi.is_some() {

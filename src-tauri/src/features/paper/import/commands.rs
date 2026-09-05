@@ -5,6 +5,7 @@ use crate::core::error::{map_err, ApiResult, AppError};
 use crate::core::fs::resolve_vault;
 use crate::core::log_util::{trunc, OpTimer};
 use crate::core::remote::parse_remote_handle;
+use crate::features::paper::catalog::papers::PaperRecord;
 use crate::features::paper::catalog::CapsCache;
 use crate::features::paper::import::pdf_parse::{PaperParseBodyArgs, PaperParseResult};
 use crate::features::paper::import::resolver::{fetch_arxiv_metadata, fetch_crossref_metadata};
@@ -223,9 +224,7 @@ pub struct PaperResolveIdentifierArgs {
 /// truncated Crossref / empty Translator venues. Title search is fallback.
 #[tauri::command]
 #[specta::specta]
-pub async fn paper_resolve_identifier(
-    args: PaperResolveIdentifierArgs,
-) -> ApiResult<super::PaperMeta> {
+pub async fn paper_resolve_identifier(args: PaperResolveIdentifierArgs) -> ApiResult<PaperRecord> {
     let text = trunc(args.text.trim(), 60);
     let op = OpTimer::start_with("paper_resolve_identifier", format!("text={text}"));
 
@@ -269,7 +268,7 @@ pub async fn paper_resolve_identifier(
 
 /// Fill / replace `publication` from S2 when the current value is empty,
 /// generic (`arXiv`), or a likely-truncated Crossref proceedings title.
-async fn enrich_publication_from_s2(meta: &mut super::PaperMeta) {
+async fn enrich_publication_from_s2(meta: &mut PaperRecord) {
     if !needs_s2_venue_enrichment(meta.publication.as_deref()) {
         return;
     }

@@ -280,7 +280,7 @@ async fn import_one_local_pdf_remote(
         })
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| slug_from_stem(stem));
-    let mut meta = crate::features::paper::import::local_pdf_meta_for_import(base_id, title);
+    let mut meta = papers::PaperRecord::local_pdf(base_id, title);
     if let Some(authors) = &entry.authors {
         meta.authors = authors
             .iter()

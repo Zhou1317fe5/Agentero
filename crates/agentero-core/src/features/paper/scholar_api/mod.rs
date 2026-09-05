@@ -77,7 +77,8 @@ pub struct PaperUrls {
 
 /// A unified paper candidate produced by any [`AcademicApi`](traits::AcademicApi)
 /// source. It intentionally does **not** contain storage-level fields such as
-/// `status` or `added_at`; those belong to [`PaperMeta`](crate::features::import::PaperMeta).
+/// `status` or `added_at`; those belong to
+/// [`PaperRecord`](crate::features::catalog::papers::PaperRecord).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiPaper {

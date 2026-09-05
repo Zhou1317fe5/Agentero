@@ -25,7 +25,7 @@ pub use assets::{
     ensure_paper_assets, ensure_paper_assets_with_cookies, ensure_paper_assets_with_progress,
     AssetDownloadResult, AssetProgressContext,
 };
-pub use map::{enrich_remote_urls, map_zotero_item, PaperMeta};
+pub use map::{enrich_remote_urls, map_zotero_item};
 // Stable top-level API for the desktop connector (`integration/connector`):
 // commit pipeline entry point + policies. Consumers must not reach into the
 // `paper_import` internals.
@@ -59,7 +59,6 @@ use crate::features::import::assets::AssetDownloadProgress;
 use crate::features::scholar_api::sources::translator::TranslatorApi;
 use crate::features::scholar_api::traits::BibliographySource;
 use futures_util::StreamExt;
-use map::local_pdf_meta;
 use parse::extract_primary_identifier;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -68,11 +67,6 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Mutex;
-
-/// Public helper for remote PDF import staging.
-pub fn local_pdf_meta_for_import(id: String, title: String) -> PaperMeta {
-    local_pdf_meta(id, title)
-}
 
 /// Default Translator Runtime base URL (hosted service).
 /// Override via Settings → `translatorBaseUrl` / `LookupImportArgs.translator_base_url`.
@@ -871,7 +865,7 @@ async fn import_one_local_pdf(
     // the canonical id (see `recognize::apply`). Best-effort: any recognition
     // failure keeps the filename-derived metadata.
     let recognize_deferred = !dialog_meta;
-    let mut meta = local_pdf_meta(base_id, title);
+    let mut meta = PaperRecord::local_pdf(base_id, title);
     if let Some(authors) = &entry.authors {
         meta.authors = authors
             .iter()
@@ -1053,7 +1047,7 @@ pub async fn resolve_metadata(
     text: &str,
     translator_base: &str,
     task_id: Option<&str>,
-) -> Result<(PaperMeta, bool), AppError> {
+) -> Result<(PaperRecord, bool), AppError> {
     // Prefer Translator Runtime (placeholder URL)
     match translator_fetch(text, translator_base, task_id).await {
         Ok(meta) => {
@@ -1081,7 +1075,7 @@ async fn translator_fetch(
     text: &str,
     base: &str,
     task_id: Option<&str>,
-) -> Result<PaperMeta, AppError> {
+) -> Result<PaperRecord, AppError> {
     let (endpoint, body) = translator_request(text, base);
     let api = TranslatorApi::new(base);
 
@@ -1163,55 +1157,6 @@ async fn translator_import(content: &str, base: &str) -> Result<Vec<serde_json::
     Ok(items)
 }
 
-pub fn paper_record_from_meta(path: &str, meta: &PaperMeta) -> PaperRecord {
-    PaperRecord {
-        path: path.replace('\\', "/"),
-        id: meta.id.clone(),
-        paper_type: meta.paper_type.clone(),
-        title: meta.title.clone(),
-        authors: meta.authors.clone(),
-        creators: meta.creators.clone(),
-        year: meta.year,
-        date: meta.date.clone(),
-        abstract_text: meta.abstract_text.clone(),
-        tags: meta
-            .tags
-            .iter()
-            .map(crate::features::catalog::papers::PaperTag::new)
-            .collect(),
-        arxiv_id: meta.arxiv_id.clone(),
-        doi: meta.doi.clone(),
-        isbn: meta.isbn.clone(),
-        issn: meta.issn.clone(),
-        pmid: meta.pmid.clone(),
-        publication: meta.publication.clone(),
-        volume: meta.volume.clone(),
-        issue: meta.issue.clone(),
-        pages: meta.pages.clone(),
-        publisher: meta.publisher.clone(),
-        place: meta.place.clone(),
-        series: meta.series.clone(),
-        language: meta.language.clone(),
-        pdf_url: meta.pdf_url.clone(),
-        html_url: meta.html_url.clone(),
-        source_url: meta.source_url.clone(),
-        body_source: None,
-        body_quality: None,
-        bibtex_key: meta.bibtex_key.clone(),
-        citation_count: None,
-        zotero_item_type: meta.zotero_item_type.clone(),
-        meta_source: meta.meta_source.clone(),
-        extra: meta.extra.clone(),
-        summary: meta.summary.clone(),
-        status: meta.status.clone(),
-        is_read: false,
-        zotero_item_id: None,
-        zotero_last_synced: None,
-        added_at: meta.added_at.clone(),
-        updated_at: meta.updated_at.clone(),
-    }
-}
-
 /// How the `NOTES.md` shell is generated on paper import (settings
 /// `paperNoteMode`). Unknown values fall back to [`NoteShellMode::Standard`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1275,7 +1220,7 @@ pub fn seed_notes_template(vault_root: &Path) -> Result<bool, AppError> {
 }
 
 /// Title + deterministic short alias for the NOTES frontmatter.
-fn paper_shell_aliases(meta: &PaperMeta) -> Vec<String> {
+fn paper_shell_aliases(meta: &PaperRecord) -> Vec<String> {
     let mut aliases = vec![meta.title.clone()];
     if let Some(short) =
         crate::features::doctor::suggest_short_alias(&meta.title, &meta.authors, meta.year)
@@ -1294,7 +1239,7 @@ fn paper_shell_aliases(meta: &PaperMeta) -> Vec<String> {
 pub async fn write_paper_shell(
     paper_dir: &Path,
     vault_root: &Path,
-    meta: &PaperMeta,
+    meta: &PaperRecord,
     mode: NoteShellMode,
 ) -> Result<(), AppError> {
     write_paper_shell_opts(paper_dir, vault_root, meta, mode, true).await
@@ -1306,7 +1251,7 @@ pub async fn write_paper_shell(
 pub async fn write_paper_shell_opts(
     paper_dir: &Path,
     vault_root: &Path,
-    meta: &PaperMeta,
+    meta: &PaperRecord,
     mode: NoteShellMode,
     translate_abstract: bool,
 ) -> Result<(), AppError> {
@@ -1341,7 +1286,7 @@ pub async fn write_paper_shell_opts(
 }
 
 /// Standard shell body: `# title` + optional abstract blockquote.
-async fn standard_note_body(meta: &PaperMeta, translate_abstract: bool) -> String {
+async fn standard_note_body(meta: &PaperRecord, translate_abstract: bool) -> String {
     let abstract_block = match meta
         .abstract_text
         .as_deref()
@@ -1371,7 +1316,7 @@ async fn standard_note_body(meta: &PaperMeta, translate_abstract: bool) -> Strin
 /// guarantee (a template without aliases gets title + short alias merged in).
 async fn custom_note_shell(
     vault_root: &Path,
-    meta: &PaperMeta,
+    meta: &PaperRecord,
     aliases: &[String],
 ) -> Option<String> {
     let path = vault_root
@@ -1399,7 +1344,7 @@ async fn custom_note_shell(
 /// Missing optional metadata renders as an empty string. `{{url}}` prefers
 /// html_url, then source_url, then pdf_url. `{{abstract}}` is the original
 /// text (no machine translation).
-fn render_note_template(template: &str, meta: &PaperMeta) -> String {
+fn render_note_template(template: &str, meta: &PaperRecord) -> String {
     let authors = meta.authors.join(", ");
     let year = meta.year.map(|y| y.to_string()).unwrap_or_default();
     let url = meta
@@ -1610,8 +1555,9 @@ mod tests {
         }
     }
 
-    fn note_shell_test_meta() -> PaperMeta {
-        let mut meta = local_pdf_meta("1706.03762".into(), "Attention Is All You Need".into());
+    fn note_shell_test_meta() -> PaperRecord {
+        let mut meta =
+            PaperRecord::local_pdf("1706.03762".into(), "Attention Is All You Need".into());
         meta.authors = vec!["Ashish Vaswani".into(), "Noam Shazeer".into()];
         meta.year = Some(2017);
         meta.date = Some("2017-06-12".into());
@@ -1779,7 +1725,7 @@ mod tests {
     async fn note_shell_custom_inserts_single_alias_into_existing_frontmatter() {
         let vault = note_shell_tmp_dir("custom-insert");
         // No authors/year → suggest_short_alias returns None → title alias only.
-        let meta = local_pdf_meta("2501.00001".into(), "Deep".into());
+        let meta = PaperRecord::local_pdf("2501.00001".into(), "Deep".into());
         let templates = vault.join(".agentero").join("templates");
         fs::create_dir_all(&templates).unwrap();
         // Frontmatter without aliases: the single title alias must be inserted
@@ -1838,7 +1784,7 @@ mod tests {
     async fn note_shell_blank_single_title_alias_without_short() {
         let vault = note_shell_tmp_dir("blank-single");
         // No authors/year → suggest_short_alias returns None.
-        let meta = local_pdf_meta("2501.00001".into(), "Deep".into());
+        let meta = PaperRecord::local_pdf("2501.00001".into(), "Deep".into());
         let paper = vault.join("papers").join("blank");
         fs::create_dir_all(&paper).unwrap();
 

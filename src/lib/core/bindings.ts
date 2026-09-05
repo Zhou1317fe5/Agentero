@@ -208,7 +208,7 @@ export const commands = {
 	 *  arXiv id is not sent to title search); S2 `publicationVenue` enriches
 	 *  truncated Crossref / empty Translator venues. Title search is fallback.
 	 */
-	paperResolveIdentifier: (args: PaperResolveIdentifierArgs) => __TAURI_INVOKE<ApiResult<PaperMeta_Serialize>>("paper_resolve_identifier", { args }),
+	paperResolveIdentifier: (args: PaperResolveIdentifierArgs) => __TAURI_INVOKE<ApiResult<PaperRecord_Serialize>>("paper_resolve_identifier", { args }),
 	/**  Stage a path-less OS drop (File bytes as base64) into `~/.agentero/import-tmp/`. */
 	paperStageImportFile: (args: StageImportFileArgs) => __TAURI_INVOKE<ApiResult<StageImportFileResult>>("paper_stage_import_file", { args }),
 	/**
@@ -3047,12 +3047,6 @@ export type PaperListRow_Serialize = {
 } & PaperRecord_Serialize;
 
 /**
- *  Paper metadata written to `metadata.json`.
- *  **snake_case** to match frontend `PaperMetadata` (`pdf_url`, `arxiv_id`, …).
- */
-export type PaperMeta = PaperMeta_Serialize | PaperMeta_Deserialize;
-
-/**
  *  Manual metadata patch: `None` keeps the current value; a provided value is
  *  trimmed and an empty string clears the column (stored as NULL).
  */
@@ -3071,86 +3065,6 @@ export type PaperMetaPatch = {
 	abstract: string | null,
 	pdfUrl: string | null,
 	htmlUrl: string | null,
-};
-
-/**
- *  Paper metadata written to `metadata.json`.
- *  **snake_case** to match frontend `PaperMetadata` (`pdf_url`, `arxiv_id`, …).
- */
-export type PaperMeta_Deserialize = {
-	id: string,
-	type: string,
-	title: string,
-	authors: string[],
-	creators: Json | null,
-	year: number | null,
-	date: string | null,
-	abstract: string | null,
-	tags?: string[],
-	arxiv_id: string | null,
-	doi: string | null,
-	isbn: string | null,
-	issn: string | null,
-	pmid: string | null,
-	publication: string | null,
-	volume: string | null,
-	issue: string | null,
-	pages: string | null,
-	publisher: string | null,
-	place: string | null,
-	series: string | null,
-	language: string | null,
-	pdf_url: string | null,
-	html_url: string | null,
-	source_url: string | null,
-	bibtex_key: string | null,
-	zotero_item_type: string | null,
-	meta_source: string | null,
-	extra: string | null,
-	summary: string | null,
-	status: string,
-	added_at: string,
-	updated_at: string,
-};
-
-/**
- *  Paper metadata written to `metadata.json`.
- *  **snake_case** to match frontend `PaperMetadata` (`pdf_url`, `arxiv_id`, …).
- */
-export type PaperMeta_Serialize = {
-	id: string,
-	type: string,
-	title: string,
-	authors: string[],
-	creators?: Json | null,
-	year?: number | null,
-	date?: string | null,
-	abstract?: string | null,
-	tags: string[],
-	arxiv_id?: string | null,
-	doi?: string | null,
-	isbn?: string | null,
-	issn?: string | null,
-	pmid?: string | null,
-	publication?: string | null,
-	volume?: string | null,
-	issue?: string | null,
-	pages?: string | null,
-	publisher?: string | null,
-	place?: string | null,
-	series?: string | null,
-	language?: string | null,
-	pdf_url?: string | null,
-	html_url?: string | null,
-	source_url?: string | null,
-	bibtex_key?: string | null,
-	zotero_item_type?: string | null,
-	meta_source?: string | null,
-	extra?: string | null,
-	summary?: string | null,
-	status: string,
-	added_at: string,
-	updated_at: string,
 };
 
 export type PaperMoveArgs = {
@@ -3245,10 +3159,16 @@ export type PaperReadingActivityBatchArgs = {
 	paths: string[],
 };
 
-/**  API / frontend shape (snake_case, matches PaperMetadata). */
+/**
+ *  The single paper model: catalog row, `metadata.json` sidecar, IPC payload.
+ *  JSON stays snake_case to match the frontend's `PaperMetadata`.
+ */
 export type PaperRecord = PaperRecord_Serialize | PaperRecord_Deserialize;
 
-/**  API / frontend shape (snake_case, matches PaperMetadata). */
+/**
+ *  The single paper model: catalog row, `metadata.json` sidecar, IPC payload.
+ *  JSON stays snake_case to match the frontend's `PaperMetadata`.
+ */
 export type PaperRecord_Deserialize = {
 	/**
 	 *  Vault-relative paper folder path (primary key).
@@ -3300,7 +3220,10 @@ export type PaperRecord_Deserialize = {
 	updated_at: string,
 };
 
-/**  API / frontend shape (snake_case, matches PaperMetadata). */
+/**
+ *  The single paper model: catalog row, `metadata.json` sidecar, IPC payload.
+ *  JSON stays snake_case to match the frontend's `PaperMetadata`.
+ */
 export type PaperRecord_Serialize = {
 	/**
 	 *  Vault-relative paper folder path (primary key).

@@ -1,78 +1,11 @@
-//! Map Translator (Zotero API JSON) / arXiv Atom → PaperMeta.
+//! Map Translator (Zotero API JSON) items onto [`PaperRecord`] for the import
+//! pipeline: field extraction, arXiv/DOI/PMID recovery, canonical URLs.
 
 use crate::error::AppError;
-use crate::features::catalog::papers::hide_arxiv_category_tag;
-use serde::{Deserialize, Serialize};
+use crate::features::catalog::papers::{hide_arxiv_category_tag, PaperRecord, PaperTag};
 use serde_json::Value;
 
-/// Paper metadata written to `metadata.json`.
-/// **snake_case** to match frontend `PaperMetadata` (`pdf_url`, `arxiv_id`, …).
-#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
-pub struct PaperMeta {
-    pub id: String,
-    #[serde(rename = "type")]
-    pub paper_type: String,
-    pub title: String,
-    pub authors: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[specta(type = Option<crate::json::Json>)]
-    pub creators: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub year: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub date: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "abstract")]
-    pub abstract_text: Option<String>,
-    #[serde(default)]
-    pub tags: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub arxiv_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub doi: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub isbn: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub issn: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub pmid: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub publication: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub volume: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub issue: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub pages: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub publisher: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub place: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub series: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub language: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub pdf_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub html_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub source_url: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub bibtex_key: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub zotero_item_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub meta_source: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub extra: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub summary: Option<String>,
-    pub status: String,
-    pub added_at: String,
-    pub updated_at: String,
-}
-
-pub fn map_zotero_item(item: &Value) -> Result<PaperMeta, AppError> {
+pub fn map_zotero_item(item: &Value) -> Result<PaperRecord, AppError> {
     let title = item
         .get("title")
         .and_then(|v| v.as_str())
@@ -218,6 +151,7 @@ pub fn map_zotero_item(item: &Value) -> Result<PaperMeta, AppError> {
                         .or_else(|| t.as_str())
                         .map(hide_arxiv_category_tag)
                         .filter(|s| !s.is_empty())
+                        .map(PaperTag::new)
                 })
                 .collect()
         })
@@ -239,53 +173,45 @@ pub fn map_zotero_item(item: &Value) -> Result<PaperMeta, AppError> {
         .or_else(|| isbn.clone())
         .unwrap_or_else(|| citekey_fallback(&authors, year, &title));
 
-    let now = chrono_lite_now();
+    let mut record = PaperRecord::local_pdf(id, title);
+    record.paper_type = paper_type.to_string();
+    record.authors = authors;
+    record.creators = item.get("creators").cloned();
+    record.year = year;
+    record.date = date;
+    record.abstract_text = item
+        .get("abstractNote")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    record.tags = tags;
+    record.arxiv_id = arxiv_id;
+    record.doi = doi;
+    record.isbn = isbn;
+    record.issn = issn;
+    record.pmid = pmid;
+    record.publication = publication;
+    record.volume = str_field(item, "volume");
+    record.issue = str_field(item, "issue");
+    record.pages = str_field(item, "pages");
+    record.publisher = str_field(item, "publisher");
+    record.place = str_field(item, "place");
+    record.series = str_field(item, "series");
+    record.language = str_field(item, "language");
+    record.pdf_url = pdf_url;
+    record.html_url = if paper_type == "html" {
+        url.clone()
+    } else {
+        None
+    };
+    record.source_url = if paper_type == "html" { None } else { url };
+    record.zotero_item_type = Some(zotero_type);
+    record.meta_source = str_field(item, "libraryCatalog");
+    record.extra = extra;
 
-    Ok(PaperMeta {
-        id,
-        paper_type: paper_type.to_string(),
-        title,
-        authors,
-        creators: item.get("creators").cloned(),
-        year,
-        date,
-        abstract_text: item
-            .get("abstractNote")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string()),
-        tags,
-        arxiv_id,
-        doi,
-        isbn,
-        issn,
-        pmid,
-        publication,
-        volume: str_field(item, "volume"),
-        issue: str_field(item, "issue"),
-        pages: str_field(item, "pages"),
-        publisher: str_field(item, "publisher"),
-        place: str_field(item, "place"),
-        series: str_field(item, "series"),
-        language: str_field(item, "language"),
-        pdf_url,
-        html_url: if paper_type == "html" {
-            url.clone()
-        } else {
-            None
-        },
-        source_url: if paper_type == "html" { None } else { url },
-        bibtex_key: None,
-        zotero_item_type: Some(zotero_type),
-        meta_source: str_field(item, "libraryCatalog"),
-        extra,
-        summary: None,
-        status: "completed".into(),
-        added_at: now.clone(),
-        updated_at: now,
-    })
+    Ok(record)
 }
 
-pub fn enrich_remote_urls(meta: &mut PaperMeta) {
+pub fn enrich_remote_urls(meta: &mut PaperRecord) {
     if let Some(ref aid) = meta.arxiv_id {
         let bare = aid.trim().trim_start_matches("arXiv:").to_string();
         let bare = strip_v(&bare);
@@ -358,13 +284,13 @@ fn acl_anthology_pdf_url(url: &str) -> Option<String> {
 #[allow(dead_code)]
 pub fn meta_from_search_candidate(
     candidate: &crate::features::import::title_search::PaperSearchCandidate,
-) -> PaperMeta {
+) -> PaperRecord {
     let id = candidate
         .arxiv_id
         .clone()
         .or_else(|| candidate.doi.clone().map(|d| doi_slug(&d)))
         .unwrap_or_else(|| crate::features::import::slug_from_stem(&candidate.title));
-    let mut meta = local_pdf_meta(id, candidate.title.clone());
+    let mut meta = PaperRecord::local_pdf(id, candidate.title.clone());
     meta.authors = candidate.authors.clone();
     meta.year = candidate.year;
     meta.publication = candidate.venue.clone();
@@ -372,47 +298,6 @@ pub fn meta_from_search_candidate(
     meta.arxiv_id = candidate.arxiv_id.clone();
     meta.meta_source = Some("title-search".into());
     meta
-}
-
-/// Minimal metadata for a locally-imported PDF (no Translator lookup).
-/// `id` is a folder-safe slug; `title` is derived from the filename.
-pub fn local_pdf_meta(id: String, title: String) -> PaperMeta {
-    let now = chrono_lite_now();
-    PaperMeta {
-        id,
-        paper_type: "pdf".into(),
-        title,
-        authors: Vec::new(),
-        creators: None,
-        year: None,
-        date: None,
-        abstract_text: None,
-        tags: Vec::new(),
-        arxiv_id: None,
-        doi: None,
-        isbn: None,
-        issn: None,
-        pmid: None,
-        publication: None,
-        volume: None,
-        issue: None,
-        pages: None,
-        publisher: None,
-        place: None,
-        series: None,
-        language: None,
-        pdf_url: None,
-        html_url: None,
-        source_url: None,
-        bibtex_key: None,
-        zotero_item_type: None,
-        meta_source: Some("local".into()),
-        extra: None,
-        summary: None,
-        status: "completed".into(),
-        added_at: now.clone(),
-        updated_at: now,
-    }
 }
 
 fn str_field(item: &Value, key: &str) -> Option<String> {
@@ -547,10 +432,6 @@ fn strip_v(id: &str) -> String {
     id.to_string()
 }
 
-fn chrono_lite_now() -> String {
-    crate::time::now_rfc3339_millis()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -585,9 +466,9 @@ mod tests {
         assert_eq!(
             meta.tags,
             vec![
-                "@arxiv:Computer Science - Machine Learning".to_string(),
-                "@arxiv:Computer Science - Computation and Language".to_string(),
-                "survey".to_string()
+                PaperTag::new("@arxiv:Computer Science - Machine Learning"),
+                PaperTag::new("@arxiv:Computer Science - Computation and Language"),
+                PaperTag::new("survey"),
             ]
         );
         assert_eq!(

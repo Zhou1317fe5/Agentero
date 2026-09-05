@@ -171,7 +171,8 @@ fn normalize_color(color: Option<&str>) -> Option<String> {
         .map(|id| (*id).to_string())
 }
 
-/// API / frontend shape (snake_case, matches PaperMetadata).
+/// The single paper model: catalog row, `metadata.json` sidecar, IPC payload.
+/// JSON stays snake_case to match the frontend's `PaperMetadata`.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
 pub struct PaperRecord {
     /// Vault-relative paper folder path (primary key).
@@ -257,11 +258,73 @@ pub struct PaperRecord {
     pub updated_at: String,
 }
 
+impl PaperRecord {
+    /// Baseline metadata for a locally-imported PDF (no Translator lookup):
+    /// `id` is a folder-safe slug, `title` comes from the filename. Callers
+    /// overwrite the fields their source knows about.
+    ///
+    /// `path` stays empty — the import pipeline only learns the vault-relative
+    /// folder after allocation; bind it with [`Self::at_path`].
+    pub fn local_pdf(id: String, title: String) -> Self {
+        let now = crate::time::now_rfc3339_millis();
+        PaperRecord {
+            path: String::new(),
+            id,
+            paper_type: "pdf".into(),
+            title,
+            authors: Vec::new(),
+            creators: None,
+            year: None,
+            date: None,
+            abstract_text: None,
+            tags: Vec::new(),
+            arxiv_id: None,
+            doi: None,
+            isbn: None,
+            issn: None,
+            pmid: None,
+            publication: None,
+            volume: None,
+            issue: None,
+            pages: None,
+            publisher: None,
+            place: None,
+            series: None,
+            language: None,
+            pdf_url: None,
+            html_url: None,
+            source_url: None,
+            body_source: None,
+            body_quality: None,
+            bibtex_key: None,
+            citation_count: None,
+            zotero_item_type: None,
+            meta_source: Some("local".into()),
+            extra: None,
+            summary: None,
+            status: "completed".into(),
+            is_read: false,
+            zotero_item_id: None,
+            zotero_last_synced: None,
+            added_at: now.clone(),
+            updated_at: now,
+        }
+    }
+
+    /// Bind the record to its vault-relative paper folder. Separators are
+    /// normalized because mixed `/` `\` is rejected under a Windows `\\?\`
+    /// prefix (ERROR_INVALID_NAME, #181).
+    pub fn at_path(mut self, path: &str) -> Self {
+        self.path = path.replace('\\', "/");
+        self
+    }
+}
+
 /// Upsert paper row to catalog and project it into the paper's sidecar.
 pub fn upsert_paper(vault_root: &Path, record: &PaperRecord) -> Result<PaperRecord, AppError> {
-    with_catalog(vault_root, |conn| upsert_conn(conn, record))?;
-    super::sidecar::write_sidecar(vault_root, record);
-    Ok(record.clone())
+    let persisted = with_catalog(vault_root, |conn| upsert_conn(conn, record))?;
+    super::sidecar::write_sidecar(vault_root, &persisted);
+    Ok(persisted)
 }
 
 pub fn get_by_path(vault_root: &Path, path: &str) -> Result<Option<PaperRecord>, AppError> {
@@ -732,14 +795,14 @@ pub fn ensure_row_for_path(
     vault_root: &Path,
     rel_path: &str,
 ) -> Result<Option<PaperRecord>, AppError> {
+    let rel_path = rel_path.replace('\\', "/").trim_matches('/').to_string();
     with_catalog(vault_root, |conn| {
-        if let Some(row) = get_conn(conn, rel_path)? {
+        if let Some(row) = get_conn(conn, &rel_path)? {
             return Ok(Some(row));
         }
-        let record = super::sidecar::read_sidecar(vault_root, rel_path)
-            .unwrap_or_else(|| minimal_record_for(&vault_root.join(rel_path), rel_path));
-        upsert_conn(conn, &record)?;
-        Ok(Some(record))
+        let record = super::sidecar::read_sidecar(vault_root, &rel_path)
+            .unwrap_or_else(|| minimal_record_for(&vault_root.join(&rel_path), &rel_path));
+        upsert_conn(conn, &record).map(Some)
     })
 }
 
@@ -750,49 +813,10 @@ fn minimal_record_for(dir: &Path, rel_path: &str) -> PaperRecord {
         .and_then(|n| n.to_str())
         .unwrap_or(rel_path)
         .to_string();
-    let now = crate::time::now_rfc3339_millis();
-    PaperRecord {
-        path: rel_path.to_string(),
-        id: folder_name.clone(),
-        paper_type: "pdf".to_string(),
-        title: folder_name,
-        authors: vec![],
-        creators: None,
-        year: None,
-        date: None,
-        abstract_text: None,
-        tags: vec![],
-        arxiv_id: None,
-        doi: None,
-        isbn: None,
-        issn: None,
-        pmid: None,
-        publication: None,
-        volume: None,
-        issue: None,
-        pages: None,
-        publisher: None,
-        place: None,
-        series: None,
-        language: None,
-        pdf_url: None,
-        html_url: None,
-        source_url: None,
-        body_source: None,
-        body_quality: None,
-        bibtex_key: None,
-        citation_count: None,
-        zotero_item_type: None,
-        meta_source: None,
-        extra: None,
-        summary: None,
-        status: "completed".to_string(),
-        is_read: false,
-        zotero_item_id: None,
-        zotero_last_synced: None,
-        added_at: now.clone(),
-        updated_at: now,
-    }
+    let mut record = PaperRecord::local_pdf(folder_name.clone(), folder_name).at_path(rel_path);
+    // A folder-name fallback carries no import provenance.
+    record.meta_source = None;
+    record
 }
 
 /// Manual metadata patch: `None` keeps the current value; a provided value is
@@ -1185,8 +1209,17 @@ pub fn set_page_counts(vault_root: &Path, counts: &[(String, i64)]) -> Result<()
     })
 }
 
-fn upsert_conn(conn: &Connection, r: &PaperRecord) -> Result<(), AppError> {
+/// Single funnel for catalog writes. `path` is normalized and required here:
+/// an empty one upserts a row whose sidecar would land on the vault root.
+fn upsert_conn(conn: &Connection, r: &PaperRecord) -> Result<PaperRecord, AppError> {
     let mut r = r.clone();
+    r.path = r.path.replace('\\', "/").trim_matches('/').to_string();
+    if r.path.is_empty() {
+        return Err(AppError::message(format!(
+            "paper record missing vault-relative path (id `{}`)",
+            r.id
+        )));
+    }
     // Legacy sidecars may carry second-precision timestamps; normalize on the
     // write path so Secs/Millis never mix inside the string-ordered catalog.
     if let Some(fixed) = crate::time::normalize_rfc3339_millis(&r.updated_at) {
@@ -1302,7 +1335,7 @@ fn upsert_conn(conn: &Connection, r: &PaperRecord) -> Result<(), AppError> {
         ],
     )
     .map_err(AppError::from)?;
-    Ok(())
+    Ok(r)
 }
 
 fn map_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<PaperRecord> {
@@ -1800,6 +1833,27 @@ mod tests {
         let minimal = ensure_row_for_path(&dir, "papers/x").unwrap().unwrap();
         assert_eq!(minimal.title, "x");
         assert_eq!(minimal.year, None);
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn upsert_rejects_missing_path_and_normalizes_separators() {
+        let dir = env::temp_dir().join(format!("agentero-upsert-path-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("papers/x")).unwrap();
+
+        // An unbound record must not become a `path = ''` row: its sidecar
+        // would resolve to the vault root itself.
+        let unbound = PaperRecord::local_pdf("x".into(), "T".into());
+        let err = upsert_paper(&dir, &unbound).unwrap_err().to_string();
+        assert!(err.contains("missing vault-relative path"), "{err}");
+        assert!(!dir.join("metadata.json").exists());
+
+        let persisted = upsert_paper(&dir, &unbound.at_path("\\papers\\x\\")).unwrap();
+        assert_eq!(persisted.path, "papers/x");
+        assert_eq!(get_by_path(&dir, "papers/x").unwrap().unwrap().title, "T");
+        assert!(dir.join("papers/x/metadata.json").is_file());
 
         let _ = fs::remove_dir_all(&dir);
     }

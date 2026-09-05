@@ -24,8 +24,8 @@ impl TranslatorApi {
 
     /// POST a prepared body to a Translator endpoint and return the raw Zotero
     /// item(s). This is the primitive used by both metadata lookup and
-    /// bibliography import; callers that need `PaperMeta` map the items with
-    /// `features::import::map::map_zotero_item`.
+    /// bibliography import; callers that need a `PaperRecord` map the items
+    /// with `features::import::map::map_zotero_item`.
     pub async fn fetch_raw_items(
         &self,
         endpoint: &str,

@@ -9,7 +9,7 @@ use super::link::{self, MatchedBy};
 use super::{file_newer_than, parse_dt};
 use crate::core::error::AppError;
 use crate::features::paper::catalog::papers;
-use crate::features::paper::import::{map_zotero_item, PaperMeta};
+use crate::features::paper::import::map_zotero_item;
 use crate::features::paper::zotero::codec;
 use crate::features::paper::zotero::db::{append_markdown_blocks, SyncItem};
 use serde::Serialize;
@@ -145,7 +145,7 @@ pub(crate) fn pull(
 }
 
 /// Fill empty catalog fields from Zotero metadata; never overwrite values.
-fn fill_metadata(record: &mut papers::PaperRecord, meta: &PaperMeta) -> bool {
+fn fill_metadata(record: &mut papers::PaperRecord, meta: &papers::PaperRecord) -> bool {
     let mut changed = false;
     macro_rules! fill {
         ($field:expr, $value:expr) => {
@@ -252,41 +252,15 @@ mod tests {
             added_at: "t".into(),
             updated_at: "t".into(),
         };
-        let meta = PaperMeta {
-            id: "x".into(),
-            paper_type: "journalArticle".into(),
-            title: "T".into(),
-            authors: vec![],
-            creators: None,
-            year: Some(2021),
-            date: Some("2021-05-01".into()),
-            abstract_text: Some("abstract".into()),
-            tags: vec![],
-            arxiv_id: Some("1706.03762".into()),
-            doi: Some("10.1/new".into()),
-            isbn: None,
-            issn: None,
-            pmid: None,
-            publication: Some("Nature".into()),
-            volume: None,
-            issue: None,
-            pages: None,
-            publisher: None,
-            place: None,
-            series: None,
-            language: None,
-            pdf_url: None,
-            html_url: None,
-            source_url: None,
-            bibtex_key: None,
-            zotero_item_type: Some("journalArticle".into()),
-            meta_source: None,
-            extra: None,
-            summary: None,
-            status: "completed".into(),
-            added_at: "t".into(),
-            updated_at: "t".into(),
-        };
+        let mut meta = papers::PaperRecord::local_pdf("x".into(), "T".into());
+        meta.paper_type = "journalArticle".into();
+        meta.year = Some(2021);
+        meta.date = Some("2021-05-01".into());
+        meta.abstract_text = Some("abstract".into());
+        meta.arxiv_id = Some("1706.03762".into());
+        meta.doi = Some("10.1/new".into());
+        meta.publication = Some("Nature".into());
+        meta.zotero_item_type = Some("journalArticle".into());
         assert!(fill_metadata(&mut record, &meta));
         // Existing values are never overwritten.
         assert_eq!(record.year, Some(2020));

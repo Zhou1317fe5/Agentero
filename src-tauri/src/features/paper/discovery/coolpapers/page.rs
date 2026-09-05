@@ -69,7 +69,7 @@ pub fn parse_page(html: &str) -> PageMeta {
 }
 
 /// Zotero-shaped value so the whole field mapping in `map_zotero_item` is reused
-/// instead of hand-rolling a second `PaperMeta` constructor.
+/// instead of hand-rolling a second metadata constructor.
 fn zotero_item(page: &PageMeta) -> serde_json::Value {
     let creators: Vec<serde_json::Value> = page
         .authors

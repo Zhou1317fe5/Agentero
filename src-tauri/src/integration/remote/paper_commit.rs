@@ -7,8 +7,7 @@ use super::session::RemoteSession;
 use crate::core::error::AppError;
 use crate::features::paper::catalog::papers;
 use crate::features::paper::import::{
-    ensure_paper_assets, paper_record_from_meta, write_paper_shell, AssetDownloadResult,
-    NoteShellMode, PaperMeta,
+    ensure_paper_assets, write_paper_shell, AssetDownloadResult, NoteShellMode,
 };
 
 pub(crate) enum RemoteAssetsPolicy<'a> {
@@ -38,7 +37,7 @@ pub(crate) struct RemotePaperCommitResult {
 
 pub(crate) async fn remote_paper_commit(
     session: Arc<RemoteSession>,
-    mut meta: PaperMeta,
+    mut meta: papers::PaperRecord,
     opts: RemotePaperCommitOptions<'_>,
 ) -> Result<RemotePaperCommitResult, AppError> {
     if meta.id.is_empty() {
@@ -84,7 +83,7 @@ pub(crate) async fn remote_paper_commit(
 
     upload_tree(session.fs.as_ref(), &staging, &path_rel).await?;
 
-    let record = paper_record_from_meta(&path_rel, &meta);
+    let record = meta.clone().at_path(&path_rel);
     papers::upsert_paper(&session.work_root, &record)?;
     if opts.push_catalog {
         let mut cat = session.catalog.lock().await;

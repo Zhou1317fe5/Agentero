@@ -11,9 +11,10 @@
 //! @see docs/backend/paper-import.md § PDF 元数据识别
 
 use crate::core::error::AppError;
+use crate::features::paper::catalog::papers::PaperRecord;
 use crate::features::paper::import::pdf_parse::{run_liteparse_probe, ProbePage, ProbeWord};
+use crate::features::paper::import::resolve_metadata;
 use crate::features::paper::import::resolver::fetch_arxiv_metadata;
-use crate::features::paper::import::{map, resolve_metadata, PaperMeta};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::Path;
@@ -305,7 +306,7 @@ pub struct PdfIdentProbe {
 }
 
 impl PdfIdentProbe {
-    fn from_meta(file_path: &str, meta: &PaperMeta, source: &str) -> Self {
+    fn from_meta(file_path: &str, meta: &PaperRecord, source: &str) -> Self {
         Self {
             file_path: file_path.to_string(),
             status: "ok".into(),
@@ -431,7 +432,7 @@ fn title_fallback(file_path: &str, hit: &RecognizeHit) -> PdfIdentProbe {
 
 /// Best-effort metadata from a recognizer hit when no identifier resolved:
 /// use the recognizer's own title/authors extraction (Zotero's fallback too).
-pub(crate) fn meta_from_recognize(hit: &RecognizeHit, fallback_id: &str) -> PaperMeta {
+pub(crate) fn meta_from_recognize(hit: &RecognizeHit, fallback_id: &str) -> PaperRecord {
     let authors = hit.author_names();
     let title = hit
         .title
@@ -442,7 +443,7 @@ pub(crate) fn meta_from_recognize(hit: &RecognizeHit, fallback_id: &str) -> Pape
         .year
         .as_deref()
         .and_then(|y| y.trim().chars().take(4).collect::<String>().parse().ok());
-    let mut meta = map::local_pdf_meta(
+    let mut meta = PaperRecord::local_pdf(
         crate::features::paper::import::slug_from_stem(fallback_id),
         title,
     );
