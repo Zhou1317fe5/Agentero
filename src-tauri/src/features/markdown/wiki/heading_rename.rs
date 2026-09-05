@@ -4,16 +4,16 @@
 //! exact saved document snapshot plus a heading path and line, making the
 //! cross-file rewrite an explicit and reviewable user action.
 
-use crate::features::wiki::extract::{extract_document, parse_heading_source};
-use crate::features::wiki::index::WikiIndex;
-use crate::features::wiki::models::{
+use crate::features::markdown::wiki::extract::{extract_document, parse_heading_source};
+use crate::features::markdown::wiki::index::WikiIndex;
+use crate::features::markdown::wiki::models::{
     LinkFragment, LinkResolutionStatus, SourceRange, WikiRenameErrorCode, WikiRenameHeadingResult,
     WikiRenameRollback,
 };
-use crate::features::wiki::rename::{
+use crate::features::markdown::wiki::rename::{
     atomic_write, content_hash, normalize_vault_path, WikiRenameError,
 };
-use crate::features::wiki::resolve::{fragment_anchors, FragmentAnchor};
+use crate::features::markdown::wiki::resolve::{fragment_anchors, FragmentAnchor};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -518,7 +518,10 @@ fn path_may_reference_at_or_under(path: &[String], root: &[String]) -> bool {
     (0..root.len()).any(|start| {
         let suffix = &root[start..];
         path.len() >= suffix.len()
-            && crate::features::wiki::resolve::heading_path_ends_with(&path[..suffix.len()], suffix)
+            && crate::features::markdown::wiki::resolve::heading_path_ends_with(
+                &path[..suffix.len()],
+                suffix,
+            )
     })
 }
 

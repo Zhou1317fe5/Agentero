@@ -13,7 +13,7 @@ pub mod tunnel;
 pub mod commands;
 
 use crate::core::error::AppError;
-use crate::features::settings::DEFAULT_MCP_PORT;
+use crate::features::system::settings::DEFAULT_MCP_PORT;
 use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -318,7 +318,7 @@ impl McpController {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::features::catalog::papers::{self, PaperRecord, PaperTag};
+    use crate::features::paper::catalog::papers::{self, PaperRecord, PaperTag};
     use crate::features::vault;
     use crate::integration::mcp::notes::WriteMode;
     use tempfile::tempdir;

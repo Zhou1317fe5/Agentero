@@ -7,7 +7,7 @@ use crate::core::log_util::OpTimer;
 
 // Settings store is only used for macOS traffic-light y scaling.
 #[cfg(target_os = "macos")]
-use crate::features::settings::AppSettingsStore;
+use crate::features::system::settings::AppSettingsStore;
 
 /// Default traffic-light y position at 100% UI scale. Matches tauri.conf.json.
 #[cfg(target_os = "macos")]

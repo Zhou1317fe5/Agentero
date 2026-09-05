@@ -14,7 +14,7 @@
 //! user edits them inside Zotero. Documented in identifier-lookup.md §17.
 
 use crate::core::error::AppError;
-use crate::features::zotero::codec;
+use crate::features::paper::zotero::codec;
 use rusqlite::{params, Connection};
 use std::fs;
 use std::path::{Path, PathBuf};

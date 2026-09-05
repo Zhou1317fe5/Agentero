@@ -1,8 +1,8 @@
 //! Domain features (feature-first layout, aligned with frontend `src/lib`).
 //!
 //! Tauri-free service bodies live in `agentero_core::features::*` and are
-//! bridged here (`pub use`) so historical `crate::features::X` paths stay
-//! stable; this crate keeps the desktop shells: `#[tauri::command]` surfaces,
+//! bridged here; callers use the semantic `crate::features::<domain>::<module>`
+//! paths. This crate keeps the desktop shells: `#[tauri::command]` surfaces,
 //! JobCenter runners, watcher/agent/integration wiring. The headless CLI
 //! consumes `agentero_core` directly; BYOA (`agent`) is desktop-only.
 
@@ -29,40 +29,3 @@ pub mod pdf;
 pub mod system;
 pub mod translate;
 pub mod vault;
-
-// Stable historical `features::` paths, backed by the semantic module tree.
-#[cfg(feature = "desktop")]
-pub use paper::analyze::layout;
-
-pub use markdown::wiki;
-pub use paper::analyze::refs;
-pub use paper::catalog;
-pub use paper::import;
-pub use paper::scholar_api;
-pub use vault::doctor;
-pub use vault::rename;
-pub use vault::trash;
-
-#[cfg(feature = "desktop")]
-pub use markdown::search;
-#[cfg(feature = "desktop")]
-pub use pdf::export;
-#[cfg(feature = "desktop")]
-pub use system::settings;
-#[cfg(feature = "desktop")]
-pub use vault::watcher;
-
-#[cfg(feature = "desktop")]
-pub use paper::discovery::coolpapers;
-pub use paper::discovery::feeds;
-#[cfg(feature = "desktop")]
-pub use paper::discovery::proxy as site_proxy;
-#[cfg(feature = "desktop")]
-pub use paper::discovery::proxy::arxiv as arxiv_proxy;
-#[cfg(feature = "desktop")]
-pub use paper::discovery::proxy::modelscope as modelscope_proxy;
-#[cfg(feature = "desktop")]
-pub use paper::discovery::recommend;
-pub use paper::zotero;
-#[cfg(feature = "desktop")]
-pub use paper::zotero::sync as zotero_sync;

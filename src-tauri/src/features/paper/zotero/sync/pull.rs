@@ -8,10 +8,10 @@
 use super::link::{self, MatchedBy};
 use super::{file_newer_than, parse_dt};
 use crate::core::error::AppError;
-use crate::features::catalog::papers;
-use crate::features::import::{map_zotero_item, PaperMeta};
-use crate::features::zotero::codec;
-use crate::features::zotero::db::{append_markdown_blocks, SyncItem};
+use crate::features::paper::catalog::papers;
+use crate::features::paper::import::{map_zotero_item, PaperMeta};
+use crate::features::paper::zotero::codec;
+use crate::features::paper::zotero::db::{append_markdown_blocks, SyncItem};
 use serde::Serialize;
 use std::fs;
 use std::path::Path;

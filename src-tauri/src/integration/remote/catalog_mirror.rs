@@ -4,7 +4,7 @@
 
 use crate::core::error::AppError;
 use crate::core::fs::{FsFileMeta, VaultFs, WriteOpts};
-use crate::features::catalog::{ensure_catalog, schema_version, SCHEMA_VERSION};
+use crate::features::paper::catalog::{ensure_catalog, schema_version, SCHEMA_VERSION};
 use rusqlite::Connection;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

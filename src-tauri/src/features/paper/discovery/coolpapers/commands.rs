@@ -2,7 +2,7 @@
 
 use crate::core::error::{map_err, ApiResult};
 use crate::core::log_util::{trunc, OpTimer};
-use crate::features::import::AssetProgressContext;
+use crate::features::paper::import::AssetProgressContext;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, specta::Type)]
@@ -48,7 +48,7 @@ pub struct CoolPapersImportArgs {
 pub async fn paper_coolpapers_import(
     app: tauri::AppHandle,
     args: CoolPapersImportArgs,
-) -> Result<ApiResult<crate::features::import::paper_import::PaperCommitResult>, String> {
+) -> Result<ApiResult<crate::features::paper::import::paper_import::PaperCommitResult>, String> {
     let op = OpTimer::start_with(
         "paper_coolpapers_import",
         format!("branch={} id={}", args.branch, trunc(&args.id, 80)),
@@ -70,7 +70,7 @@ pub async fn paper_coolpapers_import(
             app: Some(&host_app),
             task_id: args.task_id.as_deref(),
         },
-        note_mode: crate::features::import::note_mode_from_app(&app),
+        note_mode: crate::features::paper::import::note_mode_from_app(&app),
     })
     .await;
     Ok(op.finish_result(result))

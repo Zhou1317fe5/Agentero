@@ -4,10 +4,10 @@
 
 use crate::core::error::AppError;
 use crate::core::http;
-use crate::features::layout::hosted::engine::{
+use crate::features::paper::analyze::layout::hosted::engine::{
     HostedLayoutAnalyzer, HostedProviderCredentials, LayoutAnalyzeContext,
 };
-use crate::features::layout::hosted::{
+use crate::features::paper::analyze::layout::hosted::{
     LayoutRemoteAnalyzePdfResult, LayoutRemoteProbeArgs, LayoutRemoteProbeResult,
 };
 use async_trait::async_trait;

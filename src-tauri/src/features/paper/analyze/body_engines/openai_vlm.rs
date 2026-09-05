@@ -351,7 +351,7 @@ mod tests {
 
         let dir = std::env::temp_dir().join(format!("vlm-live-{}", uuid::Uuid::new_v4()));
         std::fs::create_dir_all(&dir).unwrap();
-        let pages = crate::features::import::pdf_parse::run_liteparse_render_direct(
+        let pages = crate::features::paper::import::pdf_parse::run_liteparse_render_direct(
             std::path::Path::new(&pdf),
             &dir,
         )

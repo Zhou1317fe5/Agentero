@@ -7,8 +7,8 @@
 use crate::core::blocking::run_blocking;
 use crate::core::error::{map_err, ApiResult, AppError};
 use crate::core::fs::{ensure_vault_dir, resolve_paper_dir, resolve_vault};
-use crate::features::catalog::papers::{self, PaperRecord};
-use crate::features::catalog::{probe_paper_caps, CapsCache};
+use crate::features::paper::catalog::papers::{self, PaperRecord};
+use crate::features::paper::catalog::{probe_paper_caps, CapsCache};
 use crate::features::pdf::marks::activity as reading_activity;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -528,7 +528,7 @@ pub struct PaperMoveResult {
     /// New vault-relative path of the moved item.
     pub new_rel: String,
     /// Link-aware transaction details for UI refresh and diagnostics.
-    pub link_update: crate::features::wiki::models::WikiRenameResult,
+    pub link_update: crate::features::markdown::wiki::models::WikiRenameResult,
 }
 
 /// Move an item into another `papers/` folder on disk and rewrite matching
@@ -537,7 +537,7 @@ pub struct PaperMoveResult {
 #[specta::specta]
 pub async fn paper_move(
     args: PaperMoveArgs,
-    index: State<'_, crate::features::rename::WikiIndexState>,
+    index: State<'_, crate::features::vault::rename::WikiIndexState>,
 ) -> Result<ApiResult<PaperMoveResult>, String> {
     Ok(match paper_move_service(args, index.handle()).await {
         Ok(result) => ApiResult::ok(result),
@@ -549,7 +549,7 @@ pub async fn paper_move(
 /// filesystem/catalog/wiki transaction as the Tauri command.
 pub(crate) async fn paper_move_service(
     args: PaperMoveArgs,
-    index: std::sync::Arc<std::sync::Mutex<crate::features::rename::WikiIndex>>,
+    index: std::sync::Arc<std::sync::Mutex<crate::features::vault::rename::WikiIndex>>,
 ) -> Result<PaperMoveResult, AppError> {
     tauri::async_runtime::spawn_blocking(move || {
         let mut guard = match index.lock() {
@@ -564,10 +564,10 @@ pub(crate) async fn paper_move_service(
 
 fn move_inner(
     args: PaperMoveArgs,
-    index: &mut crate::features::rename::WikiIndex,
+    index: &mut crate::features::vault::rename::WikiIndex,
 ) -> Result<PaperMoveResult, AppError> {
     let vault = resolve_vault(&args.vault_path)?;
-    let (from, new_rel) = crate::features::catalog::plan_paper_move_under(
+    let (from, new_rel) = crate::features::paper::catalog::plan_paper_move_under(
         &vault,
         &args.from_rel,
         &args.dest_parent_rel,
@@ -575,7 +575,7 @@ fn move_inner(
     if new_rel == from {
         return Err(AppError::message("already in this folder"));
     }
-    let link_update = crate::features::rename::run_local_rename_transaction(
+    let link_update = crate::features::vault::rename::run_local_rename_transaction(
         &vault,
         index,
         &from,
@@ -598,7 +598,7 @@ fn move_inner(
 #[cfg(test)]
 mod move_tests {
     use super::*;
-    use crate::features::rename::WikiIndex;
+    use crate::features::vault::rename::WikiIndex;
     use std::sync::{Arc, Mutex};
     use uuid::Uuid;
 

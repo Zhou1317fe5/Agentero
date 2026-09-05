@@ -8,7 +8,7 @@
 //! # Relationship to `layout::hosted`
 //!
 //! The MinerU and Paddle engines here are thin markdown-extraction layers over
-//! the cloud job runners in [`crate::features::layout::hosted`] (upload →
+//! the cloud job runners in [`crate::features::paper::analyze::layout::hosted`] (upload →
 //! poll → zip/JSONL). Sharing those runners avoids duplicating the HTTP
 //! orchestration; the same cloud job is run once and consumed differently
 //! (zip → `full.md` here; zip → `content_list.json` boxes there).
@@ -28,7 +28,7 @@ mod openai_vlm;
 mod paddle;
 
 use crate::features::paper::analyze::parse::engines;
-use crate::features::settings::AppSettingsStore;
+use crate::features::system::settings::AppSettingsStore;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -40,7 +40,7 @@ pub fn register_body_engines() {
     engines::register_engine("openaicompatible", || {
         Arc::new(openai_vlm::OpenAiVlmBodyEngine)
     });
-    engines::set_provider_resolver(crate::features::settings::layout_provider_settings_key);
+    engines::set_provider_resolver(crate::features::system::settings::layout_provider_settings_key);
 }
 
 /// Rebuild the snapshot from the settings store; plaintext keys never leave

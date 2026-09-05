@@ -8,8 +8,8 @@
 use crate::core::blocking::run_blocking;
 use crate::core::error::{map_err, ApiResult, AppError};
 use crate::core::fs::resolve_vault;
-use crate::features::catalog::papers;
-use crate::features::rename::{
+use crate::features::paper::catalog::papers;
+use crate::features::vault::rename::{
     run_local_rename_transaction, run_prepared_external_rename_repair, ExternalRenameRepairStore,
     WikiExternalRenamePreview, WikiIndexState, WikiRenameErrorCode, WikiRenameResult,
     WikiRenameTransaction,

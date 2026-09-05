@@ -23,7 +23,7 @@ const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Startup inputs for [`Telemetry::start`], assembled by the app layer.
 ///
 /// Dependency injection keeps `core::telemetry` free of upward edges into
-/// `features::settings` / `features::agent`: the app layer reads the
+/// `features::system::settings` / `features::agent`: the app layer reads the
 /// settings snapshot and the anonymous agent registry summary, then hands
 /// over only these plain values.
 pub struct TelemetryStartContext {

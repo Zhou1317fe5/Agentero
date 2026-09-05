@@ -2,14 +2,14 @@
 //! from settings and dispatches to the engine registry.
 
 use crate::core::error::{map_err, ApiResult, AppError};
-use crate::features::layout::hosted::engine::{
+use crate::features::paper::analyze::layout::hosted::engine::{
     engine_for, HostedProviderCredentials, LayoutAnalyzeContext,
 };
-use crate::features::layout::hosted::{
+use crate::features::paper::analyze::layout::hosted::{
     LayoutRemoteAnalyzePdfArgs, LayoutRemoteAnalyzePdfResult, LayoutRemoteProbeArgs,
     LayoutRemoteProbeResult,
 };
-use crate::features::settings::{is_translate_api_key_mask, AppSettingsStore};
+use crate::features::system::settings::{is_translate_api_key_mask, AppSettingsStore};
 use tauri::{AppHandle, Manager};
 
 const DEFAULT_REMOTE_PROVIDER: &str = "paddle";

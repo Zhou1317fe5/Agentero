@@ -1,7 +1,7 @@
 //! Paper ref resolution and list/get shaping for MCP tools.
 
 use crate::core::error::AppError;
-use crate::features::catalog::papers::{self, PaperRecord, PaperTag};
+use crate::features::paper::catalog::papers::{self, PaperRecord, PaperTag};
 use serde::Serialize;
 use std::path::Path;
 

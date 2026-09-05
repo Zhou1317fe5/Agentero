@@ -2,8 +2,10 @@
 //! `full.md` markdown from the result zip.
 
 use crate::core::error::AppError;
-use crate::features::layout::hosted::engine::HostedProviderCredentials;
-use crate::features::layout::hosted::mineru::{read_zip_entry_by_candidates, run_mineru_extract};
+use crate::features::paper::analyze::layout::hosted::engine::HostedProviderCredentials;
+use crate::features::paper::analyze::layout::hosted::mineru::{
+    read_zip_entry_by_candidates, run_mineru_extract,
+};
 use crate::features::paper::analyze::parse::engines::{
     BodyParseCtx, BodyParseEngine, BodyParseOutcome,
 };

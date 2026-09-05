@@ -9,8 +9,8 @@ use super::{
 use crate::core::blocking::run_blocking;
 use crate::core::error::ApiResult;
 use crate::core::remote::parse_remote_handle;
-use crate::features::import::RemoteImportOps;
-use crate::features::import::{PaperImportArgs, PaperImportResult};
+use crate::features::paper::import::RemoteImportOps;
+use crate::features::paper::import::{PaperImportArgs, PaperImportResult};
 use std::sync::Arc;
 use tauri::ipc::Channel;
 use tauri::State;
@@ -53,7 +53,7 @@ pub async fn zotero_migrate(
             phase: phase.to_string(),
         });
     };
-    let note_mode = crate::features::import::note_mode_from_app(&app);
+    let note_mode = crate::features::paper::import::note_mode_from_app(&app);
     op.finish_result_ok_extra(
         migrate_zotero(args, report, Some(&app), note_mode).await,
         |r| format!("imported={} skipped={}", r.imported, r.skipped),
@@ -82,7 +82,7 @@ pub async fn paper_import(
     use crate::core::log_util::OpTimer;
 
     let op = OpTimer::start("paper_import");
-    let note_mode = crate::features::import::note_mode_from_app(&app);
+    let note_mode = crate::features::paper::import::note_mode_from_app(&app);
     if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned) {
         return Ok(op.finish_result_ok_extra(
             remote

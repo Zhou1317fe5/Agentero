@@ -15,8 +15,8 @@ use crate::features::agent::models::{
 use crate::features::agent::{
     service as agent_service, AgentRegistry, AgentRunController, PermissionGate, RemoteAgentHosts,
 };
-use crate::features::catalog::papers;
-use crate::features::search::{self, VaultSearchArgs};
+use crate::features::markdown::search::{self, VaultSearchArgs};
+use crate::features::paper::catalog::papers;
 use crate::features::vault::tree;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
@@ -775,7 +775,7 @@ async fn dispatch_rpc(
     match method {
         "vault_tree_build" => to_value(tree::build_tree(
             vault_root,
-            &app.state::<crate::features::catalog::CapsCache>(),
+            &app.state::<crate::features::paper::catalog::CapsCache>(),
         )),
         "paper_list" => to_value(papers::list_all(vault_root)?),
         "vault_search" => {

@@ -2,7 +2,7 @@
 //! per-page markdown carried in the JSONL result.
 
 use crate::core::error::AppError;
-use crate::features::layout::hosted::paddle::run_paddle_ocr_job;
+use crate::features::paper::analyze::layout::hosted::paddle::run_paddle_ocr_job;
 use crate::features::paper::analyze::parse::engines::{
     BodyParseCtx, BodyParseEngine, BodyParseOutcome,
 };

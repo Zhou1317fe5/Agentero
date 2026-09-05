@@ -13,7 +13,7 @@
 
 use super::{decode_entities, http_client, ORIGIN};
 use crate::core::error::AppError;
-use crate::features::import::{
+use crate::features::paper::import::{
     map_zotero_item,
     paper_import::{
         paper_commit, AssetsPolicy, DedupePolicy, PaperCommitOptions, PaperCommitResult,

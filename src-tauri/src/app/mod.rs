@@ -22,11 +22,11 @@ pub mod terminal;
 pub mod window;
 
 use crate::features::agent::{AgentRegistry, AgentRunController};
-use crate::features::rename::ExternalRenameRepairStore;
-use crate::features::settings::AppSettingsStore;
+use crate::features::markdown::wiki::WikiIndexState;
+use crate::features::system::settings::AppSettingsStore;
+use crate::features::vault::rename::ExternalRenameRepairStore;
 #[cfg(not(target_os = "ios"))]
-use crate::features::watcher::FsWatchController;
-use crate::features::wiki::WikiIndexState;
+use crate::features::vault::watcher::FsWatchController;
 #[cfg(not(target_os = "ios"))]
 use crate::integration::connector::ConnectorController;
 #[cfg(not(target_os = "ios"))]
@@ -64,21 +64,23 @@ pub fn run() {
 
     builder = builder
         .register_asynchronous_uri_scheme_protocol("agentero-arxiv", |_ctx, request, responder| {
-            crate::features::arxiv_proxy::handle(request, responder);
+            crate::features::paper::discovery::proxy::arxiv::handle(request, responder);
         })
         .register_asynchronous_uri_scheme_protocol("agentero-model", |_ctx, request, responder| {
-            crate::features::layout::model_assets::handle_model_uri(request, responder);
+            crate::features::paper::analyze::layout::model_assets::handle_model_uri(
+                request, responder,
+            );
         })
         .register_asynchronous_uri_scheme_protocol(
             "agentero-coolpapers",
             |_ctx, request, responder| {
-                crate::features::coolpapers::proxy::handle(request, responder);
+                crate::features::paper::discovery::coolpapers::proxy::handle(request, responder);
             },
         )
         .register_asynchronous_uri_scheme_protocol(
             "agentero-modelscope",
             |_ctx, request, responder| {
-                crate::features::modelscope_proxy::handle(request, responder);
+                crate::features::paper::discovery::proxy::modelscope::handle(request, responder);
             },
         )
         .plugin(tauri_plugin_opener::init())
@@ -115,9 +117,9 @@ pub fn run() {
         .manage(crate::features::jobs::JobCenter::with_layout_backend(
             &layout_backend,
         ))
-        .manage(crate::features::catalog::CapsCache::new())
+        .manage(crate::features::paper::catalog::CapsCache::new())
         .manage(WikiIndexState::new())
-        .manage(crate::features::doctor::DoctorDirtyPathsState::default())
+        .manage(crate::features::vault::doctor::DoctorDirtyPathsState::default())
         .manage(ExternalRenameRepairStore::new())
         .manage(crate::integration::sync::SyncService::default())
         .manage(crate::app::open_request::PendingVaultOpen::new());
@@ -136,8 +138,13 @@ pub fn run() {
             .manage(Arc::new(McpTunnelController::new()))
             .manage(remote_registry.clone())
             .manage(remote_registry.clone() as Arc<dyn crate::features::agent::RemoteAgentHosts>)
-            .manage(remote_registry.clone() as Arc<dyn crate::features::import::RemoteImportOps>)
-            .manage(remote_registry as Arc<dyn crate::features::trash::remote_ops::RemoteTrashOps>);
+            .manage(
+                remote_registry.clone() as Arc<dyn crate::features::paper::import::RemoteImportOps>
+            )
+            .manage(
+                remote_registry
+                    as Arc<dyn crate::features::vault::trash::remote_ops::RemoteTrashOps>,
+            );
     }
 
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -170,8 +177,8 @@ pub fn run() {
         // schedules.
         {
             let center = app.state::<crate::features::jobs::JobCenter>();
-            crate::features::refs::register_job_runners(&center);
-            crate::features::import::job_runners::register_job_runners(&center);
+            crate::features::paper::analyze::refs::register_job_runners(&center);
+            crate::features::paper::import::job_runners::register_job_runners(&center);
             let handle = app.handle().clone();
             center.set_layout_backend_source(move || {
                 handle.state::<AppSettingsStore>().layout_backend()
@@ -210,7 +217,7 @@ pub fn run() {
             {
                 let handle = app.handle().clone();
                 settings_store.subscribe(move |_s| {
-                    crate::features::import::refresh_parser_config(
+                    crate::features::paper::import::refresh_parser_config(
                         &handle.state::<AppSettingsStore>(),
                     );
                 });
@@ -282,14 +289,16 @@ pub fn run() {
             &settings.network_proxy_url,
         )?;
         #[cfg(not(any(target_os = "ios", target_os = "android")))]
-        crate::features::import::refresh_parser_config(&settings_store);
+        crate::features::paper::import::refresh_parser_config(&settings_store);
         let _ = agents.set_proxy(
             settings.network_proxy_enabled,
             settings.network_proxy_url.clone(),
         );
         // Prefetch PP-DocLayoutV3 into XDG as fixed background-task id
         // (`layout-model`); frontend maps `layout-model:task` into the panel.
-        crate::features::layout::model_assets::spawn_background_download(app.handle().clone());
+        crate::features::paper::analyze::layout::model_assets::spawn_background_download(
+            app.handle().clone(),
+        );
         // Native menu is macOS-only; the renderer re-syncs the locale on mount.
         #[cfg(target_os = "macos")]
         {
@@ -299,7 +308,7 @@ pub fn run() {
         // Ensure registry is loaded early.
         let _ = app.state::<AgentRegistry>();
         let _ = app.state::<WikiIndexState>();
-        let _ = app.state::<crate::features::doctor::DoctorDirtyPathsState>();
+        let _ = app.state::<crate::features::vault::doctor::DoctorDirtyPathsState>();
         let _ = app.state::<ExternalRenameRepairStore>();
         #[cfg(not(target_os = "ios"))]
         {

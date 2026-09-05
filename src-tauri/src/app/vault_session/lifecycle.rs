@@ -3,8 +3,8 @@
 use crate::app::vault_session::vault_path_arg;
 use crate::core::error::{map_err, ApiResult};
 use crate::core::log_util::{trunc, OpTimer};
-use crate::features::catalog::CapsCache;
 use crate::features::jobs::{emit_job_changed, JobCenter};
+use crate::features::paper::catalog::CapsCache;
 use tauri::Manager;
 
 /// Release Host-side resources held for a vault the app switched away from.
@@ -31,6 +31,6 @@ pub async fn vault_release(app: tauri::AppHandle, path: String) -> ApiResult<()>
     jobs.drain_and_spawn(&app).await;
 
     app.state::<CapsCache>().clear();
-    crate::features::catalog::evict_catalog_conn(&vault);
+    crate::features::paper::catalog::evict_catalog_conn(&vault);
     op.finish_result(Ok(()))
 }

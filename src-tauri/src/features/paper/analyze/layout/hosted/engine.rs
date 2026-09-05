@@ -14,7 +14,7 @@ use async_trait::async_trait;
 use tauri::AppHandle;
 
 use crate::core::error::AppError;
-use crate::features::layout::hosted::{
+use crate::features::paper::analyze::layout::hosted::{
     LayoutRemoteAnalyzePdfArgs, LayoutRemoteAnalyzePdfResult, LayoutRemoteProbeArgs,
     LayoutRemoteProbeResult,
 };

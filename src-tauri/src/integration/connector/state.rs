@@ -11,9 +11,9 @@ use tauri::{AppHandle, Emitter, Manager};
 use tokio::sync::{oneshot, Mutex as AsyncMutex};
 
 /// Default Zotero Connector port (must match official extension default).
-/// Canonical value lives in `features::settings` (persisted `connectorPort`
+/// Canonical value lives in `features::system::settings` (persisted `connectorPort`
 /// default); the connector re-exports it for its bind default.
-pub use crate::features::settings::DEFAULT_CONNECTOR_PORT;
+pub use crate::features::system::settings::DEFAULT_CONNECTOR_PORT;
 
 const CONNECTOR_API_VERSION: &str = "2";
 const AGENTERO_CONNECTOR_VERSION: &str = "0.1.0-agentero";
@@ -761,10 +761,10 @@ impl ConnectorController {
             .app_handle()
             .ok_or_else(|| AppError::message("Connector app handle unavailable"))?;
         let index = app
-            .state::<crate::features::rename::WikiIndexState>()
+            .state::<crate::features::vault::rename::WikiIndexState>()
             .handle();
-        let result = crate::features::catalog::commands::paper_move_service(
-            crate::features::catalog::commands::PaperMoveArgs {
+        let result = crate::features::paper::catalog::commands::paper_move_service(
+            crate::features::paper::catalog::commands::PaperMoveArgs {
                 vault_path: vault_handle.to_string(),
                 from_rel: from.to_string(),
                 dest_parent_rel: parent.to_string(),
@@ -937,7 +937,7 @@ impl ConnectorController {
                 session.paper_paths.clone(),
             )
         };
-        let paper_tags: Vec<crate::features::catalog::papers::PaperTag> =
+        let paper_tags: Vec<crate::features::paper::catalog::papers::PaperTag> =
             tags.iter().cloned().map(Into::into).collect();
         if let Some(sid) = crate::integration::remote::parse_remote_handle(&handle) {
             let reg = self
@@ -945,7 +945,7 @@ impl ConnectorController {
                 .ok_or_else(|| AppError::message("remote registry unavailable"))?;
             let session = reg.get(sid).await?;
             for path in paths {
-                let row = crate::features::catalog::papers::add_tags(
+                let row = crate::features::paper::catalog::papers::add_tags(
                     &session.work_root,
                     &path,
                     &paper_tags,
@@ -972,7 +972,8 @@ impl ConnectorController {
         } else {
             let vault = PathBuf::from(handle);
             for path in paths {
-                let _ = crate::features::catalog::papers::add_tags(&vault, &path, &paper_tags)?;
+                let _ =
+                    crate::features::paper::catalog::papers::add_tags(&vault, &path, &paper_tags)?;
             }
         }
         Ok(())

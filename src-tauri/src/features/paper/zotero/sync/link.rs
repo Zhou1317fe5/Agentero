@@ -5,8 +5,8 @@
 //! into the catalog row so later syncs take the fast exact path.
 
 use crate::core::error::AppError;
-use crate::features::catalog::papers::{self, PaperRecord};
-use crate::features::zotero::db::normalize_title;
+use crate::features::paper::catalog::papers::{self, PaperRecord};
+use crate::features::paper::zotero::db::normalize_title;
 use std::collections::HashMap;
 use std::path::Path;
 

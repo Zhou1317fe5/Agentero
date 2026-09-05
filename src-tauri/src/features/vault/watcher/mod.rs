@@ -190,7 +190,7 @@ fn invalidate_caps_for_paths(app: &AppHandle, vault_root: &str, paths: &[String]
     if relevant.is_empty() {
         return;
     }
-    let caps = app.state::<crate::features::catalog::CapsCache>();
+    let caps = app.state::<crate::features::paper::catalog::CapsCache>();
     let vault = std::path::Path::new(vault_root);
     for path in relevant {
         for dir in caps_paper_dirs(vault_root, path) {

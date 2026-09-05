@@ -3,14 +3,14 @@
 use super::state::ProgressItem;
 use crate::core::error::AppError;
 use crate::core::fs::WriteOpts;
-use crate::features::catalog::papers;
-use crate::features::catalog::papers::is_internal_tag_name;
-use crate::features::import::{
+use crate::features::paper::catalog::papers;
+use crate::features::paper::catalog::papers::is_internal_tag_name;
+use crate::features::paper::import::{
     enrich_remote_urls, ensure_paper_assets_with_cookies, map_zotero_item, normalize_parent_dir,
     paper_record_from_meta, write_paper_shell_opts, NoteShellMode, PaperMeta,
 };
+use crate::features::paper::zotero::ZOTERO_INTERNAL_TAG_PREFIX;
 use crate::features::translate::{free_mt_to_zh, looks_mostly_cjk};
-use crate::features::zotero::ZOTERO_INTERNAL_TAG_PREFIX;
 use crate::integration::connector::ConnectorController;
 use crate::integration::remote::import_bridge::{unique_remote_paper_path, upload_tree};
 use crate::integration::remote::{parse_remote_handle, RemoteSession};
@@ -34,7 +34,7 @@ pub struct ConnectorImportResult {
 /// (settings `paperNoteMode`). Standard when no handle is attached yet.
 fn note_mode_from_ctrl(ctrl: &ConnectorController) -> NoteShellMode {
     match ctrl.app_handle() {
-        Some(app) => crate::features::import::note_mode_from_app(&app),
+        Some(app) => crate::features::paper::import::note_mode_from_app(&app),
         None => NoteShellMode::Standard,
     }
 }
@@ -48,7 +48,7 @@ pub async fn import_connector_item_with_cookies(
     page_uri: Option<&str>,
     _cookies: Option<&str>,
 ) -> Result<ConnectorImportResult, AppError> {
-    use crate::features::import::{
+    use crate::features::paper::import::{
         paper_commit, AssetsPolicy, CommitStatus, DedupePolicy, PaperCommitOptions,
     };
 
@@ -526,8 +526,9 @@ pub async fn import_standalone_attachment(
         })
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| "PDF".into());
-    let base_id = crate::features::import::slug_from_stem(&title);
-    let mut meta = crate::features::import::local_pdf_meta_for_import(base_id, title.clone());
+    let base_id = crate::features::paper::import::slug_from_stem(&title);
+    let mut meta =
+        crate::features::paper::import::local_pdf_meta_for_import(base_id, title.clone());
     meta.meta_source = Some("zotero-connector".into());
     if let Some(u) = url.map(str::trim).filter(|s| !s.is_empty()) {
         meta.source_url = Some(u.to_string());
@@ -612,7 +613,7 @@ async fn import_standalone_local(
     app: Option<&crate::core::app_handle::AppHandle>,
     note_mode: NoteShellMode,
 ) -> Result<ConnectorImportResult, AppError> {
-    use crate::features::import::{
+    use crate::features::paper::import::{
         paper_commit, AssetsPolicy, CommitStatus, DedupePolicy, PaperCommitOptions,
     };
 
@@ -768,7 +769,7 @@ pub async fn save_attachment_from_resolver(
             None,
         )
         .await?;
-        if !assets.pdf && !crate::features::import::has_local_pdf(&paper_dir) {
+        if !assets.pdf && !crate::features::paper::import::has_local_pdf(&paper_dir) {
             return Err(AppError::message("Failed to save an attachment"));
         }
         upload_tree(session.fs.as_ref(), &paper_dir, &paper_rel).await?;
@@ -793,7 +794,7 @@ pub async fn save_attachment_from_resolver(
         None,
     )
     .await?;
-    if !assets.pdf && !crate::features::import::has_local_pdf(&paper_dir) {
+    if !assets.pdf && !crate::features::paper::import::has_local_pdf(&paper_dir) {
         return Err(AppError::message("Failed to save an attachment"));
     }
     Ok("Full Text PDF".into())
@@ -822,23 +823,24 @@ async fn paper_resolver_hints(
             .as_ref()
             .and_then(|r| r.arxiv_id.clone())
             .filter(|s| !s.is_empty());
-        let has_pdf = crate::features::import::has_local_pdf(&session.work_root.join(paper_rel))
-            || session
-                .fs
-                .list(paper_rel)
-                .await
-                .ok()
-                .map(|entries| {
-                    entries.iter().any(|e| {
-                        !e.is_dir
-                            && e.name
-                                .rsplit('.')
-                                .next()
-                                .map(|ext| ext.eq_ignore_ascii_case("pdf"))
-                                .unwrap_or(false)
+        let has_pdf =
+            crate::features::paper::import::has_local_pdf(&session.work_root.join(paper_rel))
+                || session
+                    .fs
+                    .list(paper_rel)
+                    .await
+                    .ok()
+                    .map(|entries| {
+                        entries.iter().any(|e| {
+                            !e.is_dir
+                                && e.name
+                                    .rsplit('.')
+                                    .next()
+                                    .map(|ext| ext.eq_ignore_ascii_case("pdf"))
+                                    .unwrap_or(false)
+                        })
                     })
-                })
-                .unwrap_or(false);
+                    .unwrap_or(false);
         return Ok((doi, arxiv, has_pdf));
     }
     let vault = PathBuf::from(&handle);
@@ -851,7 +853,7 @@ async fn paper_resolver_hints(
         .as_ref()
         .and_then(|r| r.arxiv_id.clone())
         .filter(|s| !s.is_empty());
-    let has_pdf = crate::features::import::has_local_pdf(&vault.join(paper_rel));
+    let has_pdf = crate::features::paper::import::has_local_pdf(&vault.join(paper_rel));
     Ok((doi, arxiv, has_pdf))
 }
 

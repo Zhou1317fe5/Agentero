@@ -34,7 +34,7 @@ pub use crate::features::paper::analyze::body_engines::refresh_parser_config;
 #[cfg(feature = "desktop")]
 pub fn note_mode_from_app(app: &tauri::AppHandle) -> NoteShellMode {
     use tauri::Manager;
-    app.state::<crate::features::settings::AppSettingsStore>()
+    app.state::<crate::features::system::settings::AppSettingsStore>()
         .get()
         .map(|r| NoteShellMode::parse(&r.settings.paper_note_mode))
         .unwrap_or(NoteShellMode::Standard)

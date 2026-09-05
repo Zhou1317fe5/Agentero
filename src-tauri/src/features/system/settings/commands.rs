@@ -7,7 +7,7 @@
 
 use crate::core::error::{map_err, ApiResult, AppError};
 use crate::core::json::JsonValue;
-use crate::features::settings::{AppSettings, AppSettingsStore, SettingsGetResult};
+use crate::features::system::settings::{AppSettings, AppSettingsStore, SettingsGetResult};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 #[tauri::command]
@@ -105,7 +105,7 @@ pub fn settings_set(
 #[tauri::command]
 #[specta::specta]
 pub async fn easy_scholar_probe(app: AppHandle) -> ApiResult<bool> {
-    use crate::features::scholar_api::sources::easy_scholar::EasyScholarApi;
+    use crate::features::paper::scholar_api::sources::easy_scholar::EasyScholarApi;
 
     let store = app.state::<AppSettingsStore>();
     let Some(key) = store.easy_scholar_key() else {
@@ -131,7 +131,7 @@ pub async fn easy_scholar_get_rank(
     app: AppHandle,
     publication_name: String,
 ) -> ApiResult<JsonValue> {
-    use crate::features::scholar_api::sources::easy_scholar::EasyScholarApi;
+    use crate::features::paper::scholar_api::sources::easy_scholar::EasyScholarApi;
 
     let store = app.state::<AppSettingsStore>();
     let Some(key) = store.easy_scholar_key() else {

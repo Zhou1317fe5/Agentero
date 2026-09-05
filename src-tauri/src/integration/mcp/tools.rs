@@ -6,8 +6,8 @@ use super::paper;
 use super::resources::{self, VAULT_NAME, VAULT_URI};
 use super::McpController;
 use crate::core::error::AppError;
-use crate::features::catalog::{self, papers};
-use crate::features::import::{self, LookupImportArgs, NoteShellMode};
+use crate::features::paper::catalog::{self, papers};
+use crate::features::paper::import::{self, LookupImportArgs, NoteShellMode};
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::{Json, Parameters};
 use rmcp::model::{

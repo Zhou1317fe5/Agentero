@@ -7,9 +7,9 @@
 use super::session::{RemoteRegistry, RemoteSession};
 use crate::core::error::AppError;
 use crate::core::fs::{VaultFs, WriteOpts};
-use crate::features::catalog::papers::{self, PaperRecord};
-use crate::features::trash::remote_ops::RemoteTrashOps;
-use crate::features::trash::{TrashEntry, TrashResult};
+use crate::features::paper::catalog::papers::{self, PaperRecord};
+use crate::features::vault::trash::remote_ops::RemoteTrashOps;
+use crate::features::vault::trash::{TrashEntry, TrashResult};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 

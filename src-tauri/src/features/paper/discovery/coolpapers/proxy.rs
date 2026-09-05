@@ -6,10 +6,10 @@
 //! frame same-origin, so we can retarget links to navigate in place and report
 //! each navigation to the panel for a real history stack.
 //!
-//! Request plumbing lives in [`crate::features::site_proxy`]; only the site's own
+//! Request plumbing lives in [`crate::features::paper::discovery::proxy`]; only the site's own
 //! HTML rewrite and injected bridge are here.
 
-use crate::features::site_proxy::SiteProxy;
+use crate::features::paper::discovery::proxy::SiteProxy;
 
 /// Reports navigations to the panel (for Back / Forward), hands off links that
 /// leave our origin, and adds an `[入库]` action to every paper row.
@@ -210,7 +210,7 @@ static SITE: SiteProxy = SiteProxy {
 };
 
 pub fn handle(request: tauri::http::Request<Vec<u8>>, responder: tauri::UriSchemeResponder) {
-    crate::features::site_proxy::handle(&SITE, request, responder);
+    crate::features::paper::discovery::proxy::handle(&SITE, request, responder);
 }
 
 #[cfg(test)]

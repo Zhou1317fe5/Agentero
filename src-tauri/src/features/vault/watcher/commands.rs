@@ -2,7 +2,7 @@
 
 use tauri::{Manager, State};
 
-use crate::features::watcher::FsWatchController;
+use crate::features::vault::watcher::FsWatchController;
 
 /// Start (or restart) watching `vault_path` for this window. Emits
 /// `vault:file-changed` to this window when files change on disk.

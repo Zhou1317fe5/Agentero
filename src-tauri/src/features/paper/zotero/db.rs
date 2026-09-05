@@ -8,8 +8,8 @@
 
 use super::ZOTERO_INTERNAL_TAG_PREFIX;
 use crate::core::error::AppError;
-use crate::features::catalog::papers;
-use crate::features::import::{
+use crate::features::paper::catalog::papers;
+use crate::features::paper::import::{
     allocate_paper_path, enrich_remote_urls, map_zotero_item, normalize_parent_dir,
     paper_record_from_meta, write_paper_shell, NoteShellMode, PaperMeta,
 };

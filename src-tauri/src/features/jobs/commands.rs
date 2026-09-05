@@ -153,7 +153,7 @@ where
 pub async fn job_reconcile_paper(
     app: tauri::AppHandle,
     center: State<'_, JobCenter>,
-    caps: State<'_, crate::features::catalog::CapsCache>,
+    caps: State<'_, crate::features::paper::catalog::CapsCache>,
     args: JobReconcilePaperArgs,
 ) -> Result<ApiResult<Vec<JobSnapshot>>, String> {
     let (vault, path) = match validate_job_paper(&args.vault_path, &args.path) {
@@ -200,7 +200,7 @@ pub struct JobReconcileVaultArgs {
 pub async fn job_reconcile_vault(
     app: tauri::AppHandle,
     center: State<'_, JobCenter>,
-    caps: State<'_, crate::features::catalog::CapsCache>,
+    caps: State<'_, crate::features::paper::catalog::CapsCache>,
     args: JobReconcileVaultArgs,
 ) -> Result<ApiResult<u32>, String> {
     let vault = match crate::core::fs::resolve_vault(&args.vault_path) {
@@ -210,7 +210,7 @@ pub async fn job_reconcile_vault(
     let caps_handle = (*caps).clone();
     let scan_vault = vault.clone();
     let needing = tauri::async_runtime::spawn_blocking(move || {
-        let Ok(papers) = crate::features::catalog::papers::list_all(&scan_vault) else {
+        let Ok(papers) = crate::features::paper::catalog::papers::list_all(&scan_vault) else {
             return Vec::new();
         };
         papers
@@ -246,7 +246,7 @@ pub struct JobPapersNeedingAssetsArgs {
 #[tauri::command]
 #[specta::specta]
 pub async fn job_papers_needing_assets(
-    caps: State<'_, crate::features::catalog::CapsCache>,
+    caps: State<'_, crate::features::paper::catalog::CapsCache>,
     args: JobPapersNeedingAssetsArgs,
 ) -> Result<ApiResult<Vec<String>>, String> {
     let vault = match crate::core::fs::resolve_vault(&args.vault_path) {
@@ -256,7 +256,7 @@ pub async fn job_papers_needing_assets(
     let caps_handle = (*caps).clone();
     let scan_vault = vault.clone();
     let needing = tauri::async_runtime::spawn_blocking(move || {
-        let Ok(papers) = crate::features::catalog::papers::list_all(&scan_vault) else {
+        let Ok(papers) = crate::features::paper::catalog::papers::list_all(&scan_vault) else {
             return Vec::new();
         };
         papers
@@ -472,7 +472,7 @@ async fn cancel_related_parse_jobs(
 async fn clear_parse_results_core(
     vault_path: &str,
     scope: ParseResultScope,
-    caps: &crate::features::catalog::CapsCache,
+    caps: &crate::features::paper::catalog::CapsCache,
     app: &tauri::AppHandle,
     center: &JobCenter,
 ) -> Result<(u32, u32, Vec<String>), AppError> {
@@ -488,7 +488,7 @@ async fn clear_parse_results_core(
 
     let scan_vault = vault.clone();
     let papers = tauri::async_runtime::spawn_blocking(move || {
-        crate::features::catalog::papers::list_all(&scan_vault)
+        crate::features::paper::catalog::papers::list_all(&scan_vault)
     })
     .await
     .unwrap_or_else(|_| Ok(Vec::new()))
@@ -531,7 +531,7 @@ async fn clear_parse_results_core(
 pub async fn clear_parse_results(
     app: tauri::AppHandle,
     center: State<'_, JobCenter>,
-    caps: State<'_, crate::features::catalog::CapsCache>,
+    caps: State<'_, crate::features::paper::catalog::CapsCache>,
     args: ClearParseResultsArgs,
 ) -> Result<ApiResult<ClearParseResultsResult>, String> {
     match clear_parse_results_core(&args.vault_path, args.scope, &caps, &app, &center).await {
@@ -550,7 +550,7 @@ pub async fn clear_parse_results(
 pub async fn clear_and_reparse(
     app: tauri::AppHandle,
     center: State<'_, JobCenter>,
-    caps: State<'_, crate::features::catalog::CapsCache>,
+    caps: State<'_, crate::features::paper::catalog::CapsCache>,
     args: ClearParseResultsArgs,
 ) -> Result<ApiResult<ClearAndReparseResult>, String> {
     let vault = match crate::core::fs::resolve_vault(&args.vault_path) {

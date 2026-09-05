@@ -7,10 +7,10 @@
 //! the `RecognizeMetadata` runner owns the deferred-recognition pipeline
 //! (probe → metadata/rename/merge → PAPER.md + refs + layout).
 
-use crate::features::catalog::CapsCache;
 use crate::features::jobs::{
     emit_job_changed, JobCenter, JobKind, JobLane, RunOutcome, StartOutcome, StartedJob,
 };
+use crate::features::paper::catalog::CapsCache;
 use std::sync::Arc;
 use tauri::Manager;
 
@@ -41,8 +41,8 @@ fn parse_body_runner(
         } = started;
         let task_id = task_id.unwrap_or_else(|| snapshot.id.clone());
         let cache = app.state::<CapsCache>();
-        let result = crate::features::import::pdf_parse::parse_paper_body(
-            crate::features::import::pdf_parse::PaperParseBodyArgs {
+        let result = crate::features::paper::import::pdf_parse::parse_paper_body(
+            crate::features::paper::import::pdf_parse::PaperParseBodyArgs {
                 vault_path: vault.to_string_lossy().to_string(),
                 path,
                 force,
@@ -83,13 +83,13 @@ fn download_assets_runner(
         } = started;
         let task_id = task_id.unwrap_or_else(|| snapshot.id.clone());
         let cache = app.state::<CapsCache>();
-        let args = crate::features::import::PaperDownloadAssetsArgs {
+        let args = crate::features::paper::import::PaperDownloadAssetsArgs {
             vault_path: vault.to_string_lossy().to_string(),
             path: path.clone(),
             task_id: Some(task_id),
         };
         let host_app = crate::features::host_hooks::wrap(&app);
-        let result = crate::features::import::download_paper_assets_with_progress(
+        let result = crate::features::paper::import::download_paper_assets_with_progress(
             args,
             Some(&host_app),
             Some(&cache),
@@ -111,7 +111,7 @@ fn download_assets_runner(
                     }
                 }
                 let backend = app
-                    .state::<crate::features::settings::AppSettingsStore>()
+                    .state::<crate::features::system::settings::AppSettingsStore>()
                     .layout_backend();
                 center.apply_layout_backend(&backend).await;
                 let lsnap = center
@@ -150,7 +150,7 @@ fn recognize_metadata_runner(
         let task_id = task_id.unwrap_or_else(|| snapshot.id.clone());
         let cache = app.state::<CapsCache>();
         let index = app
-            .state::<crate::features::rename::WikiIndexState>()
+            .state::<crate::features::vault::rename::WikiIndexState>()
             .handle();
 
         // Locate the main PDF (paper_commit convention: `{folder-id}.pdf`).
@@ -161,7 +161,7 @@ fn recognize_metadata_runner(
         }
 
         let translator_base = app
-            .state::<crate::features::settings::AppSettingsStore>()
+            .state::<crate::features::system::settings::AppSettingsStore>()
             .get()
             .ok()
             .map(|r| {
@@ -172,28 +172,30 @@ fn recognize_metadata_runner(
                     .to_string()
             })
             .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| crate::features::import::DEFAULT_TRANSLATOR_BASE_URL.to_string());
+            .unwrap_or_else(|| {
+                crate::features::paper::import::DEFAULT_TRANSLATOR_BASE_URL.to_string()
+            });
 
-        let probe = crate::features::import::recognize::pdf_recognize::recognize_and_resolve(
-            &pdf,
-            &translator_base,
-            Some(&task_id),
-        )
-        .await;
+        let probe =
+            crate::features::paper::import::recognize::pdf_recognize::recognize_and_resolve(
+                &pdf,
+                &translator_base,
+                Some(&task_id),
+            )
+            .await;
         crate::core::background_tasks::finish(&task_id);
 
         // Cancelled mid-probe: land nothing; the paper keeps its placeholder.
         if probe.status == "error"
-            && probe
-                .error
-                .as_deref()
-                .is_some_and(|e| e.contains(crate::features::import::pdf_parse::CANCELLED_MESSAGE))
+            && probe.error.as_deref().is_some_and(|e| {
+                e.contains(crate::features::paper::import::pdf_parse::CANCELLED_MESSAGE)
+            })
         {
             return RunOutcome::Cancelled;
         }
 
         let host_app = crate::features::host_hooks::wrap(&app);
-        let outcome = crate::features::import::recognize::apply::apply_probe_result(
+        let outcome = crate::features::paper::import::recognize::apply::apply_probe_result(
             Some(&host_app),
             &vault,
             Some(&cache),
@@ -205,17 +207,24 @@ fn recognize_metadata_runner(
 
         // Follow-ups run against the paper's final path (post rename/merge).
         let final_path = match &outcome {
-            Ok(crate::features::import::recognize::apply::RecognizeApply::Renamed { from, to }) => {
+            Ok(crate::features::paper::import::recognize::apply::RecognizeApply::Renamed {
+                from,
+                to,
+            }) => {
                 log::info!(target: "agentero::import",
                     "recognized paper renamed: {from} -> {to}");
                 to.clone()
             }
-            Ok(crate::features::import::recognize::apply::RecognizeApply::Merged { into }) => {
+            Ok(crate::features::paper::import::recognize::apply::RecognizeApply::Merged {
+                into,
+            }) => {
                 log::info!(target: "agentero::import",
                     "recognized paper merged into existing entry: {into}");
                 into.clone()
             }
-            Ok(crate::features::import::recognize::apply::RecognizeApply::Skipped(reason)) => {
+            Ok(crate::features::paper::import::recognize::apply::RecognizeApply::Skipped(
+                reason,
+            )) => {
                 log::info!(target: "agentero::import",
                     "recognition not applied ({reason}): {path}");
                 path.clone()
@@ -234,9 +243,13 @@ fn recognize_metadata_runner(
                 center.spawn_runner(&app, started);
             }
         }
-        crate::features::refs::spawn_parse_after_import(Some(&app), &vault, &final_path);
+        crate::features::paper::analyze::refs::spawn_parse_after_import(
+            Some(&app),
+            &vault,
+            &final_path,
+        );
         let backend = app
-            .state::<crate::features::settings::AppSettingsStore>()
+            .state::<crate::features::system::settings::AppSettingsStore>()
             .layout_backend();
         center.apply_layout_backend(&backend).await;
         let lsnap = center

@@ -1,8 +1,8 @@
 //! Tauri-free domain features shared by the desktop Host and the headless CLI.
 //!
 //! Mirrors the Host's semantic `features::` tree (minus desktop-only domains
-//! like jobs/agent/watcher) so migrated code keeps its `crate::features::X`
-//! paths and the Host can bridge every historical alias with `pub use`.
+//! like jobs/agent/watcher). The flat aliases below are kept for the headless
+//! CLI and migrated code; the desktop Host calls the semantic paths directly.
 
 pub mod lifecycle;
 pub mod markdown;

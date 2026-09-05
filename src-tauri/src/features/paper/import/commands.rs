@@ -5,17 +5,17 @@ use crate::core::error::{map_err, ApiResult, AppError};
 use crate::core::fs::resolve_vault;
 use crate::core::log_util::{trunc, OpTimer};
 use crate::core::remote::parse_remote_handle;
-use crate::features::catalog::CapsCache;
-use crate::features::import::pdf_parse::{PaperParseBodyArgs, PaperParseResult};
-use crate::features::import::resolver::{fetch_arxiv_metadata, fetch_crossref_metadata};
-use crate::features::import::title_search::{needs_s2_venue_enrichment, search_papers};
-use crate::features::import::RemoteImportOps;
-use crate::features::import::{
+use crate::features::paper::catalog::CapsCache;
+use crate::features::paper::import::pdf_parse::{PaperParseBodyArgs, PaperParseResult};
+use crate::features::paper::import::resolver::{fetch_arxiv_metadata, fetch_crossref_metadata};
+use crate::features::paper::import::title_search::{needs_s2_venue_enrichment, search_papers};
+use crate::features::paper::import::RemoteImportOps;
+use crate::features::paper::import::{
     AssetDownloadResult, ImportLocalPdfArgs, ImportLocalPdfResult, LookupImportBatchArgs,
     LookupImportBatchResult, PaperDownloadAssetsArgs, SkillImportResult, StageImportFileArgs,
     StageImportFileResult,
 };
-use crate::features::scholar_api::sources::semantic_scholar::{
+use crate::features::paper::scholar_api::sources::semantic_scholar::{
     better_publication, is_usable_publication, SemanticScholarApi,
 };
 use futures_util::stream::{self, StreamExt};
@@ -35,7 +35,7 @@ pub async fn lookup_import_batch(
 ) -> Result<ApiResult<LookupImportBatchResult>, String> {
     let n = args.texts.len();
     let op = OpTimer::start_with("lookup_import_batch", format!("count={n}"));
-    let note_mode = crate::features::import::note_mode_from_app(&app);
+    let note_mode = crate::features::paper::import::note_mode_from_app(&app);
     let host_app = crate::features::host_hooks::wrap(&app);
     if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned) {
         let vault_id = std::path::PathBuf::from(&args.vault_path);
@@ -134,7 +134,7 @@ pub async fn paper_import_local_pdf(
 ) -> Result<ApiResult<ImportLocalPdfResult>, String> {
     let n = args.file_paths.len();
     let op = OpTimer::start_with("paper_import_local_pdf", format!("count={n}"));
-    let note_mode = crate::features::import::note_mode_from_app(&app);
+    let note_mode = crate::features::paper::import::note_mode_from_app(&app);
     let host_app = crate::features::host_hooks::wrap(&app);
     let task_id = args.task_id.clone();
     let result = if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned)
@@ -186,7 +186,8 @@ pub async fn paper_parse_body(
     }
 
     let task_id = args.task_id.clone();
-    let result = crate::features::import::pdf_parse::parse_paper_body(args, Some(&cache)).await;
+    let result =
+        crate::features::paper::import::pdf_parse::parse_paper_body(args, Some(&cache)).await;
     if let Some(task_id) = task_id.as_deref() {
         crate::core::background_tasks::finish(task_id);
     }
@@ -335,31 +336,28 @@ pub async fn paper_backfill_publication(
     };
 
     let vault_for_list = vault.clone();
-    let rows =
-        match run_blocking(
-            move || match crate::features::catalog::papers::list_missing_publication(
-                &vault_for_list,
-            ) {
-                Ok(rows) => ApiResult::ok(rows),
-                Err(e) => map_err(e),
-            },
-        )
-        .await
-        {
-            ApiResult {
-                ok: true,
-                data: Some(rows),
-                ..
-            } => rows,
-            ApiResult {
-                error: Some(err), ..
-            } => return Ok(map_err(AppError::message(err.message))),
-            _ => {
-                return Ok(map_err(AppError::message(
-                    "failed to list papers missing publication",
-                )))
-            }
-        };
+    let rows = match run_blocking(move || {
+        match crate::features::paper::catalog::papers::list_missing_publication(&vault_for_list) {
+            Ok(rows) => ApiResult::ok(rows),
+            Err(e) => map_err(e),
+        }
+    })
+    .await
+    {
+        ApiResult {
+            ok: true,
+            data: Some(rows),
+            ..
+        } => rows,
+        ApiResult {
+            error: Some(err), ..
+        } => return Ok(map_err(AppError::message(err.message))),
+        _ => {
+            return Ok(map_err(AppError::message(
+                "failed to list papers missing publication",
+            )))
+        }
+    };
 
     const CONCURRENCY: usize = 10;
 
@@ -382,16 +380,18 @@ pub async fn paper_backfill_publication(
 
             match publication {
                 Some(pub_value) => {
-                    let patch = crate::features::catalog::papers::PaperMetaPatch {
+                    let patch = crate::features::paper::catalog::papers::PaperMetaPatch {
                         publication: Some(pub_value),
                         ..Default::default()
                     };
                     let path = row.path.clone();
-                    match run_blocking(move || match crate::features::catalog::papers::update_meta(
-                        &vault, &path, &patch,
-                    ) {
-                        Ok(_) => ApiResult::ok(()),
-                        Err(e) => map_err(e),
+                    match run_blocking(move || {
+                        match crate::features::paper::catalog::papers::update_meta(
+                            &vault, &path, &patch,
+                        ) {
+                            Ok(_) => ApiResult::ok(()),
+                            Err(e) => map_err(e),
+                        }
                     })
                     .await
                     {

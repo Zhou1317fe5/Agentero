@@ -6,7 +6,7 @@
 
 use crate::core::error::AppError;
 use crate::core::paths;
-use crate::features::settings::{is_translate_api_key_mask, mask_translate_api_key};
+use crate::features::system::settings::{is_translate_api_key_mask, mask_translate_api_key};
 use crate::integration::sync::snapshot::SyncScope;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

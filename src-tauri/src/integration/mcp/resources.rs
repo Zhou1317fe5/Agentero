@@ -1,7 +1,7 @@
 //! MCP resource `agentero://vault` — Markdown vault overview.
 
 use super::McpController;
-use crate::features::catalog::{self, papers};
+use crate::features::paper::catalog::{self, papers};
 
 pub const VAULT_URI: &str = "agentero://vault";
 pub const VAULT_NAME: &str = "vault";

@@ -3,7 +3,7 @@
 //! Tauri events for `emit`, JobCenter spawns for the follow-up jobs.
 //!
 //! Lives in `features/` (not `core/`) because it depends on
-//! `features::jobs` / `features::refs`; `crate::core::app_handle` only
+//! `features::jobs` / `features::paper::analyze::refs`; `crate::core::app_handle` only
 //! re-exports the tauri-free bridge types.
 
 use crate::core::app_handle::{AppHandle, HostHooks};
@@ -25,7 +25,11 @@ impl HostHooks for TauriHostHooks {
         crate::features::jobs::spawn_parse_body_after_assets(Some(&self.0), vault, path_rel, force);
     }
     fn spawn_parse_after_import(&self, vault: &Path, path_rel: &str) -> bool {
-        crate::features::refs::spawn_parse_after_import(Some(&self.0), vault, path_rel);
+        crate::features::paper::analyze::refs::spawn_parse_after_import(
+            Some(&self.0),
+            vault,
+            path_rel,
+        );
         true
     }
     fn spawn_recognize_metadata(&self, vault: &Path, path_rel: &str) {

@@ -4,10 +4,12 @@ use super::paper_commit::{remote_paper_commit, RemoteAssetsPolicy, RemotePaperCo
 use super::session::{RemoteRegistry, RemoteSession};
 use crate::core::error::AppError;
 use crate::core::fs::{sanitize_vault_rel, VaultFs, WriteOpts};
-use crate::features::catalog::papers;
-use crate::features::import::pdf_parse::{parse_paper_body, PaperParseBodyArgs, PaperParseResult};
-use crate::features::import::remote_ops::RemoteImportOps;
-use crate::features::import::{
+use crate::features::paper::catalog::papers;
+use crate::features::paper::import::pdf_parse::{
+    parse_paper_body, PaperParseBodyArgs, PaperParseResult,
+};
+use crate::features::paper::import::remote_ops::RemoteImportOps;
+use crate::features::paper::import::{
     doi_slug, enrich_remote_urls, ensure_paper_assets, extract_arxiv_id, map_zotero_item,
     normalize_parent_dir, preflight_identifier_batch, resolve_metadata, slug_from_stem,
     title_from_stem, translator_import_items, AssetDownloadResult, ImportLocalPdfArgs,
@@ -42,10 +44,10 @@ pub async fn import_by_identifier_remote(
         return Err(AppError::message("identifier text is empty"));
     }
 
-    crate::features::import::check_task_not_cancelled(args.task_id.as_deref())?;
+    crate::features::paper::import::check_task_not_cancelled(args.task_id.as_deref())?;
     let (mut meta, used_translator) =
         resolve_metadata(text, &base, args.task_id.as_deref()).await?;
-    crate::features::import::check_task_not_cancelled(args.task_id.as_deref())?;
+    crate::features::paper::import::check_task_not_cancelled(args.task_id.as_deref())?;
     enrich_remote_urls(&mut meta);
 
     let commit = remote_paper_commit(
@@ -93,7 +95,7 @@ pub async fn import_by_identifier_batch_remote(
     );
     let skipped = preflight.skipped;
     let mut errors = preflight.errors;
-    let search_candidates = crate::features::import::resolve_search_queries(
+    let search_candidates = crate::features::paper::import::resolve_search_queries(
         &preflight.queries,
         &mut errors,
         args.task_id.as_deref(),
@@ -278,7 +280,7 @@ async fn import_one_local_pdf_remote(
         })
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| slug_from_stem(stem));
-    let mut meta = crate::features::import::local_pdf_meta_for_import(base_id, title);
+    let mut meta = crate::features::paper::import::local_pdf_meta_for_import(base_id, title);
     if let Some(authors) = &entry.authors {
         meta.authors = authors
             .iter()

@@ -10,9 +10,9 @@
 //! assets must be made absolute, and routing has to be observed through
 //! `pushState` because a card click never becomes a real navigation.
 //!
-//! Request plumbing lives in [`crate::features::site_proxy`].
+//! Request plumbing lives in [`crate::features::paper::discovery::proxy`].
 
-use crate::features::site_proxy::SiteProxy;
+use crate::features::paper::discovery::proxy::SiteProxy;
 
 const ORIGIN: &str = "https://modelscope.cn";
 const USER_AGENT: &str = "agentero/0.6 (+https://github.com/poco-ai/agentero)";
@@ -364,7 +364,7 @@ static SITE: SiteProxy = SiteProxy {
 };
 
 pub fn handle(request: tauri::http::Request<Vec<u8>>, responder: tauri::UriSchemeResponder) {
-    crate::features::site_proxy::handle(&SITE, request, responder);
+    crate::features::paper::discovery::proxy::handle(&SITE, request, responder);
 }
 
 #[cfg(test)]

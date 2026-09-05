@@ -60,7 +60,7 @@ pub async fn vault_ensure(path: String, locale: Option<String>) -> ApiResult<Cre
 #[specta::specta]
 pub async fn vault_tree_build(
     vault_path: String,
-    caps: State<'_, crate::features::catalog::CapsCache>,
+    caps: State<'_, crate::features::paper::catalog::CapsCache>,
 ) -> Result<ApiResult<Vec<VaultTreeNode>>, String> {
     let caps = caps.inner().clone();
     Ok(run_blocking(move || {
@@ -86,7 +86,7 @@ pub async fn vault_tree_build(
 pub async fn vault_tree_children(
     vault_path: String,
     dir_path: String,
-    caps: State<'_, crate::features::catalog::CapsCache>,
+    caps: State<'_, crate::features::paper::catalog::CapsCache>,
 ) -> Result<ApiResult<Vec<VaultTreeNode>>, String> {
     let caps = caps.inner().clone();
     Ok(run_blocking(move || {

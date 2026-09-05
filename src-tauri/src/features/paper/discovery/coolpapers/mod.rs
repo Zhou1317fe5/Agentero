@@ -102,7 +102,7 @@ async fn get_text(url: &str) -> Result<String, AppError> {
 
 /// Bare arXiv id without the `vN` suffix papers.cool does not use.
 fn bare_arxiv_id(raw: &str) -> Option<String> {
-    let id = crate::features::import::strip_arxiv_version(raw);
+    let id = crate::features::paper::import::strip_arxiv_version(raw);
     let id = id.trim();
     if id.is_empty() {
         return None;
@@ -458,7 +458,8 @@ pub async fn fetch_notes(req: FetchNotesRequest<'_>) -> Result<CoolPapersNotes, 
     let page_url = format!("{ORIGIN}/{branch}/{encoded}");
     let block =
         format!("## Cool Papers · Kimi 解析\n\n> 来源：[{page_url}]({page_url})\n\n{markdown}");
-    let appended = crate::features::zotero::db::append_markdown_blocks(&notes_path, &[block]);
+    let appended =
+        crate::features::paper::zotero::db::append_markdown_blocks(&notes_path, &[block]);
 
     Ok(CoolPapersNotes {
         found: true,

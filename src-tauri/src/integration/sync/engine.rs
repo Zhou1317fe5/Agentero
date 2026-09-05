@@ -463,10 +463,10 @@ async fn refresh_catalog_if_needed(vault: &Path, outcome: &SyncOutcome) {
     }
     let vault = vault.to_path_buf();
     let _ = tokio::task::spawn_blocking(move || {
-        if let Err(e) = crate::features::catalog::papers::rebuild_from_disk(&vault) {
+        if let Err(e) = crate::features::paper::catalog::papers::rebuild_from_disk(&vault) {
             log::warn!(target: "agentero::sync", "catalog rebuild after sync: {e}");
         }
-        if let Err(e) = crate::features::catalog::papers::prune_missing(&vault) {
+        if let Err(e) = crate::features::paper::catalog::papers::prune_missing(&vault) {
             log::warn!(target: "agentero::sync", "catalog prune after sync: {e}");
         }
     })

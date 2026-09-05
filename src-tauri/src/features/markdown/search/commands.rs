@@ -2,7 +2,7 @@
 
 use crate::core::blocking::run_blocking;
 use crate::core::error::{map_err, ApiResult};
-use crate::features::search::{self, VaultSearchArgs, VaultSearchResult};
+use crate::features::markdown::search::{self, VaultSearchArgs, VaultSearchResult};
 
 /// Full-text search over the Vault's Markdown files. See `services::search`.
 ///

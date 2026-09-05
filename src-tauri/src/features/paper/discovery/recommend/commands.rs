@@ -6,7 +6,7 @@ use super::{
 };
 use crate::core::blocking::run_blocking;
 use crate::core::error::{map_err, ApiResult, AppError};
-use crate::features::settings::AppSettingsStore;
+use crate::features::system::settings::AppSettingsStore;
 use serde::Deserialize;
 use tauri::{AppHandle, Manager};
 

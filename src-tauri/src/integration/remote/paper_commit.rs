@@ -5,8 +5,8 @@ use std::sync::Arc;
 use super::import_bridge::{unique_remote_paper_path, upload_tree};
 use super::session::RemoteSession;
 use crate::core::error::AppError;
-use crate::features::catalog::papers;
-use crate::features::import::{
+use crate::features::paper::catalog::papers;
+use crate::features::paper::import::{
     ensure_paper_assets, paper_record_from_meta, write_paper_shell, AssetDownloadResult,
     NoteShellMode, PaperMeta,
 };
@@ -80,7 +80,7 @@ pub(crate) async fn remote_paper_commit(
             ..Default::default()
         },
     };
-    crate::features::import::check_task_not_cancelled(opts.task_id)?;
+    crate::features::paper::import::check_task_not_cancelled(opts.task_id)?;
 
     upload_tree(session.fs.as_ref(), &staging, &path_rel).await?;
 

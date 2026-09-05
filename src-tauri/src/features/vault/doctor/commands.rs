@@ -7,7 +7,7 @@ use super::{
 };
 use crate::core::blocking::run_blocking;
 use crate::core::error::{map_err, ApiResult, AppError};
-use crate::features::wiki::WikiIndexState;
+use crate::features::markdown::wiki::WikiIndexState;
 use serde::Deserialize;
 use std::path::PathBuf;
 use tauri::State;

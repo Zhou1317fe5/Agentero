@@ -6,7 +6,7 @@
 use crate::core::error::{map_err, ApiResult, AppError};
 use crate::core::fs::{FsDirEntry, WriteOpts};
 use crate::core::log_util::{trunc, OpTimer};
-use crate::features::catalog::papers::{self, PaperRecord};
+use crate::features::paper::catalog::papers::{self, PaperRecord};
 use crate::features::vault::CreateVaultResult;
 use crate::integration::remote::{ensure_remote_vault_skills, RemoteRegistry, RemoteSessionInfo};
 use serde::Deserialize;

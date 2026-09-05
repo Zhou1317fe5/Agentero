@@ -10,9 +10,9 @@
 
 use crate::core::error::AppError;
 use crate::core::http;
-use crate::features::catalog::papers;
-use crate::features::catalog::with_catalog;
-use crate::features::feeds::parse::parse_feed_bytes;
+use crate::features::paper::catalog::papers;
+use crate::features::paper::catalog::with_catalog;
+use crate::features::paper::discovery::feeds::parse::parse_feed_bytes;
 use chrono::Utc;
 use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -257,7 +257,7 @@ async fn fetch_feed(
     client: &reqwest::Client,
     url: &str,
     fallback_title: &str,
-) -> Result<Vec<crate::features::feeds::parse::ParsedItem>, AppError> {
+) -> Result<Vec<crate::features::paper::discovery::feeds::parse::ParsedItem>, AppError> {
     let resp = client
         .get(url)
         .header("User-Agent", "Agentero/1.0 (+https://github.com/Phil-Fan)")

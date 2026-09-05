@@ -4,7 +4,7 @@ use super::tunnel::{McpTunnelController, McpTunnelStatus};
 use super::{McpController, McpStatus};
 use crate::core::error::ApiResult;
 use crate::core::error::AppError;
-use crate::features::settings::AppSettingsStore;
+use crate::features::system::settings::AppSettingsStore;
 use serde::Deserialize;
 use std::sync::Arc;
 use tauri::State;

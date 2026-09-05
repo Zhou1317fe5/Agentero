@@ -338,7 +338,7 @@ mod tests {
         assert!(cat_meta.size > 0);
 
         // paper rescan should find demo-paper and push catalog
-        use crate::features::catalog::papers::{self, PaperRecord};
+        use crate::features::paper::catalog::papers::{self, PaperRecord};
         let papers_list = session.fs.list("papers").await.expect("list papers");
         assert!(
             papers_list
@@ -449,7 +449,7 @@ mod tests {
     #[ignore = "set AGENTERO_REMOTE_SSH_HOST + AGENTERO_REMOTE_SSH_PATH for live SSH"]
     async fn live_paper_features() {
         use crate::core::fs::WriteOpts;
-        use crate::features::catalog::papers::{self, PaperRecord, PaperTag};
+        use crate::features::paper::catalog::papers::{self, PaperRecord, PaperTag};
         use crate::integration::remote::catalog_mirror::CatalogMirror;
 
         let host = std::env::var("AGENTERO_REMOTE_SSH_HOST").expect("AGENTERO_REMOTE_SSH_HOST");
@@ -768,7 +768,7 @@ mod tests {
     /// Local-sim magic-wand import (arXiv fallback; needs network unless AGENTERO_SKIP_NETWORK).
     #[tokio::test]
     async fn local_sim_remote_import_arxiv() {
-        use crate::features::import::{LookupImportArgs, PaperDownloadAssetsArgs};
+        use crate::features::paper::import::{LookupImportArgs, PaperDownloadAssetsArgs};
         use crate::integration::remote::import_bridge;
         use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -803,7 +803,7 @@ mod tests {
                 translator_base_url: None,
                 task_id: None,
             },
-            crate::features::import::NoteShellMode::Standard,
+            crate::features::paper::import::NoteShellMode::Standard,
         )
         .await;
 
@@ -816,7 +816,7 @@ mod tests {
                     root.join(&r.path).join("NOTES.md").is_file(),
                     "NOTES should be on remote root"
                 );
-                use crate::features::catalog::papers;
+                use crate::features::paper::catalog::papers;
                 let row = papers::get_by_path(&session.work_root, &r.path)
                     .unwrap()
                     .expect("catalog row");
@@ -855,7 +855,7 @@ mod tests {
     /// All remote-capable import paths via local-sim (network for bib/arxiv).
     #[tokio::test]
     async fn local_sim_all_import_methods() {
-        use crate::features::import::{
+        use crate::features::paper::import::{
             ImportLocalPdfArgs, LookupImportArgs, PaperDownloadAssetsArgs, PaperImportArgs,
         };
         use crate::integration::remote::import_bridge;
@@ -896,7 +896,7 @@ mod tests {
                 task_id: None,
                 translator_base_url: None,
             },
-            crate::features::import::NoteShellMode::Standard,
+            crate::features::paper::import::NoteShellMode::Standard,
         )
         .await
         {
@@ -934,7 +934,7 @@ mod tests {
                     translator_base_url: None,
                     task_id: None,
                 },
-                crate::features::import::NoteShellMode::Standard,
+                crate::features::paper::import::NoteShellMode::Standard,
             )
             .await
             {
@@ -972,7 +972,7 @@ mod tests {
                     content: bib.into(),
                     translator_base_url: None,
                 },
-                crate::features::import::NoteShellMode::Standard,
+                crate::features::paper::import::NoteShellMode::Standard,
             )
             .await
             {
@@ -998,7 +998,8 @@ mod tests {
             }
 
             // 4) Download assets for local-pdf paper if any
-            if let Ok(list) = crate::features::catalog::papers::list_all(&session.work_root) {
+            if let Ok(list) = crate::features::paper::catalog::papers::list_all(&session.work_root)
+            {
                 if let Some(p) = list.first() {
                     match import_bridge::download_paper_assets_remote(
                         session.clone(),
@@ -1048,7 +1049,7 @@ mod tests {
         }
 
         // 5) Rescan-style list
-        let listed = crate::features::catalog::papers::list_all(&session.work_root).unwrap();
+        let listed = crate::features::paper::catalog::papers::list_all(&session.work_root).unwrap();
         report.push((
             "catalog list after imports".into(),
             !listed.is_empty(),
@@ -1078,7 +1079,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "set AGENTERO_REMOTE_SSH_HOST + AGENTERO_REMOTE_SSH_PATH for live SSH"]
     async fn live_ssh_import_arxiv() {
-        use crate::features::import::LookupImportArgs;
+        use crate::features::paper::import::LookupImportArgs;
         use crate::integration::remote::import_bridge;
         let host = std::env::var("AGENTERO_REMOTE_SSH_HOST").unwrap();
         let path = std::env::var("AGENTERO_REMOTE_SSH_PATH").unwrap();
@@ -1094,7 +1095,7 @@ mod tests {
                 translator_base_url: None,
                 task_id: None,
             },
-            crate::features::import::NoteShellMode::Standard,
+            crate::features::paper::import::NoteShellMode::Standard,
         )
         .await
         .expect("import");

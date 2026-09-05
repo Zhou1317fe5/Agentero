@@ -11,9 +11,9 @@
 //! @see docs/backend/paper-import.md § PDF 元数据识别
 
 use crate::core::error::AppError;
-use crate::features::import::pdf_parse::{run_liteparse_probe, ProbePage, ProbeWord};
-use crate::features::import::resolver::fetch_arxiv_metadata;
-use crate::features::import::{map, resolve_metadata, PaperMeta};
+use crate::features::paper::import::pdf_parse::{run_liteparse_probe, ProbePage, ProbeWord};
+use crate::features::paper::import::resolver::fetch_arxiv_metadata;
+use crate::features::paper::import::{map, resolve_metadata, PaperMeta};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::Path;
@@ -201,7 +201,7 @@ pub(crate) async fn recognize_pdf(
         Ok(pages) => pages,
         Err(e)
             if e.to_string()
-                .contains(crate::features::import::pdf_parse::CANCELLED_MESSAGE) =>
+                .contains(crate::features::paper::import::pdf_parse::CANCELLED_MESSAGE) =>
         {
             return Err(e)
         }
@@ -367,7 +367,7 @@ pub(crate) async fn recognize_and_resolve(
         Ok(None) => return PdfIdentProbe::no_match(&file_path),
         Err(e)
             if e.to_string()
-                .contains(crate::features::import::pdf_parse::CANCELLED_MESSAGE) =>
+                .contains(crate::features::paper::import::pdf_parse::CANCELLED_MESSAGE) =>
         {
             return PdfIdentProbe::error(&file_path, e.to_string());
         }
@@ -442,7 +442,10 @@ pub(crate) fn meta_from_recognize(hit: &RecognizeHit, fallback_id: &str) -> Pape
         .year
         .as_deref()
         .and_then(|y| y.trim().chars().take(4).collect::<String>().parse().ok());
-    let mut meta = map::local_pdf_meta(crate::features::import::slug_from_stem(fallback_id), title);
+    let mut meta = map::local_pdf_meta(
+        crate::features::paper::import::slug_from_stem(fallback_id),
+        title,
+    );
     meta.authors = authors;
     meta.year = year;
     meta.language = hit.language.clone().filter(|l| nonempty(l));
@@ -460,7 +463,7 @@ pub(crate) fn meta_from_recognize(hit: &RecognizeHit, fallback_id: &str) -> Pape
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::features::import::pdf_parse::ProbeLine;
+    use crate::features::paper::import::pdf_parse::ProbeLine;
 
     fn word(text: &str, x: f32, y: f32, size: f32) -> ProbeWord {
         ProbeWord {
@@ -586,9 +589,10 @@ mod tests {
         let Ok(pdf) = std::env::var("AGENTERO_RECOGNIZE_LIVE_PDF") else {
             panic!("set AGENTERO_RECOGNIZE_LIVE_PDF to a real PDF path");
         };
-        let pages = crate::features::import::pdf_parse::run_liteparse_probe_direct(Path::new(&pdf))
-            .await
-            .expect("probe");
+        let pages =
+            crate::features::paper::import::pdf_parse::run_liteparse_probe_direct(Path::new(&pdf))
+                .await
+                .expect("probe");
         assert!(!pages.is_empty() && pages.iter().any(|p| !p.lines.is_empty()));
         let payload = build_recognizer_payload(&pages, "live-test.pdf");
         if std::env::var_os("AGENTERO_RECOGNIZE_DEBUG").is_some() {

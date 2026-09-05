@@ -7,8 +7,8 @@
 //! (`Arc<dyn RemoteImportOps>`).
 
 use crate::core::error::AppError;
-use crate::features::import::pdf_parse::{PaperParseBodyArgs, PaperParseResult};
-use crate::features::import::{
+use crate::features::paper::import::pdf_parse::{PaperParseBodyArgs, PaperParseResult};
+use crate::features::paper::import::{
     AssetDownloadResult, ImportLocalPdfArgs, ImportLocalPdfResult, LookupImportBatchArgs,
     LookupImportBatchResult, NoteShellMode, PaperDownloadAssetsArgs, PaperImportArgs,
     PaperImportResult,

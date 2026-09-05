@@ -14,7 +14,7 @@
 
 ## Phase 2（已完成）：CLI 消费的数据域迁入 core
 
-`agentero_core::features::*` 镜像 Host 的语义树（`crate::features::X` 旧路径在 Host 侧全部经桥接可用；迁入代码内部路径零改写）：
+`agentero_core::features::*` 镜像 Host 的语义树。core 侧保留扁平别名（`features::catalog` 等）供 headless CLI 与迁入代码使用；Host 侧别名已在重构中删除，调用方统一走语义路径 `crate::features::<domain>::<module>`：
 
 | core 模块 | 内容 |
 |---|---|
@@ -73,7 +73,7 @@ parse 引擎同理：远端引擎（MinerU/Paddle/OpenAI-compatible，依赖 `la
 3. **core 内路径扁平化**（可选）：`agentero_core::features::X` → `agentero_core::X`，与 Phase 1 顶层模块风格统一；Host 桥接不受影响。
 4. **reqwest 双版本对齐**：锁文件中同时存在 `reqwest 0.12.28`（agentero-core / agentero 直接使用）与 `reqwest 0.13.4`（传递依赖引入，如 rmcp 等）。两份 TLS/连接池栈增大包体与审计面；待依赖链（rmcp / tauri 生态）稳定后统一到一个大版本，core 与 Host 必须同步升级以避免 feature 漂移。
 5. **src-tauri 依赖清理**（保守未删）：迁移后 `feed-rs`、`dom_smoothie`、`pulldown-cmark`、`bitflags` 在 `src-tauri/src` 已无直接引用，可在确认无 build 脚本/宏隐式依赖后从 `src-tauri/Cargo.toml` 移除。
-6. **iOS/Android 目标**：core 的 `not(ios/android)` 门（parse/locate/liteparse）与 Host 侧别名门需保持同步；mobile 构建恢复时验证 remote bridge 路径。
+6. **iOS/Android 目标**：core 的 `not(ios/android)` 门（parse/locate/liteparse）与 Host 侧模块 cfg 门需保持同步；mobile 构建恢复时验证 remote bridge 路径。
 
 ## 验收快照（Phase 2 完成时）
 

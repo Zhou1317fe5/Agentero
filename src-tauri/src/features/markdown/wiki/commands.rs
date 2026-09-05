@@ -1,11 +1,11 @@
 use crate::core::blocking::run_blocking;
 use crate::core::error::{map_err, ApiResult, AppError};
-use crate::features::wiki::heading_rename::run_heading_rename_transaction;
-use crate::features::wiki::models::{
+use crate::features::markdown::wiki::heading_rename::run_heading_rename_transaction;
+use crate::features::markdown::wiki::models::{
     BacklinksResponse, InternalLinkSyntax, RebuildResult, WikiEmbedResponse,
     WikiRenameHeadingResult, WikiResolveResponse, WikiSearchCandidate, WikiSearchCandidateKind,
 };
-use crate::features::wiki::WikiIndexState;
+use crate::features::markdown::wiki::WikiIndexState;
 use tauri::State;
 
 #[derive(Debug, serde::Deserialize, specta::Type)]

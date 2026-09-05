@@ -5,14 +5,14 @@
 
 use crate::core::error::AppError;
 use crate::core::http;
-use crate::features::import::CANCELLED_MESSAGE;
-use crate::features::layout::hosted::engine::{
+use crate::features::paper::analyze::layout::hosted::engine::{
     HostedLayoutAnalyzer, HostedProviderCredentials, LayoutAnalyzeContext,
 };
-use crate::features::layout::hosted::{
+use crate::features::paper::analyze::layout::hosted::{
     emit_cloud_progress, parse_det_boxes, LayoutRemoteAnalyzePdfResult, LayoutRemotePageResult,
     LayoutRemoteProbeArgs, LayoutRemoteProbeResult,
 };
+use crate::features::paper::import::CANCELLED_MESSAGE;
 use async_trait::async_trait;
 use base64::Engine;
 use serde_json::{json, Value};
