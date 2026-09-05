@@ -33,12 +33,6 @@ pub mod vault;
 // Stable historical `features::` paths, backed by the semantic module tree.
 #[cfg(feature = "desktop")]
 pub use paper::analyze::layout;
-#[cfg(feature = "desktop")]
-pub use paper::analyze::layout::hosted as layout_remote;
-#[cfg(feature = "desktop")]
-pub use paper::analyze::layout::model_assets as layout_model;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use paper::analyze::parse as pdf_parse;
 
 pub use markdown::wiki;
 pub use paper::analyze::refs;
@@ -53,8 +47,6 @@ pub use vault::trash;
 pub use markdown::search;
 #[cfg(feature = "desktop")]
 pub use pdf::export;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
-pub use pdf::locate as pdf_locate;
 #[cfg(feature = "desktop")]
 pub use system::settings;
 #[cfg(feature = "desktop")]

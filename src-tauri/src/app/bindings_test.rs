@@ -111,7 +111,7 @@ fn export_typescript_bindings() {
             crate::features::catalog::commands::paper_open_bundle,
             crate::features::catalog::commands::paper_get,
             crate::features::catalog::commands::paper_list,
-            crate::features::paper::r#move::paper_move,
+            crate::features::catalog::commands::paper_move,
             crate::features::catalog::commands::paper_set_is_read,
             crate::features::catalog::commands::paper_update_meta,
             crate::features::catalog::commands::paper_set_tags,

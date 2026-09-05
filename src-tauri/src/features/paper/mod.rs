@@ -9,10 +9,6 @@ pub mod analyze;
 pub mod catalog;
 pub mod discovery;
 pub mod import;
-// Tauri command + desktop-only usage-db rename; callers (app handlers,
-// connector) are desktop-only.
-#[cfg(feature = "desktop")]
-pub mod r#move;
 
 pub use agentero_core::features::paper::capabilities;
 pub use agentero_core::features::paper::scholar_api;

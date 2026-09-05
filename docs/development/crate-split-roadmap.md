@@ -23,13 +23,13 @@
 | `features::paper::import`（别名 `features::import`） | 魔棒入库主管线：`import_by_identifier*`、`download_paper_assets*`、`import_local_pdfs`、`paper_import::paper_commit`、assets 下载、batch/map/parse/resolver、skill_import、title_search、api_mapper |
 | `features::paper::import::sources::zotero`（别名 `features::zotero`） | codec（NOTES ↔ Zotero HTML）、io（Translator `/export` `/import`） |
 | `features::paper::scholar_api` | arXiv / Crossref / OpenAlex / S2 / Unpaywall / EasyScholar / Translator 客户端与评分 |
-| `features::paper::analyze::parse`（别名 `features::pdf_parse`、`features::import::pdf_parse`） | liteparse worker、`parse_paper_body`、`run_pdf_locate`、probe/render、engine 框架（trait + 注册表 + 本地引擎） |
+| `features::paper::analyze::parse`（别名 `features::import::pdf_parse`） | liteparse worker、`parse_paper_body`、`run_pdf_locate`、probe/render、engine 框架（trait + 注册表 + 本地引擎） |
 | `features::paper::analyze::refs`（别名 `features::refs`) | 引用解析（bbl/bib/latex/online/citing）与 `agentero-cite.json` sidecar |
 | `features::paper::discovery::feeds`（别名 `features::feeds`） | 广场订阅（RSS/Atom/JSON Feed + 正文抽取） |
 | `features::vault` | Vault 创建（模板/技能内嵌）、路径服务、tree |
 | `features::vault::{doctor,rename,trash}` | 诊断聚合、双链重命名事务、回收站 |
 | `features::markdown::wiki`（别名 `features::wiki`） | 双链索引、解析、cache、rename、doctor、embed/extract/frontmatter |
-| `features::pdf::locate`（别名 `features::pdf_locate`） | 划词定位 + marks 标注存储（annotations） |
+| `features::pdf::locate` | 划词定位 + marks 标注存储（annotations） |
 | `features::pdf::marks` | 阅读标注 activity / doctor |
 | `features::translate` | 翻译 provider（free MT + LLM） |
 | `features::lifecycle` | paper 事实事件（`paper:imported` / `paper:assets-ready` / `paper:renamed`）的 payload 与 emit 入口 |
@@ -55,7 +55,7 @@ parse 引擎同理：远端引擎（MinerU/Paddle/OpenAI-compatible，依赖 `la
 |---|---|
 | `features/jobs`（JobCenter） | `tauri::AppHandle` state、`tauri::async_runtime::spawn`、job 事件 emit |
 | `features/agent`、`cli_install` | ACP 子进程 + tauri shell/state/事件，全 desktop |
-| `features/vault/watcher`、`markdown/search`、`pdf/export`、`system/settings`、`paper::move` | notify/AppHandle/tauri command/settings store |
+| `features/vault/watcher`、`markdown/search`、`pdf/export`、`system/settings`、`paper::catalog::commands`（paper_move） | notify/AppHandle/tauri command/settings store |
 | `features/paper/import`：`commands`、`job_runners`、`remote_ops`、`chain_resolve`、`pdf_recognize`、`recognize_apply`、`site_proxy` | tauri command/State、JobCenter、`tauri::http`（自定义协议代理）、AppHandle 事件 |
 | `features/paper/import/sources/zotero`：`db`、`commands`；`zotero_sync` | `tauri::AppHandle`（jobs spawn）、Channel IPC |
 | `features/paper/analyze/layout`（hosted/model_assets）、`remote_engines` | settings store 凭据、模型资产下载任务、tauri command |
