@@ -46,6 +46,7 @@ pub fn read_sidecar(vault_root: &Path, rel_path: &str) -> Option<PaperRecord> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::features::catalog::papers::PaperKind;
     use uuid::Uuid;
 
     fn minimal_record(path: &str) -> PaperRecord {
@@ -92,6 +93,7 @@ mod tests {
         .unwrap();
         let loaded = read_sidecar(&vault, "papers/y").expect("legacy sidecar readable");
         assert_eq!(loaded.path, "papers/y");
+        assert_eq!(loaded.paper_type, PaperKind::Doi);
         assert_eq!(loaded.tags.len(), 1);
         assert_eq!(loaded.tags[0].name, "nlp");
         let _ = fs::remove_dir_all(&vault);

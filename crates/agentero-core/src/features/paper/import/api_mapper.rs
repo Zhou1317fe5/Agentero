@@ -1,6 +1,6 @@
 //! Map [`ApiPaper`] candidates from `scholar_api` into [`PaperRecord`].
 
-use crate::features::catalog::papers::PaperRecord;
+use crate::features::catalog::papers::{PaperKind, PaperRecord};
 use crate::features::import::map::{doi_slug, enrich_remote_urls};
 use crate::features::import::slug_from_stem;
 use crate::features::scholar_api::scoring::{normalize_title, title_similarity};
@@ -17,15 +17,15 @@ pub fn api_paper_to_meta(paper: &ApiPaper) -> PaperRecord {
         .unwrap_or_else(|| slug_from_stem(&paper.title));
 
     let paper_type = if paper.identifiers.arxiv_id.is_some() {
-        "arxiv"
+        PaperKind::Arxiv
     } else if paper.identifiers.doi.is_some() {
-        "article"
+        PaperKind::Doi
     } else {
-        "pdf"
+        PaperKind::Pdf
     };
 
     let mut meta = PaperRecord::local_pdf(id, paper.title.clone());
-    meta.paper_type = paper_type.into();
+    meta.paper_type = paper_type;
     meta.authors = paper.authors.clone();
     meta.year = paper.year;
     meta.date = paper.date.clone();

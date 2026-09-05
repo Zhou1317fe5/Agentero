@@ -5,7 +5,7 @@
 
 use crate::app_handle::AppHandle;
 use crate::error::AppError;
-use crate::features::catalog::papers::{self, PaperRecord};
+use crate::features::catalog::papers::{self, PaperKind, PaperRecord};
 use crate::features::import::{
     enrich_remote_urls, map_zotero_item, normalize_parent_dir, translator_import_items,
     PaperImportArgs, PaperImportResult, DEFAULT_TRANSLATOR_BASE_URL,
@@ -201,12 +201,10 @@ pub fn paper_record_to_zotero_item(r: &PaperRecord) -> Value {
         .zotero_item_type
         .as_deref()
         .filter(|s| !s.is_empty())
-        .unwrap_or(match r.paper_type.as_str() {
-            "arxiv" => "preprint",
-            "doi" => "journalArticle",
-            "html" => "webpage",
-            "pdf" => "journalArticle",
-            _ => "journalArticle",
+        .unwrap_or(match r.paper_type {
+            PaperKind::Arxiv => "preprint",
+            PaperKind::Html => "webpage",
+            PaperKind::Doi | PaperKind::Pdf | PaperKind::Other => "journalArticle",
         });
 
     let creators = if let Some(c) = r.creators.as_ref().filter(|v| v.is_array()) {
@@ -403,7 +401,7 @@ mod tests {
         let r = PaperRecord {
             path: "papers/1706.03762".into(),
             id: "1706.03762".into(),
-            paper_type: "arxiv".into(),
+            paper_type: PaperKind::Arxiv,
             title: "Attention Is All You Need".into(),
             authors: vec!["Ashish Vaswani".into(), "Noam Shazeer".into()],
             creators: None,

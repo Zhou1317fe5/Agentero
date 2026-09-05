@@ -3027,6 +3027,12 @@ export type PaperImportResult = {
 
 export type PaperImportedEvent = PaperFactPayload;
 
+/**
+ *  What identifier the paper was resolved through. Serialized all-lowercase so
+ *  the wire form matches the frontend's `PaperMetadata["type"]` union exactly.
+ */
+export type PaperKind = "arxiv" | "pdf" | "html" | "doi" | "other";
+
 export type PaperListArgs = {
 	vaultPath: string,
 };
@@ -3177,7 +3183,7 @@ export type PaperRecord_Deserialize = {
 	 */
 	path?: string,
 	id: string,
-	type: string,
+	type: PaperKind,
 	title: string,
 	authors: string[],
 	creators: Json | null,
@@ -3232,7 +3238,7 @@ export type PaperRecord_Serialize = {
 	 */
 	path: string,
 	id: string,
-	type: string,
+	type: PaperKind,
 	title: string,
 	authors: string[],
 	creators?: Json | null,

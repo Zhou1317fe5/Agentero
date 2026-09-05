@@ -171,6 +171,73 @@ fn normalize_color(color: Option<&str>) -> Option<String> {
         .map(|id| (*id).to_string())
 }
 
+/// What identifier the paper was resolved through. Serialized all-lowercase so
+/// the wire form matches the frontend's `PaperMetadata["type"]` union exactly.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
+#[serde(rename_all = "lowercase")]
+pub enum PaperKind {
+    Arxiv,
+    Pdf,
+    Html,
+    Doi,
+    Other,
+}
+
+impl PaperKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Arxiv => "arxiv",
+            Self::Pdf => "pdf",
+            Self::Html => "html",
+            Self::Doi => "doi",
+            Self::Other => "other",
+        }
+    }
+}
+
+impl From<&str> for PaperKind {
+    fn from(raw: &str) -> Self {
+        match raw {
+            "arxiv" => Self::Arxiv,
+            "pdf" => Self::Pdf,
+            "html" => Self::Html,
+            // `api_paper_to_meta` used to emit `"article"` for every DOI-only
+            // paper; existing catalog rows and sidecars still carry it.
+            "doi" | "article" => Self::Doi,
+            _ => Self::Other,
+        }
+    }
+}
+
+impl From<String> for PaperKind {
+    fn from(raw: String) -> Self {
+        Self::from(raw.as_str())
+    }
+}
+
+/// Infallible: any unrecognized legacy spelling collapses to [`PaperKind::Other`].
+impl<'de> Deserialize<'de> for PaperKind {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        String::deserialize(deserializer).map(Self::from)
+    }
+}
+
+impl rusqlite::types::ToSql for PaperKind {
+    fn to_sql(&self) -> rusqlite::Result<rusqlite::types::ToSqlOutput<'_>> {
+        Ok(rusqlite::types::ToSqlOutput::Borrowed(
+            rusqlite::types::ValueRef::Text(self.as_str().as_bytes()),
+        ))
+    }
+}
+
+/// Reads through [`From<&str>`] so legacy `'article'` rows normalize on read;
+/// the next upsert writes the canonical spelling back.
+impl rusqlite::types::FromSql for PaperKind {
+    fn column_result(value: rusqlite::types::ValueRef<'_>) -> rusqlite::types::FromSqlResult<Self> {
+        value.as_str().map(Self::from)
+    }
+}
+
 /// The single paper model: catalog row, `metadata.json` sidecar, IPC payload.
 /// JSON stays snake_case to match the frontend's `PaperMetadata`.
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
@@ -182,7 +249,7 @@ pub struct PaperRecord {
     pub path: String,
     pub id: String,
     #[serde(rename = "type")]
-    pub paper_type: String,
+    pub paper_type: PaperKind,
     pub title: String,
     pub authors: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -270,7 +337,7 @@ impl PaperRecord {
         PaperRecord {
             path: String::new(),
             id,
-            paper_type: "pdf".into(),
+            paper_type: PaperKind::Pdf,
             title,
             authors: Vec::new(),
             creators: None,
@@ -1645,7 +1712,7 @@ mod tests {
         let mut p = PaperRecord {
             path: "papers/x".into(),
             id: "x".into(),
-            paper_type: "other".into(),
+            paper_type: PaperKind::Other,
             title: "T".into(),
             authors: vec![],
             creators: None,
@@ -1701,7 +1768,7 @@ mod tests {
         let record = PaperRecord {
             path: "papers/x".into(),
             id: "x".into(),
-            paper_type: "article".into(),
+            paper_type: PaperKind::Doi,
             title: "Attention".into(),
             authors: vec!["A".into()],
             creators: None,
@@ -1774,7 +1841,7 @@ mod tests {
         let record = PaperRecord {
             path: "papers/x".into(),
             id: "x".into(),
-            paper_type: "article".into(),
+            paper_type: PaperKind::Doi,
             title: "Attention".into(),
             authors: vec![],
             creators: None,
@@ -2048,6 +2115,93 @@ mod tests {
         fs::remove_dir_all(dir.join(".agentero")).unwrap();
         assert_eq!(list_all(&dir).unwrap().len(), 0);
         assert!(super::super::schema::catalog_db_path(&dir).is_file());
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn paper_kind_normalizes_legacy_spellings() {
+        assert_eq!(PaperKind::from("article"), PaperKind::Doi);
+        assert_eq!(PaperKind::from(String::from("article")), PaperKind::Doi);
+        assert_eq!(PaperKind::from(""), PaperKind::Other);
+        assert_eq!(PaperKind::from("journalArticle"), PaperKind::Other);
+    }
+
+    #[test]
+    fn paper_kind_serde_roundtrips_canonical_literals() {
+        let all = [
+            PaperKind::Arxiv,
+            PaperKind::Pdf,
+            PaperKind::Html,
+            PaperKind::Doi,
+            PaperKind::Other,
+        ];
+        for kind in all {
+            let json = serde_json::to_string(&kind).unwrap();
+            assert_eq!(json, format!(r#""{}""#, kind.as_str()));
+            assert_eq!(serde_json::from_str::<PaperKind>(&json).unwrap(), kind);
+        }
+        // Legacy spellings deserialize instead of failing the whole record.
+        assert_eq!(
+            serde_json::from_str::<PaperKind>(r#""article""#).unwrap(),
+            PaperKind::Doi
+        );
+        assert_eq!(
+            serde_json::from_str::<PaperKind>(r#""journalArticle""#).unwrap(),
+            PaperKind::Other
+        );
+    }
+
+    #[test]
+    fn paper_kind_sql_roundtrips_and_heals_legacy_row() {
+        let dir = env::temp_dir().join(format!("agentero-kind-sql-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+
+        // Pre-PaperKind builds wrote the raw `'article'` TEXT.
+        with_catalog(&dir, |conn| {
+            insert(conn, "papers/legacy");
+            Ok(())
+        })
+        .unwrap();
+        let legacy = get_by_path(&dir, "papers/legacy").unwrap().unwrap();
+        assert_eq!(legacy.paper_type, PaperKind::Doi);
+        // Next upsert persists the canonical spelling.
+        upsert_paper(&dir, &legacy).unwrap();
+        let raw: String = with_catalog(&dir, |conn| {
+            conn.query_row(
+                "SELECT type FROM papers WHERE path = 'papers/legacy'",
+                [],
+                |r| r.get(0),
+            )
+            .map_err(AppError::from)
+        })
+        .unwrap();
+        assert_eq!(raw, "doi");
+
+        for kind in [
+            PaperKind::Arxiv,
+            PaperKind::Pdf,
+            PaperKind::Html,
+            PaperKind::Doi,
+            PaperKind::Other,
+        ] {
+            let mut record = PaperRecord::local_pdf("k".into(), "T".into()).at_path("papers/k");
+            record.paper_type = kind;
+            upsert_paper(&dir, &record).unwrap();
+            let raw: String = with_catalog(&dir, |conn| {
+                conn.query_row("SELECT type FROM papers WHERE path = 'papers/k'", [], |r| {
+                    r.get(0)
+                })
+                .map_err(AppError::from)
+            })
+            .unwrap();
+            assert_eq!(raw, kind.as_str());
+            assert_eq!(
+                get_by_path(&dir, "papers/k").unwrap().unwrap().paper_type,
+                kind
+            );
+        }
 
         let _ = fs::remove_dir_all(&dir);
     }

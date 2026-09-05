@@ -2,7 +2,7 @@
 //! pipeline: field extraction, arXiv/DOI/PMID recovery, canonical URLs.
 
 use crate::error::AppError;
-use crate::features::catalog::papers::{hide_arxiv_category_tag, PaperRecord, PaperTag};
+use crate::features::catalog::papers::{hide_arxiv_category_tag, PaperKind, PaperRecord, PaperTag};
 use serde_json::Value;
 
 pub fn map_zotero_item(item: &Value) -> Result<PaperRecord, AppError> {
@@ -158,13 +158,13 @@ pub fn map_zotero_item(item: &Value) -> Result<PaperRecord, AppError> {
         .unwrap_or_default();
 
     let paper_type = if arxiv_id.is_some() {
-        "arxiv"
+        PaperKind::Arxiv
     } else if doi.is_some() {
-        "doi"
+        PaperKind::Doi
     } else if zotero_type == "webpage" {
-        "html"
+        PaperKind::Html
     } else {
-        "other"
+        PaperKind::Other
     };
 
     let id = arxiv_id
@@ -174,7 +174,7 @@ pub fn map_zotero_item(item: &Value) -> Result<PaperRecord, AppError> {
         .unwrap_or_else(|| citekey_fallback(&authors, year, &title));
 
     let mut record = PaperRecord::local_pdf(id, title);
-    record.paper_type = paper_type.to_string();
+    record.paper_type = paper_type;
     record.authors = authors;
     record.creators = item.get("creators").cloned();
     record.year = year;
@@ -198,12 +198,16 @@ pub fn map_zotero_item(item: &Value) -> Result<PaperRecord, AppError> {
     record.series = str_field(item, "series");
     record.language = str_field(item, "language");
     record.pdf_url = pdf_url;
-    record.html_url = if paper_type == "html" {
+    record.html_url = if paper_type == PaperKind::Html {
         url.clone()
     } else {
         None
     };
-    record.source_url = if paper_type == "html" { None } else { url };
+    record.source_url = if paper_type == PaperKind::Html {
+        None
+    } else {
+        url
+    };
     record.zotero_item_type = Some(zotero_type);
     record.meta_source = str_field(item, "libraryCatalog");
     record.extra = extra;
@@ -222,8 +226,8 @@ pub fn enrich_remote_urls(meta: &mut PaperRecord) {
         if meta.bibtex_key.is_none() {
             meta.bibtex_key = Some(bare.replace('/', ""));
         }
-        if meta.paper_type == "other" || meta.paper_type.is_empty() {
-            meta.paper_type = "arxiv".into();
+        if meta.paper_type == PaperKind::Other {
+            meta.paper_type = PaperKind::Arxiv;
         }
     } else if let Some(ref doi) = meta.doi {
         if meta.source_url.as_ref().is_none_or(|s| s.is_empty()) {

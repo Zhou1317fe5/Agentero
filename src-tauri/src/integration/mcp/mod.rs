@@ -327,7 +327,7 @@ mod tests {
         PaperRecord {
             path: path.into(),
             id: id.into(),
-            paper_type: "article".into(),
+            paper_type: papers::PaperKind::Doi,
             title: title.into(),
             authors: vec!["Ann".into()],
             creators: None,

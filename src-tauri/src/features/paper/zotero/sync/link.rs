@@ -137,7 +137,7 @@ mod tests {
         PaperRecord {
             path: path.into(),
             id: path.rsplit('/').next().unwrap_or(path).into(),
-            paper_type: "article".into(),
+            paper_type: papers::PaperKind::Doi,
             title: title.into(),
             authors: vec![],
             creators: None,

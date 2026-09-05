@@ -252,7 +252,7 @@ mod open_bundle_tests {
         PaperRecord {
             path: path.into(),
             id: id.into(),
-            paper_type: "article".into(),
+            paper_type: papers::PaperKind::Doi,
             title: "Bundled Paper".into(),
             authors: vec!["A".into()],
             creators: None,

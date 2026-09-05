@@ -6,7 +6,7 @@
 use crate::core::error::{map_err, ApiResult, AppError};
 use crate::core::fs::{FsDirEntry, WriteOpts};
 use crate::core::log_util::{trunc, OpTimer};
-use crate::features::paper::catalog::papers::{self, PaperRecord};
+use crate::features::paper::catalog::papers::{self, PaperKind, PaperRecord};
 use crate::features::vault::CreateVaultResult;
 use crate::integration::remote::{ensure_remote_vault_skills, RemoteRegistry, RemoteSessionInfo};
 use serde::Deserialize;
@@ -599,7 +599,7 @@ async fn remote_rescan_impl(
             let mut rec = existing.unwrap_or_else(|| PaperRecord {
                 path: path.clone(),
                 id: id.clone(),
-                paper_type: "article".into(),
+                paper_type: PaperKind::Doi,
                 title: id.clone(),
                 authors: vec![],
                 creators: None,

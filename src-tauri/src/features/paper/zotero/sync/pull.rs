@@ -213,7 +213,7 @@ mod tests {
         let mut record = papers::PaperRecord {
             path: "papers/x".into(),
             id: "x".into(),
-            paper_type: "article".into(),
+            paper_type: papers::PaperKind::Doi,
             title: "T".into(),
             authors: vec![],
             creators: None,
@@ -253,7 +253,7 @@ mod tests {
             updated_at: "t".into(),
         };
         let mut meta = papers::PaperRecord::local_pdf("x".into(), "T".into());
-        meta.paper_type = "journalArticle".into();
+        meta.paper_type = papers::PaperKind::Doi;
         meta.year = Some(2021);
         meta.date = Some("2021-05-01".into());
         meta.abstract_text = Some("abstract".into());

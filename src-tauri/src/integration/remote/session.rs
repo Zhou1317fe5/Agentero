@@ -351,7 +351,7 @@ mod tests {
         let rec = PaperRecord {
             path: "papers/demo-paper".into(),
             id: "demo-paper".into(),
-            paper_type: "article".into(),
+            paper_type: papers::PaperKind::Doi,
             title: "Demo Paper on DGX".into(),
             authors: vec![],
             creators: None,
@@ -546,7 +546,7 @@ mod tests {
             let rec = PaperRecord {
                 path: rel.into(),
                 id: id.into(),
-                paper_type: "article".into(),
+                paper_type: papers::PaperKind::Doi,
                 title: title.into(),
                 authors: vec!["Test Author".into()],
                 creators: None,
