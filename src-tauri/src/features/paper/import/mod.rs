@@ -3,8 +3,7 @@
 //! The tauri-free pipeline lives in `agentero_core::features::paper::import`
 //! and is glob-re-exported here; this module keeps the desktop-only shells:
 //! Tauri commands, JobCenter runners, remote-import ops, deferred metadata
-//! recognition, the connector site proxy, and the settings-backed parser
-//! config refresh.
+//! recognition, and the settings-backed parser config refresh.
 //!
 //! @see docs/backend/identifier-lookup.md
 //! @see docs/backend/paper-import-pipeline.md
@@ -12,19 +11,13 @@
 pub use agentero_core::features::paper::import::*;
 
 #[cfg(feature = "desktop")]
-pub(crate) mod chain_resolve;
-#[cfg(feature = "desktop")]
 pub mod commands;
 #[cfg(feature = "desktop")]
 pub mod job_runners;
 #[cfg(feature = "desktop")]
-pub(crate) mod pdf_recognize;
-#[cfg(feature = "desktop")]
-pub(crate) mod recognize_apply;
+pub(crate) mod recognize;
 #[cfg(feature = "desktop")]
 pub mod remote_ops;
-#[cfg(feature = "desktop")]
-pub mod site_proxy;
 
 #[cfg(feature = "desktop")]
 pub use remote_ops::RemoteImportOps;

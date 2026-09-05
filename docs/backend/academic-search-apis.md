@@ -14,9 +14,9 @@ Agentero Host 端（`src-tauri/src/features/`）在论文识别、入库、引�
 | **Semantic Scholar Graph API** | `GET /graph/v1/paper/{id}/citations` | "谁引用了我" 候选发现 | `features/refs/citing.rs` |
 | **arXiv Atom API** | `GET https://export.arxiv.org/api/query` | 按 ID 取元数据 / 按标题搜索 | `features/import/mod.rs`, `features/import/title_search.rs` |
 | **arXiv 二进制端点** | `https://arxiv.org/pdf/{id}` / `https://arxiv.org/e-print/{id}` / `https://arxiv.org/src/{id}` | PDF / TeX 源码下载 | `features/import/assets.rs` |
-| **Crossref REST API** | `GET https://api.crossref.org/works/{doi}` | DOI → 元数据 / 参考文献 | `features/paper/import/pdf_recognize.rs`, `features/paper/analyze/refs/online.rs`, `features/paper/catalog/commands.rs` |
+| **Crossref REST API** | `GET https://api.crossref.org/works/{doi}` | DOI → 元数据 / 参考文献 | `features/paper/import/recognize/pdf_recognize.rs`, `features/paper/analyze/refs/online.rs`, `features/paper/catalog/commands.rs` |
 | **Unpaywall** | `GET https://api.unpaywall.org/v2/{doi}` | DOI → 开放获取 PDF | `features/import/assets.rs` |
-| **Zotero Recognizer** | `POST https://services.zotero.org/recognizer/recognize` | PDF 首页文字几何识别 | `features/import/pdf_recognize.rs` |
+| **Zotero Recognizer** | `POST https://services.zotero.org/recognizer/recognize` | PDF 首页文字几何识别 | `features/paper/import/recognize/pdf_recognize.rs` |
 | **Translator Runtime** | `POST {base}/web`, `POST {base}/search`, `POST {base}/import` | 通用 URL/标识符/题录解析 | `features/import/mod.rs` |
 | **Cool Papers (papers.cool)** | `GET https://papers.cool/{branch}/search?query=...`, `GET https://papers.cool/{branch}/kimi?paper={id}` | Kimi 论文解析 / 广场导入 | `features/coolpapers/` |
 | **arXiv RSS** | `GET https://rss.arxiv.org/rss/{category}` | 推荐与订阅流 | `features/recommend/mod.rs`, `features/feeds/` |
@@ -37,14 +37,14 @@ Agentero Host 端（`src-tauri/src/features/`）在论文识别、入库、引�
    - 若用户输入被识别为 arXiv id / DOI / URL，会构造 `{base}/web` 或 `{base}/search` 请求。
    - arXiv 的各类输入（`2508.05004`、`arXiv:2508.05004v2`、`https://arxiv.org/pdf/...`、`https://arxiv.org/html/...`）都会被规范化为 `https://arxiv.org/abs/{id}` 再走 `/web`。
    - Translator 失败且输入是 arXiv id 时，本地 fallback 到 `fetch_arxiv_metadata`。
-3. **Crossref DOI fallback**（`features/import/pdf_recognize.rs::resolve_identifier_full`）
+3. **Crossref DOI fallback**（`features/paper/import/recognize/pdf_recognize.rs::resolve_identifier_full`）
    - 当 Translator 无法解析一个 DOI 时，直接请求 `api.crossref.org/works/{doi}`。
 4. **arXiv Atom 直接 fallback**（`features/import/mod.rs::fetch_arxiv_metadata`）
    - 请求 `export.arxiv.org/api/query?id_list={id}`，解析 `<arxiv:journal_ref>` 作为 publication/venue。
 
 ### 2.2 PDF 元数据识别
 
-入口：`features/import/pdf_recognize.rs::recognize_and_resolve`。
+入口：`features/paper/import/recognize/pdf_recognize.rs::recognize_and_resolve`。
 
 流程：
 

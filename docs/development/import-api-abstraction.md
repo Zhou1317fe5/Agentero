@@ -356,7 +356,7 @@ src-tauri/src/
 
 4. **阶段 3：OpenAlex**
    - 在 `scholar_api/sources/openalex.rs` 实现 `AcademicApi`
-   - 重写 `features/import/chain_resolve.rs` 里的 `openalex_search_by_title`
+   - 重写 `features/paper/import/recognize/chain_resolve.rs` 里的 `openalex_search_by_title`
    - 可选在同一文件实现 `VenueMetricsSource` 提供开放指标
 
 5. **阶段 4：EasyScholar**

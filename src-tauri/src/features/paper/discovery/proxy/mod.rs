@@ -9,6 +9,11 @@
 //! Every [`SiteProxy::origin`] is a hardcoded constant: these proxies must never
 //! become an open relay.
 
+#[cfg(feature = "desktop")]
+pub mod arxiv;
+#[cfg(feature = "desktop")]
+pub mod modelscope;
+
 use tauri::http::{header, Response, StatusCode};
 
 pub struct SiteProxy {

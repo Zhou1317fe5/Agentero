@@ -868,7 +868,7 @@ async fn import_one_local_pdf(
     // Entries straight from the picker/drop (no dialog metadata) commit
     // instantly with filename-derived metadata; a RecognizeMetadata job then
     // resolves DOI/arXiv/title in the background and renames the folder to
-    // the canonical id (see `recognize_apply`). Best-effort: any recognition
+    // the canonical id (see `recognize::apply`). Best-effort: any recognition
     // failure keeps the filename-derived metadata.
     let recognize_deferred = !dialog_meta;
     let mut meta = local_pdf_meta(base_id, title);

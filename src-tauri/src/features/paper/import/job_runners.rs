@@ -130,7 +130,7 @@ fn download_assets_runner(
 
 /// Runner for [`JobKind::RecognizeMetadata`]: recognize a just-committed
 /// local PDF import in the background (liteparse probe → Zotero recognizer →
-/// identifier resolution), land the result via `recognize_apply` (metadata
+/// identifier resolution), land the result via `recognize::apply` (metadata
 /// upsert / canonical-id rename / merge into an existing entry), then
 /// orchestrate the PAPER.md + refs + layout follow-ups against the paper's
 /// final path.
@@ -174,7 +174,7 @@ fn recognize_metadata_runner(
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| crate::features::import::DEFAULT_TRANSLATOR_BASE_URL.to_string());
 
-        let probe = crate::features::import::pdf_recognize::recognize_and_resolve(
+        let probe = crate::features::import::recognize::pdf_recognize::recognize_and_resolve(
             &pdf,
             &translator_base,
             Some(&task_id),
@@ -193,7 +193,7 @@ fn recognize_metadata_runner(
         }
 
         let host_app = crate::features::host_hooks::wrap(&app);
-        let outcome = crate::features::import::recognize_apply::apply_probe_result(
+        let outcome = crate::features::import::recognize::apply::apply_probe_result(
             Some(&host_app),
             &vault,
             Some(&cache),
@@ -205,17 +205,17 @@ fn recognize_metadata_runner(
 
         // Follow-ups run against the paper's final path (post rename/merge).
         let final_path = match &outcome {
-            Ok(crate::features::import::recognize_apply::RecognizeApply::Renamed { from, to }) => {
+            Ok(crate::features::import::recognize::apply::RecognizeApply::Renamed { from, to }) => {
                 log::info!(target: "agentero::import",
                     "recognized paper renamed: {from} -> {to}");
                 to.clone()
             }
-            Ok(crate::features::import::recognize_apply::RecognizeApply::Merged { into }) => {
+            Ok(crate::features::import::recognize::apply::RecognizeApply::Merged { into }) => {
                 log::info!(target: "agentero::import",
                     "recognized paper merged into existing entry: {into}");
                 into.clone()
             }
-            Ok(crate::features::import::recognize_apply::RecognizeApply::Skipped(reason)) => {
+            Ok(crate::features::import::recognize::apply::RecognizeApply::Skipped(reason)) => {
                 log::info!(target: "agentero::import",
                     "recognition not applied ({reason}): {path}");
                 path.clone()

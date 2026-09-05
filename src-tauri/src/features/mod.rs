@@ -53,16 +53,16 @@ pub use system::settings;
 pub use vault::watcher;
 
 #[cfg(feature = "desktop")]
-pub use paper::discovery::arxiv_proxy;
-#[cfg(feature = "desktop")]
 pub use paper::discovery::coolpapers;
 pub use paper::discovery::feeds;
 #[cfg(feature = "desktop")]
-pub use paper::discovery::modelscope_proxy;
+pub use paper::discovery::proxy as site_proxy;
+#[cfg(feature = "desktop")]
+pub use paper::discovery::proxy::arxiv as arxiv_proxy;
+#[cfg(feature = "desktop")]
+pub use paper::discovery::proxy::modelscope as modelscope_proxy;
 #[cfg(feature = "desktop")]
 pub use paper::discovery::recommend;
-#[cfg(feature = "desktop")]
-pub use paper::import::site_proxy;
 pub use paper::zotero;
 #[cfg(feature = "desktop")]
 pub use paper::zotero::sync as zotero_sync;

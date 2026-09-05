@@ -250,7 +250,7 @@ pub async fn paper_resolve_identifier(
         }
     }
 
-    match super::chain_resolve::resolve_metadata_chain(&args.text).await {
+    match super::recognize::chain_resolve::resolve_metadata_chain(&args.text).await {
         Ok(mut meta) => {
             super::enrich_remote_urls(&mut meta);
             op.finish_ok();

@@ -56,10 +56,10 @@ parse 引擎同理：远端引擎（MinerU/Paddle/OpenAI-compatible，依赖 `la
 | `features/jobs`（JobCenter） | `tauri::AppHandle` state、`tauri::async_runtime::spawn`、job 事件 emit |
 | `features/agent`、`cli_install` | ACP 子进程 + tauri shell/state/事件，全 desktop |
 | `features/vault/watcher`、`markdown/search`、`pdf/export`、`system/settings`、`paper::catalog::commands`（paper_move） | notify/AppHandle/tauri command/settings store |
-| `features/paper/import`：`commands`、`job_runners`、`remote_ops`、`chain_resolve`、`pdf_recognize`、`recognize_apply`、`site_proxy` | tauri command/State、JobCenter、`tauri::http`（自定义协议代理）、AppHandle 事件 |
+| `features/paper/import`：`commands`、`job_runners`、`remote_ops`、`recognize/{chain_resolve,pdf_recognize,apply}` | tauri command/State、JobCenter、AppHandle 事件 |
 | `features/paper/zotero`：`db`、`commands`、`sync/` | `tauri::AppHandle`（jobs spawn）、Channel IPC |
 | `features/paper/analyze/layout`（hosted/model_assets）、`remote_engines` | settings store 凭据、模型资产下载任务、tauri command |
-| `features/paper/discovery`：`coolpapers`、`recommend`、`arxiv_proxy`、`modelscope_proxy` | tauri command / `tauri::http` 站点代理 |
+| `features/paper/discovery`：`coolpapers`、`recommend`、`proxy/{mod,arxiv,modelscope}` | tauri command / `tauri::http` 站点代理 |
 | `markdown/wiki`：`commands`、`heading_rename` | tauri State（`WikiIndexState` manage）、watcher 协同 |
 | `features/lifecycle` desktop 部分 | `job:completed/failed` 依赖 JobSnapshot |
 | `core/telemetry`、`core/usage::commands`、`app/open_request` desktop 部分 | posthog-rs、tauri command、fs scope/窗口聚焦 |
@@ -69,7 +69,7 @@ parse 引擎同理：远端引擎（MinerU/Paddle/OpenAI-compatible，依赖 `la
 ## 下一步（Phase 3 建议）
 
 1. **事件抽象扩展**：把 `HostHooks` 泛化为完整宿主面（vault:open-request、connector、job 事件、window 聚焦），消灭 `wrap()` 手工转换点；命令壳统一在入口构造一次 core `AppHandle`。
-2. **留守域瘦身**：`jobs`（JobCenter 调度核心可下沉，tauri spawn/emit 走 hooks）、`site_proxy`（`tauri::http` → 纯 axum/hyper 内核）、`heading_rename`（watcher 协同改回调）。
+2. **留守域瘦身**：`jobs`（JobCenter 调度核心可下沉，tauri spawn/emit 走 hooks）、`discovery/proxy`（`tauri::http` → 纯 axum/hyper 内核）、`heading_rename`（watcher 协同改回调）。
 3. **core 内路径扁平化**（可选）：`agentero_core::features::X` → `agentero_core::X`，与 Phase 1 顶层模块风格统一；Host 桥接不受影响。
 4. **reqwest 双版本对齐**：锁文件中同时存在 `reqwest 0.12.28`（agentero-core / agentero 直接使用）与 `reqwest 0.13.4`（传递依赖引入，如 rmcp 等）。两份 TLS/连接池栈增大包体与审计面；待依赖链（rmcp / tauri 生态）稳定后统一到一个大版本，core 与 Host 必须同步升级以避免 feature 漂移。
 5. **src-tauri 依赖清理**（保守未删）：迁移后 `feed-rs`、`dom_smoothie`、`pulldown-cmark`、`bitflags` 在 `src-tauri/src` 已无直接引用，可在确认无 build 脚本/宏隐式依赖后从 `src-tauri/Cargo.toml` 移除。
