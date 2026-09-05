@@ -219,11 +219,6 @@ pub struct ImportLocalPdfArgs {
     /// Frontend background-task id for parse-phase progress.
     #[serde(default)]
     pub task_id: Option<String>,
-    /// Translator base URL override. Deferred recognition runs in the
-    /// RecognizeMetadata job, which reads Settings directly; kept for API
-    /// compatibility. Empty → default.
-    #[serde(default)]
-    pub translator_base_url: Option<String>,
 }
 
 #[derive(Debug, Serialize, specta::Type)]

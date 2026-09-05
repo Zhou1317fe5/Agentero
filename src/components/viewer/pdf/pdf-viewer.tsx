@@ -385,7 +385,12 @@ function PdfViewerInner({
 	const paperLink = useMemo(() => {
 		if (!paperMeta) return undefined;
 		if (paperMeta.arxiv_id) return arxivUrls(paperMeta.arxiv_id)?.abs;
-		return paperMeta.source_url ?? paperMeta.html_url ?? paperMeta.pdf_url;
+		return (
+			paperMeta.source_url ??
+			paperMeta.html_url ??
+			paperMeta.pdf_url ??
+			undefined
+		);
 	}, [paperMeta]);
 
 	const handleImportToLibrary = useCallback(async () => {

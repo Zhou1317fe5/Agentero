@@ -5,7 +5,7 @@ import type { PdfViewerHandle } from "@/components/viewer";
 import { HtmlViewer, ImageViewer } from "@/components/viewer";
 import { RecycleBinView } from "@/components/workspace/recycle-bin-view";
 import { useSettings } from "@/hooks/use-app-stores";
-import type { PaperMetadata } from "@/lib/paper";
+import type { PaperLibraryRow, PaperMetadata } from "@/lib/paper";
 import { isRemoteArxivPath } from "@/lib/paper";
 import type { PdfVisualSessionTrace } from "@/lib/pdf/agent-trace/types";
 import type { PdfAskThread } from "@/lib/pdf/ask/types";
@@ -35,7 +35,7 @@ const PlazaView = lazy(() =>
 
 /** Library-tab-only props (ignored by PDF / editor / trash). */
 export type DocViewLibraryProps = {
-	papers: PaperMetadata[];
+	papers: PaperLibraryRow[];
 	loading: boolean;
 	query: string;
 	onQueryChange: (query: string) => void;

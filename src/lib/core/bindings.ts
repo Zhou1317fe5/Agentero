@@ -2340,12 +2340,6 @@ export type ImportLocalPdfArgs = {
 	entries?: LocalPdfImportEntry[],
 	/**  Frontend background-task id for parse-phase progress. */
 	taskId?: string | null,
-	/**
-	 *  Translator base URL override. Deferred recognition runs in the
-	 *  RecognizeMetadata job, which reads Settings directly; kept for API
-	 *  compatibility. Empty → default.
-	 */
-	translatorBaseUrl?: string | null,
 };
 
 export type ImportLocalPdfResult = ImportLocalPdfResult_Serialize | ImportLocalPdfResult_Deserialize;

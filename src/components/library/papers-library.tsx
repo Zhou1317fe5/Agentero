@@ -30,7 +30,7 @@ import { LibraryTableHeader } from "@/components/library/library-table-header";
 import { Button } from "@/components/ui/button";
 import { useDebouncedCallback } from "@/hooks/use-debounce";
 import { cn } from "@/lib/core/utils";
-import type { PaperMetadata } from "@/lib/paper";
+import type { PaperLibraryRow, PaperMetadata } from "@/lib/paper";
 import { filterPapersByScope } from "@/lib/paper/api";
 import {
 	refreshLibraryMetadata,
@@ -48,7 +48,7 @@ import { isRemoteVaultHandle } from "@/lib/vault/remote/remote-vault";
 
 export type PapersLibraryProps = {
 	/** Full catalog list (or pre-scoped); further filtered by `scopePath`. */
-	papers: PaperMetadata[];
+	papers: PaperLibraryRow[];
 	/** Vault root; required to load per-paper reading heatmaps. */
 	vaultPath?: string | null;
 	/** When the Library tab is focused — reload heatmaps (after PDF activity). */

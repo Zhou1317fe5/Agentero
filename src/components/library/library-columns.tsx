@@ -10,6 +10,7 @@ import {
 	type CellCtx,
 	type ColumnDef,
 	identifierValue,
+	isMissingLocalPdf,
 	type SortDir,
 	type SortKey,
 } from "@/components/library/library-row-utils";
@@ -116,7 +117,7 @@ export const COLUMN_META = {
 							<span className="block truncate" title={p.title}>
 								{p.title}
 							</span>
-							{p.has_pdf === false ? (
+							{isMissingLocalPdf(p) ? (
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<span

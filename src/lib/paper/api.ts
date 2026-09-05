@@ -8,6 +8,7 @@ import i18n from "@/i18n";
 import {
 	commands,
 	type PaperMetaPatch as PaperMetaPatchWire,
+	type PaperRecord_Serialize as PaperRecordWire,
 	type PaperRescanResult,
 	type PaperTag as PaperTagWire,
 	type TrashEntry,
@@ -16,8 +17,12 @@ import {
 import { callApi, callApiResult } from "@/lib/core/ipc";
 import { normalizeRelPath } from "@/lib/core/path";
 import { isTauri } from "@/lib/core/tauri";
-import { withNormalizedTags } from "@/lib/paper/tags";
-import type { PaperMetadata, PaperTagInput } from "@/lib/paper/types";
+import type {
+	PaperLibraryRow,
+	PaperMetadata,
+	PaperTagInput,
+} from "@/lib/paper/types";
+import { paperFromWire } from "@/lib/paper/wire";
 import { type AppSettings, DEFAULT_TRANSLATOR_BASE_URL } from "@/lib/settings";
 import type { WikiRenameResult } from "@/lib/wiki";
 
@@ -106,10 +111,10 @@ export function paperInLibraryScope(
 }
 
 /** Filter catalog rows to those under a vault-relative folder (recursive). */
-export function filterPapersByScope(
-	papers: PaperMetadata[],
+export function filterPapersByScope<T extends PaperMetadata>(
+	papers: T[],
 	scopeRel: string | null | undefined,
-): PaperMetadata[] {
+): T[] {
 	if (scopeRel == null || scopeRel === "") return papers;
 	if (!isPapersLibraryScope(scopeRel)) return papers;
 	const s = normalizeLibraryScope(scopeRel);
@@ -117,22 +122,24 @@ export function filterPapersByScope(
 	return papers.filter((p) => paperInLibraryScope(p.path, s));
 }
 
-export async function listPapers(vaultPath: string): Promise<PaperMetadata[]> {
+export async function listPapers(
+	vaultPath: string,
+): Promise<PaperLibraryRow[]> {
 	if (!isTauri()) return [];
 	const { isRemoteVaultHandle, remotePaperList, remoteSessionIdFromHandle } =
 		await import("@/lib/vault/remote/remote-vault");
 	if (isRemoteVaultHandle(vaultPath)) {
 		const sessionId = remoteSessionIdFromHandle(vaultPath);
 		if (!sessionId) return [];
-		const rows = (await remotePaperList(sessionId)) as PaperMetadata[];
-		return rows.map(withNormalizedTags);
+		// Remote listings are bare records: nothing probes the remote host for
+		// a local PDF, so the row says "unknown" rather than "missing".
+		const rows = (await remotePaperList(sessionId)) as PaperRecordWire[];
+		return rows.map((row) => ({ ...paperFromWire(row), has_pdf: undefined }));
 	}
-	// Wire rows carry serde `null` on absent optionals; domain readers treat
-	// them as absent, so fold once at the boundary.
-	const rows = (await callApiResult(() => commands.paperList({ vaultPath }), {
+	const rows = await callApiResult(() => commands.paperList({ vaultPath }), {
 		fallback: "paper_list failed",
-	})) as PaperMetadata[];
-	return rows.map(withNormalizedTags);
+	});
+	return rows.map(paperFromWire);
 }
 
 export type { PaperRescanResult };
@@ -305,23 +312,23 @@ export async function setPaperIsRead(
 		if (!sessionId) {
 			throw new Error(i18n.t("sidebar:fileTree.readMarkFailed"));
 		}
-		const paper = (await callApiResult(
+		const paper = await callApiResult(
 			() => commands.remotePaperSetIsRead({ sessionId, path, isRead }),
 			{ fallback: i18n.t("sidebar:fileTree.readMarkFailed") },
-		)) as PaperMetadata;
+		);
 		void import("@/lib/activity").then(({ track }) => {
 			track("paper.read", { path, extra: { isRead } });
 		});
-		return withNormalizedTags(paper);
+		return paperFromWire(paper);
 	}
-	const paper = (await callApi(
+	const paper = await callApi(
 		() => commands.paperSetIsRead({ vaultPath, path, isRead }),
 		{ fallback: i18n.t("sidebar:fileTree.readMarkFailed") },
-	)) as PaperMetadata;
+	);
 	void import("@/lib/activity").then(({ track }) => {
 		track("paper.read", { path, extra: { isRead } });
 	});
-	return withNormalizedTags(paper);
+	return paperFromWire(paper);
 }
 
 /**
@@ -351,17 +358,17 @@ export async function setPaperTags(
 		if (!sessionId) {
 			throw new Error(i18n.t("sidebar:paperInfo.tagsSaveFailed"));
 		}
-		const paper = (await callApiResult(
+		const paper = await callApiResult(
 			() => commands.remotePaperSetTags({ sessionId, path, tags: wireTags }),
 			{ fallback: i18n.t("sidebar:paperInfo.tagsSaveFailed") },
-		)) as PaperMetadata;
-		return withNormalizedTags(paper);
+		);
+		return paperFromWire(paper);
 	}
-	const paper = (await callApi(
+	const paper = await callApi(
 		() => commands.paperSetTags({ vaultPath, path, tags: wireTags }),
 		{ fallback: i18n.t("sidebar:paperInfo.tagsSaveFailed") },
-	)) as PaperMetadata;
-	return withNormalizedTags(paper);
+	);
+	return paperFromWire(paper);
 }
 
 /**
@@ -419,11 +426,11 @@ export async function updatePaperMeta(
 		pdfUrl: patch.pdfUrl ?? null,
 		htmlUrl: patch.htmlUrl ?? null,
 	};
-	const paper = (await callApi(
+	const paper = await callApi(
 		() => commands.paperUpdateMeta({ vaultPath, path, patch: wirePatch }),
 		{ fallback: i18n.t("sidebar:paperInfo.editMeta.saveFailed") },
-	)) as PaperMetadata;
-	return withNormalizedTags(paper);
+	);
+	return paperFromWire(paper);
 }
 
 export type PaperExportResult = {
@@ -433,37 +440,19 @@ export type PaperExportResult = {
 	filename: string;
 };
 
-/** Identifier-resolved metadata (Host `paper_resolve_identifier`). */
-export type ResolvedPaperMeta = {
-	title: string;
-	authors: string[];
-	year?: number;
-	date?: string;
-	abstract?: string;
-	doi?: string;
-	arxivId?: string;
-	publication?: string;
-	volume?: string;
-	issue?: string;
-	pages?: string;
-	publisher?: string;
-	pdfUrl?: string;
-	htmlUrl?: string;
-};
-
 /**
  * Resolve a DOI / arXiv id to metadata without importing. Backs Edit
  * Metadata's identifier refresh.
  */
 export async function resolveIdentifierMetadata(
 	text: string,
-): Promise<ResolvedPaperMeta> {
+): Promise<PaperMetadata> {
 	if (!isTauri()) {
 		throw new Error(i18n.t("sidebar:paperInfo.editMeta.desktopOnly"));
 	}
 	const { getSettings } = await import("@/lib/settings/react-store");
 	const settings: AppSettings = getSettings();
-	const meta = await callApi(
+	const record = await callApi(
 		() =>
 			commands.paperResolveIdentifier({
 				text: text.trim(),
@@ -471,7 +460,7 @@ export async function resolveIdentifierMetadata(
 			}),
 		{ fallback: i18n.t("sidebar:paperInfo.editMeta.fetchFailed") },
 	);
-	return meta as ResolvedPaperMeta;
+	return paperFromWire(record);
 }
 
 export type PaperBackfillPublicationResult = {

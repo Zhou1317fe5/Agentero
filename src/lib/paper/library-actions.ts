@@ -419,16 +419,14 @@ export async function paperTagsChange(
 		});
 		setLibraryPapers((prev) =>
 			prev.map((p) => {
-				const key = (p.path ?? "")
-					.replace(/\\/g, "/")
-					.replace(/^\/+|\/+$/g, "");
+				const key = p.path.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
 				return key === path ? { ...p, ...updated } : p;
 			}),
 		);
 		setTabs((prev) =>
 			prev.map((tab) => {
 				if (!tab.paperMeta) return tab;
-				const key = (tab.paperMeta.path ?? "")
+				const key = tab.paperMeta.path
 					.replace(/\\/g, "/")
 					.replace(/^\/+|\/+$/g, "");
 				const samePath = key === path;
@@ -439,12 +437,11 @@ export async function paperTagsChange(
 					paperMeta: {
 						...tab.paperMeta,
 						...updated,
-						path: updated.path ?? path,
 					},
 				};
 			}),
 		);
-		return { ...paperMeta, ...updated, path: updated.path ?? path };
+		return { ...paperMeta, ...updated };
 	} catch (e) {
 		notifyError(errorText(e));
 		return null;
@@ -471,16 +468,14 @@ export async function paperMetaChange(
 		});
 		setLibraryPapers((prev) =>
 			prev.map((p) => {
-				const key = (p.path ?? "")
-					.replace(/\\/g, "/")
-					.replace(/^\/+|\/+$/g, "");
+				const key = p.path.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
 				return key === path ? { ...p, ...updated } : p;
 			}),
 		);
 		setTabs((prev) =>
 			prev.map((tab) => {
 				if (!tab.paperMeta) return tab;
-				const key = (tab.paperMeta.path ?? "")
+				const key = tab.paperMeta.path
 					.replace(/\\/g, "/")
 					.replace(/^\/+|\/+$/g, "");
 				const samePath = key === path;
@@ -491,12 +486,11 @@ export async function paperMetaChange(
 					paperMeta: {
 						...tab.paperMeta,
 						...updated,
-						path: updated.path ?? path,
 					},
 				};
 			}),
 		);
-		return { ...paperMeta, ...updated, path: updated.path ?? path };
+		return { ...paperMeta, ...updated };
 	} catch (e) {
 		notifyError(errorText(e));
 		return null;
@@ -552,21 +546,7 @@ export async function refreshLibraryMetadata(
 					paper.doi?.trim() || paper.arxiv_id?.trim() || paper.title?.trim();
 				try {
 					const meta = await resolveIdentifierMetadata(text ?? "");
-					const patch: PaperMetaPatch = {};
-					if (meta.title?.trim()) patch.title = meta.title.trim();
-					if (meta.authors?.length) patch.authors = meta.authors;
-					if (meta.year != null) patch.year = String(meta.year);
-					if (meta.doi?.trim()) patch.doi = meta.doi.trim();
-					if (meta.arxivId?.trim()) patch.arxivId = meta.arxivId.trim();
-					if (meta.publication?.trim())
-						patch.publication = meta.publication.trim();
-					if (meta.volume?.trim()) patch.volume = meta.volume.trim();
-					if (meta.issue?.trim()) patch.issue = meta.issue.trim();
-					if (meta.pages?.trim()) patch.pages = meta.pages.trim();
-					if (meta.publisher?.trim()) patch.publisher = meta.publisher.trim();
-					if (meta.abstract?.trim()) patch.abstract = meta.abstract.trim();
-					if (meta.pdfUrl?.trim()) patch.pdfUrl = meta.pdfUrl.trim();
-					if (meta.htmlUrl?.trim()) patch.htmlUrl = meta.htmlUrl.trim();
+					const patch = resolvedMetaPatch(meta);
 
 					if (Object.keys(patch).length > 0 && paper.path) {
 						await updatePaperMeta(vaultPath, paper.path, patch);
@@ -601,6 +581,28 @@ export async function refreshLibraryMetadata(
 }
 
 /**
+ * Catalog patch from an identifier-resolved record. Empty fields are skipped
+ * so `paper_update_meta` keeps the stored value.
+ */
+function resolvedMetaPatch(meta: PaperMetadata): PaperMetaPatch {
+	const patch: PaperMetaPatch = {};
+	if (meta.title?.trim()) patch.title = meta.title.trim();
+	if (meta.authors?.length) patch.authors = meta.authors;
+	if (meta.year != null) patch.year = String(meta.year);
+	if (meta.doi?.trim()) patch.doi = meta.doi.trim();
+	if (meta.arxiv_id?.trim()) patch.arxivId = meta.arxiv_id.trim();
+	if (meta.publication?.trim()) patch.publication = meta.publication.trim();
+	if (meta.volume?.trim()) patch.volume = meta.volume.trim();
+	if (meta.issue?.trim()) patch.issue = meta.issue.trim();
+	if (meta.pages?.trim()) patch.pages = meta.pages.trim();
+	if (meta.publisher?.trim()) patch.publisher = meta.publisher.trim();
+	if (meta.abstract?.trim()) patch.abstract = meta.abstract.trim();
+	if (meta.pdf_url?.trim()) patch.pdfUrl = meta.pdf_url.trim();
+	if (meta.html_url?.trim()) patch.htmlUrl = meta.html_url.trim();
+	return patch;
+}
+
+/**
  * Re-resolve external metadata for a single paper. Used by the row context menu.
  */
 export async function refreshPaperMetadata(
@@ -617,20 +619,7 @@ export async function refreshPaperMetadata(
 	}
 	try {
 		const meta = await resolveIdentifierMetadata(text);
-		const patch: PaperMetaPatch = {};
-		if (meta.title?.trim()) patch.title = meta.title.trim();
-		if (meta.authors?.length) patch.authors = meta.authors;
-		if (meta.year != null) patch.year = String(meta.year);
-		if (meta.doi?.trim()) patch.doi = meta.doi.trim();
-		if (meta.arxivId?.trim()) patch.arxivId = meta.arxivId.trim();
-		if (meta.publication?.trim()) patch.publication = meta.publication.trim();
-		if (meta.volume?.trim()) patch.volume = meta.volume.trim();
-		if (meta.issue?.trim()) patch.issue = meta.issue.trim();
-		if (meta.pages?.trim()) patch.pages = meta.pages.trim();
-		if (meta.publisher?.trim()) patch.publisher = meta.publisher.trim();
-		if (meta.abstract?.trim()) patch.abstract = meta.abstract.trim();
-		if (meta.pdfUrl?.trim()) patch.pdfUrl = meta.pdfUrl.trim();
-		if (meta.htmlUrl?.trim()) patch.htmlUrl = meta.htmlUrl.trim();
+		const patch = resolvedMetaPatch(meta);
 
 		if (Object.keys(patch).length > 0) {
 			await updatePaperMeta(vaultPath, paper.path, patch);

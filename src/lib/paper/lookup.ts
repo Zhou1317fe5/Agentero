@@ -295,8 +295,6 @@ export async function importLocalPdfs(opts: {
 	entries?: LocalPdfImportEntry[];
 	/** Background task receiving the host parse phase. */
 	progressTaskId?: string;
-	/** Settings (translator URL for background recognition). */
-	settings?: AppSettings;
 }): Promise<LocalPdfImportResult | null> {
 	if (!isTauri()) {
 		throw new Error(i18n.t("sidebar:lookup.desktopOnly"));
@@ -328,7 +326,6 @@ export async function importLocalPdfs(opts: {
 				filePaths: [],
 				entries,
 				taskId: opts.progressTaskId ?? null,
-				translatorBaseUrl: resolveTranslatorBaseUrl(opts.settings),
 			}),
 		{ fallback: i18n.t("sidebar:lookup.fetchFailed") },
 	);
