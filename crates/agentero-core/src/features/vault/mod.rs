@@ -286,7 +286,6 @@ pub fn should_auto_upgrade_bundled_skill(existing: &[u8], bundled: &str) -> bool
 }
 
 /// True when the bundled template carries a managed `version` (may upgrade).
-#[allow(dead_code)]
 pub fn bundled_skill_may_upgrade(bundled: &str) -> bool {
     parse_skill_frontmatter_version(bundled).is_some()
 }

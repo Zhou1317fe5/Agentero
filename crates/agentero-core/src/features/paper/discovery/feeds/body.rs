@@ -195,28 +195,6 @@ fn restore_latex_math(md: &str, blocks: &[(String, String)]) -> String {
     result
 }
 
-/// Paper landing pages (arXiv abs / DOI) are not useful article HTML.
-#[allow(dead_code)]
-pub fn is_paper_landing_url(url: Option<&str>) -> bool {
-    let Some(raw) = url.map(str::trim).filter(|s| !s.is_empty()) else {
-        return false;
-    };
-    let Ok(parsed) = Url::parse(raw) else {
-        return false;
-    };
-    let host = parsed.host_str().unwrap_or("").to_ascii_lowercase();
-    matches!(
-        host.as_str(),
-        "arxiv.org"
-            | "www.arxiv.org"
-            | "rss.arxiv.org"
-            | "export.arxiv.org"
-            | "doi.org"
-            | "www.doi.org"
-            | "dx.doi.org"
-    ) || host.ends_with(".arxiv.org")
-}
-
 /// DOI scraped from an article page's `<meta>` tags: Highwire `citation_doi`
 /// first, then `prism.doi` / `dc.identifier` (both tolerate a `doi:` prefix).
 /// Used to backfill `items.paper_url` for feeds that never expose a DOI.
@@ -363,20 +341,6 @@ fn attr_value(open_lower: &str, name: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn paper_landing_hosts() {
-        assert!(is_paper_landing_url(Some(
-            "https://arxiv.org/abs/1706.03762"
-        )));
-        assert!(is_paper_landing_url(Some(
-            "https://rss.arxiv.org/abs/1706.03762"
-        )));
-        assert!(is_paper_landing_url(Some("https://doi.org/10.1/xyz")));
-        assert!(!is_paper_landing_url(Some(
-            "https://example.com/geometry-of-truth"
-        )));
-    }
 
     #[test]
     fn extracts_doi_from_article_metadata() {

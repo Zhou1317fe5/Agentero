@@ -140,6 +140,34 @@ mod tests {
     }
 
     #[test]
+    fn api_paper_to_meta_maps_bibliographic_fields() {
+        let mut paper = api_paper("s2", Some(42));
+        paper.identifiers.arxiv_id = Some("1706.03762".into());
+        paper.identifiers.doi = Some("10.48550/arXiv.1706.03762".into());
+
+        let mapped = api_paper_to_meta(&paper);
+        assert_eq!(mapped.title, "Attention Is All You Need");
+        assert_eq!(mapped.publication.as_deref(), Some("NeurIPS"));
+        assert_eq!(mapped.arxiv_id.as_deref(), Some("1706.03762"));
+        assert_eq!(mapped.doi.as_deref(), Some("10.48550/arXiv.1706.03762"));
+        // arXiv id wins over the DOI slug for the folder id.
+        assert_eq!(mapped.id, "1706.03762");
+    }
+
+    #[test]
+    fn api_paper_to_meta_falls_back_through_id_sources() {
+        let by_doi = api_paper_to_meta(&api_paper("crossref", None));
+        assert_eq!(by_doi.id, "10_1_attention");
+
+        let mut no_identifier = api_paper("openalex", None);
+        no_identifier.identifiers.doi = None;
+        assert_eq!(
+            api_paper_to_meta(&no_identifier).id,
+            "Attention-Is-All-You-Need"
+        );
+    }
+
+    #[test]
     fn api_paper_to_meta_keeps_citation_count() {
         let mapped = api_paper_to_meta(&api_paper("s2", Some(123_456)));
         assert_eq!(mapped.citation_count, Some(123_456));

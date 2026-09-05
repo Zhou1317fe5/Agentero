@@ -47,27 +47,6 @@ pub struct AssetProgressContext<'a> {
     pub task_id: Option<&'a str>,
 }
 
-impl AssetProgressContext<'_> {
-    /// Emit a phase transition that has no meaningful byte-level progress.
-    pub fn emit_phase(&self, phase: &str) {
-        let (Some(app), Some(task_id)) = (self.app, self.task_id) else {
-            return;
-        };
-        app.emit(
-            "background-task:progress",
-            &AssetDownloadProgress {
-                task_id: task_id.to_string(),
-                phase: phase.to_string(),
-                downloaded_bytes: 0,
-                total_bytes: None,
-                progress: None,
-                current_count: None,
-                total_count: None,
-            },
-        );
-    }
-}
-
 /// Throttle byte-level download progress events.
 ///
 /// reqwest yields 8–16KB chunks, so a 20MB PDF used to emit 1000–2500

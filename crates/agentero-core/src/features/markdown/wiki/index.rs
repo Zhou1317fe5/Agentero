@@ -259,7 +259,6 @@ impl PreviousIndexState {
 }
 
 impl WikiIndex {
-    #[allow(dead_code)]
     pub fn document(&self, path: &str) -> Option<&WikiDocument> {
         self.documents.iter().find(|document| document.path == path)
     }

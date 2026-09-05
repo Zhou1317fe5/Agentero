@@ -442,8 +442,7 @@ async fn resolve_publication_for_backfill(
     arxiv_id: Option<&str>,
     title: &str,
 ) -> Option<String> {
-    // 1. arXiv Atom journal_ref (most complete when present), then S2
-    //    publicationVenue via map_arxiv_atom. Skip generic "arXiv".
+    // 1. arXiv `journal_ref` (most complete when present). Skip generic "arXiv".
     if let Some(arxiv) = arxiv_id.map(str::trim).filter(|s| !s.is_empty()) {
         if let Ok(meta) = fetch_arxiv_metadata(arxiv, None).await {
             if let Some(pub_value) = meta.publication.filter(|p| is_usable_publication(p)) {

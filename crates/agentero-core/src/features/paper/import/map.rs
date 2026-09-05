@@ -283,27 +283,6 @@ fn acl_anthology_pdf_url(url: &str) -> Option<String> {
     Some(format!("{}.pdf", trimmed))
 }
 
-/// Build metadata from a title-search candidate when no identifier resolved.
-/// Kept for unit tests; the production title path now uses `chain_resolve`.
-#[allow(dead_code)]
-pub fn meta_from_search_candidate(
-    candidate: &crate::features::import::title_search::PaperSearchCandidate,
-) -> PaperRecord {
-    let id = candidate
-        .arxiv_id
-        .clone()
-        .or_else(|| candidate.doi.clone().map(|d| doi_slug(&d)))
-        .unwrap_or_else(|| crate::features::import::slug_from_stem(&candidate.title));
-    let mut meta = PaperRecord::local_pdf(id, candidate.title.clone());
-    meta.authors = candidate.authors.clone();
-    meta.year = candidate.year;
-    meta.publication = candidate.venue.clone();
-    meta.doi = candidate.doi.clone();
-    meta.arxiv_id = candidate.arxiv_id.clone();
-    meta.meta_source = Some("title-search".into());
-    meta
-}
-
 fn str_field(item: &Value, key: &str) -> Option<String> {
     item.get(key)
         .and_then(|v| v.as_str())
@@ -532,28 +511,5 @@ mod tests {
             meta.pdf_url.as_deref(),
             Some("https://aclanthology.org/2026.acl-long.1248.pdf")
         );
-    }
-
-    #[test]
-    fn meta_from_search_candidate_preserves_venue() {
-        use crate::features::import::title_search::PaperSearchCandidate;
-        let candidate = PaperSearchCandidate {
-            title: "Attention Is All You Need".into(),
-            authors: vec!["Ashish Vaswani".into()],
-            year: Some(2017),
-            venue: Some("NeurIPS".into()),
-            doi: Some("10.48550/arXiv.1706.03762".into()),
-            arxiv_id: Some("1706.03762".into()),
-            citation_count: Some(42),
-            url: None,
-            identifier: "1706.03762".into(),
-            source: "s2",
-        };
-        let meta = meta_from_search_candidate(&candidate);
-        assert_eq!(meta.title, "Attention Is All You Need");
-        assert_eq!(meta.publication.as_deref(), Some("NeurIPS"));
-        assert_eq!(meta.arxiv_id.as_deref(), Some("1706.03762"));
-        assert_eq!(meta.doi.as_deref(), Some("10.48550/arXiv.1706.03762"));
-        assert_eq!(meta.meta_source.as_deref(), Some("title-search"));
     }
 }

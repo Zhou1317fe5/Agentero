@@ -9,7 +9,6 @@ use super::SkippedImport;
 
 pub enum SkillBatchMode {
     Collect,
-    #[allow(dead_code)]
     RejectRemote,
 }
 
