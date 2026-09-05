@@ -3,9 +3,15 @@ import { backgroundTasksStore } from "@/lib/core/background-tasks";
 import {
 	type JobChangedSnapshot,
 	projectJobToBackgroundTask,
+	startJobCenterExecutorListener,
 	startJobTaskProjection,
+	stopJobCenterExecutorListener,
 	stopJobTaskProjection,
 } from "@/lib/core/job-center";
+import {
+	registerTaskExecutor,
+	type TaskExecutorContext,
+} from "@/lib/core/tasks";
 
 const globalWithWindow = globalThis as typeof globalThis & {
 	window?: { setTimeout: typeof setTimeout };
@@ -134,6 +140,7 @@ function layoutJob(
 describe("job task projection", () => {
 	afterEach(async () => {
 		stopJobTaskProjection();
+		stopJobCenterExecutorListener();
 		mocks.tauri = false;
 		vi.clearAllMocks();
 		await flush();
@@ -195,5 +202,54 @@ describe("job task projection", () => {
 			.getState()
 			.tasks.find((item) => item.id === "job-layout-1");
 		expect(task?.status).toBe("completed");
+	});
+
+	it("drives the facade executor: offer ctx, cancel aborts signal, report injects job id", async () => {
+		mocks.tauri = true;
+		const contexts: TaskExecutorContext[] = [];
+		let resolveAborted: () => void = () => undefined;
+		const aborted = new Promise<void>((resolve) => {
+			resolveAborted = resolve;
+		});
+		registerTaskExecutor("layoutAnalyze", async (ctx) => {
+			contexts.push(ctx);
+			ctx.signal.addEventListener("abort", resolveAborted);
+			await aborted;
+			await ctx.report({ state: "cancelled" });
+		});
+		startJobCenterExecutorListener();
+		await flush();
+
+		mocks.emit("jobOffer", {
+			jobId: "job-exec-1",
+			kind: "layoutAnalyze",
+			vaultPath: "/vault",
+			paperPath: "papers/a",
+			force: false,
+			params: null,
+		});
+		await flush();
+		expect(contexts[0]?.jobId).toBe("job-exec-1");
+		expect(contexts[0]?.signal.aborted).toBe(false);
+		// The facade attaches exactly one per-offer cancel listener.
+		expect(mocks.bindingFor("jobChanged").listeners).toHaveLength(1);
+
+		mocks.emit("jobChanged", {
+			job: layoutJob({ id: "job-exec-1", state: "cancelled" }),
+		});
+		await aborted;
+		expect(contexts[0]?.signal.aborted).toBe(true);
+		expect(mocks.commandSpy("jobReport")).toHaveBeenCalledWith({
+			jobId: "job-exec-1",
+			progress: null,
+			phase: null,
+			error: null,
+			state: "cancelled",
+		});
+
+		// Settling the executor disposes its per-offer listener.
+		await flush();
+		await flush();
+		expect(mocks.bindingFor("jobChanged").listeners).toHaveLength(0);
 	});
 });

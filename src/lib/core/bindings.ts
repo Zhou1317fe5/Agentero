@@ -2190,6 +2190,13 @@ export type ErrorBody = {
 	message: string,
 };
 
+/**
+ *  Where a job's business logic executes: in a Rust runner ([`ExecHost::Host`])
+ *  or in the renderer through the `job:offer` / `job_report` protocol
+ *  ([`ExecHost::Renderer`]). See [`JobKind::exec_host`].
+ */
+export type ExecHost = "host" | "renderer";
+
 export type ExportFontPayload = {
 	path: string,
 	/**  Standard base64 of font bytes (JSON-safe; avoid megabyte number arrays). */
@@ -2461,6 +2468,7 @@ export type JobOfferPayload = {
 	vaultPath: string,
 	paperPath: string | null,
 	force: boolean,
+	params: Json | null,
 };
 
 export type JobPapersNeedingAssetsArgs = {
@@ -2506,6 +2514,8 @@ export type JobSnapshot = {
 	phase: string | null,
 	error: string | null,
 	force: boolean,
+	params: Json | null,
+	host: ExecHost,
 };
 
 export type JobState = "queued" | "running" | "succeeded" | "failed" | "cancelled" | "skipped";

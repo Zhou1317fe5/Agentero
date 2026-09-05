@@ -22,6 +22,8 @@ pub struct JobOfferPayload {
     pub vault_path: String,
     pub paper_path: Option<String>,
     pub force: bool,
+    #[specta(type = Option<crate::core::json::Json>)]
+    pub params: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -64,6 +66,15 @@ impl JobKind {
         };
         format!("{label}:v1{online}:force:{force}")
     }
+
+    /// Execution host of the kind's business logic: `LayoutAnalyze` is offered
+    /// to the renderer (`job:offer`); every other kind runs a Rust runner.
+    pub fn exec_host(self) -> ExecHost {
+        match self {
+            JobKind::LayoutAnalyze => ExecHost::Renderer,
+            _ => ExecHost::Host,
+        }
+    }
 }
 
 #[derive(
@@ -95,6 +106,16 @@ pub enum DepPolicy {
     AllSucceeded,
 }
 
+/// Where a job's business logic executes: in a Rust runner ([`ExecHost::Host`])
+/// or in the renderer through the `job:offer` / `job_report` protocol
+/// ([`ExecHost::Renderer`]). See [`JobKind::exec_host`].
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub enum ExecHost {
+    Host,
+    Renderer,
+}
+
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct JobSnapshot {
@@ -111,6 +132,9 @@ pub struct JobSnapshot {
     pub phase: Option<String>,
     pub error: Option<String>,
     pub force: bool,
+    #[specta(type = Option<crate::core::json::Json>)]
+    pub params: Option<serde_json::Value>,
+    pub host: ExecHost,
 }
 
 #[derive(Debug, Clone, Serialize, specta::Type)]
@@ -202,6 +226,8 @@ struct Job {
     phase: Option<String>,
     error: Option<String>,
     force: bool,
+    host: ExecHost,
+    params: Option<serde_json::Value>,
     task_id: Option<String>,
 }
 
@@ -221,6 +247,8 @@ impl Job {
             phase: self.phase.clone(),
             error: self.error.clone(),
             force: self.force,
+            params: self.params.clone(),
+            host: self.host,
         }
     }
 }
@@ -550,7 +578,7 @@ impl JobCenter {
         lane: JobLane,
         force: bool,
     ) -> JobSnapshot {
-        self.enqueue_core(JobKind::ParseRefs, vault, path, lane, force, None)
+        self.enqueue_core(JobKind::ParseRefs, vault, path, lane, force, None, None)
             .await
     }
 
@@ -562,7 +590,7 @@ impl JobCenter {
         force: bool,
         task_id: Option<String>,
     ) -> JobSnapshot {
-        self.enqueue_core(JobKind::ParseBody, vault, path, lane, force, task_id)
+        self.enqueue_core(JobKind::ParseBody, vault, path, lane, force, task_id, None)
             .await
     }
 
@@ -573,7 +601,7 @@ impl JobCenter {
         lane: JobLane,
         force: bool,
     ) -> JobSnapshot {
-        self.enqueue_core(JobKind::LayoutAnalyze, vault, path, lane, force, None)
+        self.enqueue_core(JobKind::LayoutAnalyze, vault, path, lane, force, None, None)
             .await
     }
 
@@ -584,8 +612,16 @@ impl JobCenter {
         lane: JobLane,
         force: bool,
     ) -> JobSnapshot {
-        self.enqueue_core(JobKind::DownloadAssets, vault, path, lane, force, None)
-            .await
+        self.enqueue_core(
+            JobKind::DownloadAssets,
+            vault,
+            path,
+            lane,
+            force,
+            None,
+            None,
+        )
+        .await
     }
 
     pub async fn enqueue_recognize_metadata(
@@ -595,14 +631,23 @@ impl JobCenter {
         lane: JobLane,
         force: bool,
     ) -> JobSnapshot {
-        self.enqueue_core(JobKind::RecognizeMetadata, vault, path, lane, force, None)
-            .await
+        self.enqueue_core(
+            JobKind::RecognizeMetadata,
+            vault,
+            path,
+            lane,
+            force,
+            None,
+            None,
+        )
+        .await
     }
 
     /// Shared enqueue path for every kind: normalize, dedupe on
     /// (kind, vault, paper, fingerprint), then register on the lane.
     /// Adding a new kind only needs a `JobKind` variant (with fingerprint +
     /// concurrency cap) and a thin wrapper like the ones above.
+    #[allow(clippy::too_many_arguments)]
     async fn enqueue_core(
         &self,
         kind: JobKind,
@@ -611,6 +656,7 @@ impl JobCenter {
         lane: JobLane,
         force: bool,
         task_id: Option<String>,
+        params: Option<serde_json::Value>,
     ) -> JobSnapshot {
         // `normalize_vault_path` does a synchronous `fs::canonicalize`; run it on
         // the blocking pool so a slow filesystem never stalls a tokio worker.
@@ -659,6 +705,8 @@ impl JobCenter {
             phase: Some("queued".into()),
             error: None,
             force,
+            host: kind.exec_host(),
+            params,
             task_id,
         };
         let snapshot = job.snapshot();
@@ -1213,6 +1261,8 @@ impl JobCenter {
             phase: Some("queued".into()),
             error: None,
             force: false,
+            host: kind.exec_host(),
+            params: None,
             task_id: None,
         };
         let mut inner = self.inner.lock().await;
@@ -1262,6 +1312,7 @@ fn layout_analyze_runner(
 ) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
     center.run_job(app, started, |center, app, started| async move {
         let job_id = started.snapshot.id.clone();
+        let params = started.snapshot.params.clone();
         let StartedJob {
             vault_path,
             paper_path,
@@ -1274,6 +1325,7 @@ fn layout_analyze_runner(
             vault_path: vault_path.to_string_lossy().to_string(),
             paper_path: Some(paper_path),
             force,
+            params,
         };
         let _ = app.emit(JOB_OFFER_EVENT, offer);
 

@@ -10,7 +10,7 @@
  */
 
 import { events } from "@/lib/core/bindings";
-import type { JobKind, JobState } from "@/lib/core/job-center";
+import type { JobKind, JobState } from "@/lib/core/tasks";
 import { listenEventSafe } from "@/lib/core/tauri-events";
 import { scheduleLibraryRefresh } from "@/lib/paper/library-store";
 

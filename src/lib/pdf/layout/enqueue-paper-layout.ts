@@ -4,21 +4,16 @@
  * API when Rust emits `job:offer` for a `layoutAnalyze` job.
  */
 
-import type { UnlistenFn } from "@tauri-apps/api/event";
 import i18n from "@/i18n";
-import { commands, events } from "@/lib/core/bindings";
+import { commands } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
 import { callApiResult } from "@/lib/core/ipc";
-import {
-	type JobOfferPayload,
-	jobReport,
-	registerJobExecutor,
-	startJobCenterExecutorListener,
-	startJobTaskProjection,
-	stopJobCenterExecutorListener,
-	stopJobTaskProjection,
-} from "@/lib/core/job-center";
 import { logger } from "@/lib/core/logger";
+import {
+	registerTaskExecutor,
+	type TaskExecutorContext,
+	type TaskReportArgs,
+} from "@/lib/core/tasks";
 import { analyzePaperLayoutHeadless } from "@/lib/pdf/layout/headless-analyze";
 import { readLayoutSidecar } from "@/lib/pdf/layout/io";
 import { layoutAnalysisStore } from "@/lib/pdf/layout/store";
@@ -30,84 +25,60 @@ function normalizePaperKey(paperAbsPath: string): string {
 	return paperAbsPath.replace(/[/\\]+$/, "").replace(/\\/g, "/");
 }
 
-/** Caller owns the returned disposer. */
-export function initJobCenterExecutors(): () => void {
-	registerJobExecutor("layoutAnalyze", runLayoutAnalyzeExecutor);
-	startJobCenterExecutorListener();
-	startJobTaskProjection();
-	return () => {
-		stopJobCenterExecutorListener();
-		stopJobTaskProjection();
-	};
+/**
+ * Register the renderer-side `layoutAnalyze` executor. Call before
+ * `startTaskRuntime` (see `use-app-bootstrap`).
+ */
+export function registerLayoutTaskExecutor(): void {
+	registerTaskExecutor("layoutAnalyze", runLayoutAnalyzeExecutor);
 }
 
-async function runLayoutAnalyzeExecutor(offer: JobOfferPayload): Promise<void> {
-	const paperAbsPath = offer.paperPath
-		? `${offer.vaultPath}/${offer.paperPath}`.replace(/\\/g, "/")
-		: offer.vaultPath;
+async function runLayoutAnalyzeExecutor(
+	ctx: TaskExecutorContext,
+): Promise<void> {
+	const { jobId, vaultPath, paperPath, signal } = ctx;
+	const paperAbsPath = paperPath
+		? `${vaultPath}/${paperPath}`.replace(/\\/g, "/")
+		: vaultPath;
 	const paperLabel =
-		offer.paperPath?.split("/").filter(Boolean).pop() || paperAbsPath;
-	const documentId = `headless-layout-${offer.jobId}`;
+		paperPath?.split("/").filter(Boolean).pop() || paperAbsPath;
+	const documentId = `headless-layout-${jobId}`;
 
-	const abortController = new AbortController();
-	let cancelledUnlisten: UnlistenFn | null = null;
-
-	const report = (args: Parameters<typeof jobReport>[0]) =>
-		jobReport(args).catch((error) => {
+	const report = (args: TaskReportArgs) =>
+		ctx.report(args).catch((error) => {
 			logger.warn("layout analyze job report failed", {
-				jobId: offer.jobId,
+				jobId,
 				error: errorText(error),
 			});
 		});
 
+	const unsub = layoutAnalysisStore.subscribe((state) => {
+		const { ui, activeDocumentId } = state;
+		if (activeDocumentId !== documentId) return;
+		if (ui.stage !== "running" || typeof ui.progress !== "number") return;
+		void report({
+			progress: ui.progress,
+			phase: ui.message?.trim() || i18n.t("viewer:figures.analyzing"),
+		});
+	});
+
 	try {
-		cancelledUnlisten = await events.jobChanged.listen((event) => {
-			if (event.payload.job.id !== offer.jobId) return;
-			if (event.payload.job.state === "cancelled") {
-				abortController.abort();
-			}
+		if (signal.aborted) throw new Error("cancelled");
+		await analyzePaperLayoutHeadless({
+			paperAbsPath,
+			paperLabel,
+			documentId,
+			signal,
 		});
-
-		const unsub = layoutAnalysisStore.subscribe((state) => {
-			const { ui, activeDocumentId } = state;
-			if (activeDocumentId !== documentId) return;
-			if (ui.stage !== "running" || typeof ui.progress !== "number") return;
-			void report({
-				jobId: offer.jobId,
-				progress: ui.progress,
-				phase: ui.message?.trim() || i18n.t("viewer:figures.analyzing"),
-			});
-		});
-
-		try {
-			if (abortController.signal.aborted) throw new Error("cancelled");
-			await analyzePaperLayoutHeadless({
-				paperAbsPath,
-				paperLabel,
-				documentId,
-				signal: abortController.signal,
-			});
-			await report({
-				jobId: offer.jobId,
-				progress: 100,
-				phase: "completed",
-				state: "succeeded",
-			});
-		} catch (e) {
-			const message = errorText(e);
-			const state = message.toLowerCase().includes("cancel")
-				? "cancelled"
-				: "failed";
-			await report({
-				jobId: offer.jobId,
-				state,
-				error: state === "failed" ? message : undefined,
-			});
-		} finally {
-			unsub();
-		}
+		await report({ progress: 100, phase: "completed", state: "succeeded" });
+	} catch (e) {
+		const message = errorText(e);
+		const state = message.toLowerCase().includes("cancel")
+			? "cancelled"
+			: "failed";
+		await report({ state, error: state === "failed" ? message : undefined });
 	} finally {
-		cancelledUnlisten?.();
+		unsub();
 	}
 }
 

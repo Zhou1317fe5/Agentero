@@ -35,7 +35,7 @@
 - **完成态**：全部任务结束后圆环合并为满环（100%），成功时播放短暂合并/勾选动画（`task-ring-success-*`）；失败为满环 + destructive。进行中无数值进度时短弧旋转（indeterminate），不把完成态画成未闭合短弧。
 - 新任务 / 打开页面不自动展开。任务失败时短暂展开详情，未悬停约 5s 后收回；进行中可取消，可清除已完成。
 - 论文资源下载的总体进度按顺序聚合 PDF 与 TeX：PDF 占前 50%，TeX 占后 50%，避免切换阶段时进度回退。
-- 版面解析 / 引用解析 / 正文解析 / 资源下载 / 元数据识别由 JobCenter 投影到任务条（`src/lib/core/job-center.ts`）。取消走 `job_cancel`；迟到的 `running` 事件不得把已取消/已完成的行复活。
+- 版面解析 / 引用解析 / 正文解析 / 资源下载 / 元数据识别由 JobCenter 投影到任务条（前端门面 `src/lib/core/tasks.ts`，投影/执行器桥接在其内部模块 `job-center.ts`）。取消走 `job_cancel`；迟到的 `running` 事件不得把已取消/已完成的行复活。
 - 实现：`src/lib/core/background-tasks.ts` + `background-tasks-panel.tsx`。
 
 ## 弹层栈

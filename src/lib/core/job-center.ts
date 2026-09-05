@@ -4,6 +4,8 @@
  * Rust emits `job:offer` when a renderer-executed job (e.g. layout analysis)
  * starts. This module routes offers to the matching frontend executor and
  * provides helpers to report progress / completion back via `job_report`.
+ *
+ * Internal bridge: the public facade for background work is `tasks.ts`.
  */
 
 import i18n from "@/i18n";
@@ -103,6 +105,7 @@ async function claimRunningJobOffers(): Promise<void> {
 				vaultPath: job.vaultPath,
 				paperPath: job.paperPath ?? null,
 				force: job.force ?? false,
+				params: job.params ?? null,
 			});
 		}
 	} catch (error) {
@@ -279,7 +282,7 @@ export function projectJobToBackgroundTask(job: JobChangedSnapshot): void {
 	}
 }
 
-function requestJobCancel(jobId: string): void {
+export function requestJobCancel(jobId: string): void {
 	void callApiResult(() => commands.jobCancel(jobId), {
 		fallback: "job cancellation failed",
 	}).catch((error) =>

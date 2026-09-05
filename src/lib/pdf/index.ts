@@ -164,7 +164,7 @@ export {
 	toggleLayoutOverlayVisible,
 	toLayoutTranslateItems,
 } from "@/lib/pdf/layout";
-export { initJobCenterExecutors } from "@/lib/pdf/layout/enqueue-paper-layout";
+export { registerLayoutTaskExecutor } from "@/lib/pdf/layout/enqueue-paper-layout";
 export {
 	layoutBackendsAfterClearingProvider,
 	persistLayoutProviderConfig,

@@ -51,18 +51,6 @@ export {
 	callResult,
 	type TypedResult,
 } from "@/lib/core/ipc";
-export {
-	type JobChangedSnapshot,
-	type JobKind,
-	type JobOfferPayload,
-	type JobState,
-	jobReport,
-	registerJobExecutor,
-	startJobCenterExecutorListener,
-	startJobTaskProjection,
-	stopJobCenterExecutorListener,
-	stopJobTaskProjection,
-} from "@/lib/core/job-center";
 export { createKeyedCache } from "@/lib/core/keyed-cache";
 export { initLogger, logger } from "@/lib/core/logger";
 export { clamp, clamp01 } from "@/lib/core/math";
@@ -98,6 +86,20 @@ export {
 	type StorageLike,
 	writeJsonStorage,
 } from "@/lib/core/storage";
+export {
+	cancelTask,
+	enqueueTask,
+	type JobKind,
+	type JobSnapshot,
+	type JobState,
+	registerTaskExecutor,
+	runLocalActivity,
+	startTaskRuntime,
+	type TaskExecutor,
+	type TaskExecutorContext,
+	type TaskReportArgs,
+	type TaskSpec,
+} from "@/lib/core/tasks";
 export {
 	getPlatformOS,
 	isMacOS,
