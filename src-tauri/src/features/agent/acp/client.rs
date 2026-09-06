@@ -184,7 +184,7 @@ pub(crate) async fn wait_for_cancellation(cancellation: &mut watch::Receiver<boo
     let _ = cancellation.changed().await;
 }
 
-/// Shared budget for ACP session RPCs and settings probe.
+/// Shared budget for ACP session RPCs.
 pub(crate) const ACP_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
 /// Initialize gets a longer budget: BYOA agents bootstrap heavy runtimes
@@ -270,6 +270,32 @@ pub(crate) fn cancelled_payload(
 
 pub(crate) fn acp_err(msg: impl ToString) -> agent_client_protocol::Error {
     util::internal_error(msg)
+}
+
+#[cfg(test)]
+mod timeout_tests {
+    use super::*;
+
+    #[tokio::test(start_paused = true)]
+    async fn initialize_has_an_independent_budget() {
+        let slow_request = || async {
+            tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+            Ok::<_, &str>(())
+        };
+        let (initialize, session) = tokio::join!(
+            timed_acp_initialize(slow_request()),
+            timed_acp_request("session/list", slow_request()),
+        );
+        assert!(initialize.is_ok());
+        assert!(session
+            .unwrap_err()
+            .to_string()
+            .contains("session/list timed out after 15s"));
+        let error = timed_acp_initialize(std::future::pending::<Result<(), &str>>())
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("initialize timed out after 30s"));
+    }
 }
 
 #[cfg(test)]
