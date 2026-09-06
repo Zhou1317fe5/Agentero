@@ -97,23 +97,39 @@ describe("stream / tool / plan parts", () => {
 							id: "t1",
 							title: "terminal: pwd",
 							kind: "execute",
-							status: "pending",
+							status: "failed",
 						},
 					},
 				],
 			},
 		];
 
-		expect(
-			applyToolToLines(lines, {
-				id: "t1",
-				status: "completed",
-				output: "ok",
-			}),
-		).toMatchObject([
+		const lateProgress = applyToolToLines(lines, {
+			id: "t1",
+			status: "in_progress",
+			output: "partial",
+		});
+		expect(lateProgress).toMatchObject([
+			{ parts: [{ tool: { status: "failed", output: "partial" } }] },
+		]);
+		const completed = applyToolToLines(lateProgress, {
+			id: "t1",
+			status: "completed",
+			output: "ok",
+		});
+		expect(completed).toMatchObject([
 			{
 				parts: [{ tool: { id: "t1", status: "completed", output: "ok" } }],
 			},
+		]);
+		expect(
+			applyToolToLines(completed, {
+				id: "t1",
+				status: "pending",
+				output: "late output",
+			}),
+		).toMatchObject([
+			{ parts: [{ tool: { status: "completed", output: "late output" } }] },
 		]);
 		expect(
 			applyToolToLines(lines, { id: "unknown", status: "completed" }),

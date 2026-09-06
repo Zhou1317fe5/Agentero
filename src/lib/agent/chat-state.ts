@@ -979,8 +979,15 @@ export function applyToolToLines(
 				(part) => part.type === "tool" && part.tool.id === patch.id,
 			)
 		) {
+			// Late payloads still apply, but progress cannot reopen a finished turn.
+			const update =
+				!line.streaming &&
+				patch.status !== "completed" &&
+				patch.status !== "failed"
+					? { ...patch, status: undefined }
+					: patch;
 			const next = lines.slice();
-			next[index] = { ...line, parts: applyToolToParts(line.parts, patch) };
+			next[index] = { ...line, parts: applyToolToParts(line.parts, update) };
 			return next;
 		}
 		if (streamingIndex < 0 && line.streaming) streamingIndex = index;

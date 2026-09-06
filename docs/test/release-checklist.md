@@ -371,7 +371,7 @@ cargo test -p agentero-cli
 | 11.1.8 | 右栏·Agent | 切换历史会话 / 加载旧会话 | 能 list 并恢复（provider 支持时） | ☐ |
 | 11.1.9 | 右栏·Agent | 看回答中的 Sources（若 Agent 返回） | 展示读过的本地路径 | ☐ |
 | 11.1.10 | 右栏·Agent（支持 Client terminal 的 Agent） | 依次执行 `pwd`、`echo AGENTERO_SMOKE`，再启动长命令，发送 `wait_for_exit` 并在等待期间读取 output、kill、release | 前两条及时返回；wait 挂起时同连接仍能处理 output / kill / release，卡片最终 completed / failed | ☐ |
-| 11.1.11 | 右栏·Agent | 在工具卡 pending 时结束或取消回合，再接收一条迟到 completion | 回合结束后不保留永久 spinner；迟到状态按同一 toolCallId 修正原卡片，不新增重复卡片 | ☐ |
+| 11.1.11 | 右栏·Agent | 在工具卡 pending 时结束或取消回合，再依次接收迟到 progress、completion、progress | 回合结束后不保留永久 spinner；内容与终态按同一 toolCallId 修正原卡片，迟到 progress 不恢复 spinner，也不新增重复卡片 | ☐ |
 
 ### 11.2 权限
 

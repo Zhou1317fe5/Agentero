@@ -96,6 +96,8 @@ manifest 内容本就相同，合并无副作用；GNU 工具链排除）。
   也能修正原卡片。
 - 回合完成/失败/取消时，仍为 pending/in_progress 的卡片统一收敛为
   failed（`failIncompleteTools`），消灭永久 spinner；迟到终态仍可覆盖。
+  PR #474 审查补充：已结束回合继续接收迟到内容与终态，但忽略 pending/in_progress
+  状态，避免迟到进度重新激活 spinner；回归覆盖进度 → 完成 → 进度的乱序更新。
 
 ## 4. 验证
 
