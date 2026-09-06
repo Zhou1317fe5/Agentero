@@ -18,7 +18,7 @@ describe("background task download progress", () => {
 
 	it("never regresses a task when a late phase event arrives", () => {
 		const id = startBackgroundTask({
-			kind: "download",
+			kind: "downloadAssets",
 			title: "test",
 			progress: 40,
 		});

@@ -1,34 +1,13 @@
-//! Tauri commands for layout ONNX model status / ensure.
+//! Tauri commands for layout ONNX model status.
+//!
+//! The download itself runs as a JobCenter `ModelDownload` job (Host runner in
+//! the parent module); enqueue via `job_model_download_enqueue`.
 
-use super::{ensure, status, LayoutModelStatus};
-use crate::core::error::{map_err, ApiResult};
-use tauri::AppHandle;
+use super::{status, LayoutModelStatus};
+use crate::core::error::ApiResult;
 
 #[tauri::command]
 #[specta::specta]
 pub fn layout_model_status() -> ApiResult<LayoutModelStatus> {
     ApiResult::ok(status())
-}
-
-/// Download (if needed) into XDG cache. Pass `progressTaskId` from
-/// `enqueueBackgroundTask` so the Host can emit `background-task:progress`
-/// and honor cancel.
-#[tauri::command]
-#[specta::specta]
-pub async fn layout_model_ensure(
-    app: AppHandle,
-    progress_task_id: Option<String>,
-) -> ApiResult<LayoutModelStatus> {
-    let task_id = progress_task_id
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty());
-    let result = ensure(Some(&app), task_id).await;
-    if let Some(id) = task_id {
-        crate::core::background_tasks::finish(id);
-    }
-    match result {
-        Ok(s) => ApiResult::ok(s),
-        Err(e) => map_err(e),
-    }
 }

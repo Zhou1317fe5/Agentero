@@ -7,8 +7,8 @@
 **相关代码**：
 
 - `src-tauri/src/features/agent/acp/terminal.rs` — manager 锁粒度、EOF 等待、kill 通路、超时
-- `src-tauri/src/features/agent/acp/client.rs` / `session/run.rs` — `simplified_agent_cwd`（`\\?\` 扩展 cwd 规范化）、`.terminal(true)` 能力宣告（`session/run.rs` 的 `prepare_run_turn`）
-- `src-tauri/src/build.rs` — Windows 测试二进制 Common-Controls v6 manifest
+- `src-tauri/src/features/agent/acp/client.rs` / `session/run.rs` / `service.rs` — `simplified_agent_cwd`（`\\?\` 扩展 cwd 规范化）、`.terminal(true)` 能力宣告（`session/run.rs` 的 `prepare_run_turn`）
+- `src-tauri/build.rs` — Windows 测试二进制 Common-Controls v6 manifest
 - 前端：`src/lib/agent/chat-state.ts`（`applyToolToLines` / `failIncompleteTools`）、`src/components/agent/hooks/use-agent-session-runtime.ts`
 - 设计总览：[`../backend/agent.md`](../backend/agent.md)（ACP terminal 能力小节）、[`../test/release-checklist.md`](../test/release-checklist.md)（11.1.10 / 11.1.11）
 
@@ -51,7 +51,7 @@ Windows 上构建/安装的 Agentero 中，ACP Agent（内置 Hermes、自定义
 
 Hermes 未触发它们，但对 Kimi Code 等真正委托 `terminal/*` 的 agent 是必修：
 
-1. **manager 锁跨无限 await**：`terminal_acp.rs` 的请求闭包
+1. **manager 锁跨无限 await**：`src-tauri/src/features/agent/acp/terminal.rs` 的请求闭包
    `terminals.lock().await.<op>(…).await` 使任一 `wait_for_exit`/`output`
    挂起即阻塞同连接全部终端请求（含下一个 `create` 与 `kill`/`release`），
    规范推荐的"超时 → kill → output → release"自救配方必然死锁。
@@ -67,8 +67,9 @@ Hermes 未触发它们，但对 Kimi Code 等真正委托 `terminal/*` 的 agent
 5. **`\\?\` 扩展 cwd 传给 ACP 会话**：前端可能送入 canonicalize 后的
    `\\?\D:\…`；Hermes 等基于 MSYS2 的 shell 无法 `cd` 进 `\\?\` 路径，
    且子进程 POSIX cwd 初始化失败后 mktemp/cd 全部 ENOENT。本地 ACP 的
-   run / warm / list / load 入口统一经 `simplified_agent_cwd` 规范化，终端默认
-   cwd 复用同一结果；扩展 UNC 形式保持不变。
+   run / warm / list / load 入口统一经 `simplified_agent_cwd` 规范化（list / load
+   收敛在 `service.rs` 的 `agent_cwd_or_local`），这四个入口的终端默认 cwd 均复用
+   同一结果；扩展 UNC 形式保持不变。
 6. **ACP 分发循环被终端等待阻塞**（PR #474 审查补充）：协议库逐条等待
    handler 完成；仅释放 manager 锁仍不能让后续 `kill` 进入 handler。
    wait / kill / release 在分发时先获取或移除句柄，再通过 `connection.spawn`
@@ -78,7 +79,7 @@ Hermes 未触发它们，但对 Kimi Code 等真正委托 `terminal/*` 的 agent
 任务，`kill` 经 mpsc 控制通道 + oneshot ack；reader 排空限时 250ms/个并
 abort；`output` 只快照当前缓冲；终端默认 cwd 兜底为会话 cwd。
 
-### 2.3 Windows `cargo test` 瘫痪（独立缺陷，`bdd00ae6`）
+### 2.3 Windows `cargo test` 瘫痪（独立缺陷，本轮 `build.rs` 修复）
 
 测试二进制启动即 `STATUS_ENTRYPOINT_NOT_FOUND`（`TaskDialogIndirect`）：
 Tauri 栈静态导入该 comctl32 v6 专属函数，而 tauri-build 的 manifest 资源
@@ -89,7 +90,7 @@ Tauri 栈静态导入该 comctl32 v6 专属函数，而 tauri-build 的 manifest
 `cargo::rustc-link-arg=/MANIFESTDEPENDENCY:…Common-Controls v6…`（bin 的
 manifest 内容本就相同，合并无副作用；GNU 工具链排除）。
 
-## 3. 前端状态同步（`24c8854e`）
+## 3. 前端状态同步（本轮修复）
 
 - 迟到的 tool update 曾被丢弃（只处理"最后一条 streaming 行"）：
   `applyToolToLines` 按 `toolCallId` 回写所属回合，迟到的 completed/failed

@@ -54,12 +54,8 @@ pub async fn lookup_import_batch(
         }
         return Ok(op.finish_result(result));
     }
-    let task_id = args.task_id.clone();
     let result =
         super::import_by_identifier_batch(args, Some(&host_app), Some(&cache), note_mode).await;
-    if let Some(task_id) = task_id.as_deref() {
-        crate::core::background_tasks::finish(task_id);
-    }
     Ok(op.finish_result(result))
 }
 
@@ -114,13 +110,9 @@ pub async fn paper_download_assets(
     if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned) {
         return Ok(op.finish_result(remote.download_paper_assets_remote(&session_id, args).await));
     }
-    let task_id = args.task_id.clone();
     let host_app = crate::features::host_hooks::wrap(&app);
     let result =
         super::download_paper_assets_with_progress(args, Some(&host_app), Some(&cache)).await;
-    if let Some(task_id) = task_id.as_deref() {
-        crate::core::background_tasks::finish(task_id);
-    }
     Ok(op.finish_result(result))
 }
 
@@ -137,7 +129,6 @@ pub async fn paper_import_local_pdf(
     let op = OpTimer::start_with("paper_import_local_pdf", format!("count={n}"));
     let note_mode = crate::features::paper::import::note_mode_from_app(&app);
     let host_app = crate::features::host_hooks::wrap(&app);
-    let task_id = args.task_id.clone();
     let result = if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned)
     {
         let vault_id = std::path::PathBuf::from(&args.vault_path);
@@ -157,16 +148,13 @@ pub async fn paper_import_local_pdf(
     } else {
         super::import_local_pdfs(args, Some(&host_app), Some(&cache), note_mode).await
     };
-    if let Some(task_id) = task_id.as_deref() {
-        crate::core::background_tasks::finish(task_id);
-    }
     Ok(op.finish_result_ok_extra(result, |r| {
         format!("imported={} errors={}", r.papers.len(), r.errors.len())
     }))
 }
 
 /// Parse a paper's local PDF into `PAPER.md` using liteparse.
-/// Runs as a standalone background task; `task_id` is used for cancellation.
+/// `task_id` is the cooperative-cancel polling id (the JobCenter job id).
 #[tauri::command]
 #[specta::specta]
 pub async fn paper_parse_body(
@@ -178,20 +166,12 @@ pub async fn paper_parse_body(
     let op = OpTimer::start_with("paper_parse_body", format!("path={path}"));
 
     if let Some(session_id) = parse_remote_handle(&args.vault_path).map(str::to_owned) {
-        let task_id = args.task_id.clone();
         let result = remote.parse_paper_body_remote(&session_id, args).await;
-        if let Some(task_id) = task_id.as_deref() {
-            crate::core::background_tasks::finish(task_id);
-        }
         return Ok(op.finish_result(result));
     }
 
-    let task_id = args.task_id.clone();
     let result =
         crate::features::paper::import::pdf_parse::parse_paper_body(args, Some(&cache)).await;
-    if let Some(task_id) = task_id.as_deref() {
-        crate::core::background_tasks::finish(task_id);
-    }
     Ok(op.finish_result(result))
 }
 

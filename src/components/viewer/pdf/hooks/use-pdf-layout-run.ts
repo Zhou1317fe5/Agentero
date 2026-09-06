@@ -17,12 +17,12 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import {
 	BackgroundTaskCancelledError,
-	enqueueBackgroundTask,
 	isBackgroundTaskCancelledError,
 } from "@/lib/core/background-tasks";
 import { events } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
 import { notifyError } from "@/lib/core/notify";
+import { runLocalActivity } from "@/lib/core/tasks";
 import { isTauri } from "@/lib/core/tauri";
 import {
 	enqueuePaperLayoutAnalysis,
@@ -215,9 +215,9 @@ export function usePdfLayoutRun({
 				});
 
 			if (opts?.asBackgroundTask) {
-				void enqueueBackgroundTask(
+				void runLocalActivity(
 					{
-						kind: "parse",
+						kind: "layoutRun",
 						title: i18n.t("app:tasks.layoutAnalysis"),
 						detail: paperLabel,
 					},

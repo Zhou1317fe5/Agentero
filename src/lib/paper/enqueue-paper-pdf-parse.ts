@@ -3,8 +3,8 @@
  *
  * The `job:changed` projection owns the tasks-panel row, progress, and
  * cancellation (§7.4 入口②). Omitting `taskId` lets the runner default it to
- * the job id, so the worker's `background-task:progress` events route to the
- * projected row.
+ * the job id, so the worker's `job:progress` events route to the projected
+ * row.
  */
 
 import { commands } from "@/lib/core/bindings";

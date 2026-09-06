@@ -178,6 +178,15 @@ pub async fn agent_probe(
     Ok(ApiResult::ok(result))
 }
 
+/// Request cooperative cancellation of an in-flight tool lifecycle run; the
+/// Host supervision loop kills the installer child process.
+#[tauri::command]
+#[specta::specta]
+pub fn agent_lifecycle_cancel(task_id: String) -> ApiResult<bool> {
+    crate::features::agent::registry::lifecycle::request_lifecycle_cancel(&task_id);
+    ApiResult::ok(true)
+}
+
 /// Silently install, update or uninstall a catalog Agent CLI (and ACP adapter
 /// when needed). Uninstall also removes the registry entry on success.
 ///
@@ -219,7 +228,7 @@ pub async fn agent_run_tool_lifecycle(
     .await
     .map_err(|e| format!("tool lifecycle task join error: {e}"))?;
     if let Some(task_id) = task_id.as_deref() {
-        crate::core::background_tasks::finish(task_id);
+        crate::features::agent::registry::lifecycle::clear_lifecycle_cancel(task_id);
     }
 
     match result {

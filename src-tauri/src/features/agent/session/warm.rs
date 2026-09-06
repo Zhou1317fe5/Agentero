@@ -71,7 +71,9 @@ pub async fn warm_agent(
     let app_for_conn = app.clone();
     let session_for_conn = session_id.clone();
     let agent_for_conn = agent_id.clone();
-    let terminals = Arc::new(tokio::sync::Mutex::new(AcpTerminalManager::new()));
+    let terminals = Arc::new(tokio::sync::Mutex::new(AcpTerminalManager::with_cwd(
+        cwd.clone(),
+    )));
 
     let result = agent_client_protocol::Client
         .builder()
@@ -125,7 +127,7 @@ pub async fn warm_agent(
             let models_for_conn = models_for_conn.clone();
             move |connection: ConnectionTo<Agent>| async move {
                 timed_acp_initialize(
-                                        connection
+                    connection
                         .send_request(client_initialize_request())
                         .block_task(),
                 )

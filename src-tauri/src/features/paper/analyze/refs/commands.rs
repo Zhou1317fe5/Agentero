@@ -90,8 +90,8 @@ pub async fn paper_refs_list(args: PaperRefsListArgs) -> ApiResult<Option<super:
     .await
 }
 
-/// Progress payload for the background-task panel. Field names must stay in
-/// sync with `BackgroundTaskProgressEvent` in `src/lib/core/background-tasks.ts`.
+/// Progress payload for the projected job row (`job:progress`). Field names
+/// must stay in sync with `JobProgressEvent` in `app/events_contract.rs`.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CitingScanProgress {
@@ -142,7 +142,7 @@ pub async fn library_citing_scan(
 
     let cancel_id = task_id.clone();
     let cancelled =
-        move || !cancel_id.is_empty() && crate::core::background_tasks::is_cancelled(&cancel_id);
+        move || !cancel_id.is_empty() && crate::features::jobs::is_task_cancelled(&cancel_id);
 
     let progress_app = app.clone();
     let progress_id = task_id.clone();
@@ -156,10 +156,9 @@ pub async fn library_citing_scan(
             if progress_id.is_empty() {
                 return;
             }
-            use tauri::Emitter;
-            let _ = progress_app.emit(
-                "background-task:progress",
-                CitingScanProgress {
+            crate::features::jobs::emit_job_progress(
+                &progress_app,
+                &CitingScanProgress {
                     task_id: progress_id.clone(),
                     phase: phase.to_string(),
                     downloaded_bytes: 0,
@@ -181,10 +180,5 @@ pub async fn library_citing_scan(
     )
     .await;
 
-    // Always clear the flag: a leftover cancellation would immediately kill the
-    // next task that reuses this id.
-    if !task_id.is_empty() {
-        crate::core::background_tasks::finish(&task_id);
-    }
     Ok(op.finish_result(result))
 }

@@ -300,9 +300,8 @@ fn spawn_controller(
                             }
                         },
                         None => {
-                            if child.start_kill().is_err() {
-                                return;
-                            }
+                            // Always reap and publish a status, even if the kill fails.
+                            let _ = child.start_kill();
                             break (terminal_exit_status(child.wait().await), None);
                         }
                     }
@@ -691,5 +690,31 @@ mod tests {
         assert!(output.truncated);
         assert!(output.output.contains("MARKER"));
         assert!(output.output.len() <= 105);
+    }
+
+    #[tokio::test]
+    async fn dropping_last_handle_kills_running_process() {
+        let mut manager = AcpTerminalManager::new();
+        let request =
+            CreateTerminalRequest::new("session-drop", if cfg!(windows) { "cmd" } else { "bash" })
+                .args(if cfg!(windows) {
+                    vec![
+                        "/D".to_string(),
+                        "/C".to_string(),
+                        "ping -n 12 127.0.0.1 >NUL".to_string(),
+                    ]
+                } else {
+                    vec!["-c".to_string(), "exec sleep 30".to_string()]
+                });
+
+        let response = manager.create(request).unwrap();
+        let mut exit_rx = manager.get(&response.terminal_id).unwrap().exit_rx.clone();
+        // Session teardown drops the whole manager, closing the control channel.
+        drop(manager);
+
+        timeout(Duration::from_secs(5), exit_rx.wait_for(Option::is_some))
+            .await
+            .expect("dropping the last handle must kill the still-running command")
+            .expect("controller dropped the exit watcher without publishing a status");
     }
 }

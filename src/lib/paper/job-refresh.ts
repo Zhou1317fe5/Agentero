@@ -10,7 +10,7 @@
  */
 
 import { events } from "@/lib/core/bindings";
-import type { JobKind, JobState } from "@/lib/core/job-center";
+import { isTerminalJobState, type JobKind } from "@/lib/core/tasks";
 import { listenEventSafe } from "@/lib/core/tauri-events";
 import { scheduleLibraryRefresh } from "@/lib/paper/library-store";
 
@@ -21,15 +21,6 @@ const REFRESH_ON_KINDS: ReadonlySet<JobKind> = new Set([
 	// library rows need the refetch when the job settles.
 	"recognizeMetadata",
 ]);
-
-function isTerminalJobState(state: JobState): boolean {
-	return (
-		state === "succeeded" ||
-		state === "failed" ||
-		state === "cancelled" ||
-		state === "skipped"
-	);
-}
 
 /** Caller owns the returned disposer. */
 export function startJobCompletionRefresh(): () => void {

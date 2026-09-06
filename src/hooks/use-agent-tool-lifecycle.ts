@@ -162,9 +162,10 @@ export function useAgentToolLifecycle(opts: {
 		if (!isTauri()) return;
 		const taskId = taskIdsRef.current.get(templateId);
 		if (!taskId) return;
-		// Host polls is_cancelled(taskId) and kills the install child process.
-		// Not cancelBackgroundTask: this task is never registered in that store.
-		void commands.backgroundTaskCancel(taskId).catch(() => {});
+		// Host polls the lifecycle cancel registry and kills the install child
+		// process. Not cancelBackgroundTask: this task is never registered in
+		// that store.
+		void commands.agentLifecycleCancel(taskId).catch(() => {});
 	}, []);
 
 	return {

@@ -26,6 +26,12 @@ pub struct AssetDownloadResult {
     pub messages: Vec<String>,
 }
 
+/// Byte/count progress wire event for projected JobCenter rows. `task_id`
+/// carries the JobCenter job id; the desktop contract mirror lives in
+/// `events_contract.rs` (`JobProgressEvent`). Host-side emitters go through
+/// `features::jobs::emit_job_progress`; core emitters share this name.
+pub const JOB_PROGRESS_EVENT: &str = "job:progress";
+
 #[derive(specta::Type, Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssetDownloadProgress {
@@ -50,7 +56,7 @@ pub struct AssetProgressContext<'a> {
 /// Throttle byte-level download progress events.
 ///
 /// reqwest yields 8–16KB chunks, so a 20MB PDF used to emit 1000–2500
-/// `background-task:progress` events (×5 with batch import concurrency),
+/// `job:progress` events (×5 with batch import concurrency),
 /// flooding the webview event loop. Emit only when enough time passed or the
 /// percentage actually moved; the caller emits the final value unconditionally
 /// when the download completes.
@@ -744,7 +750,7 @@ pub(crate) async fn http_get_bytes_with_progress(
         .map_err(|e| AppError::message(format!("download body: {e}")))?
     {
         if let Some(task_id) = task_id {
-            if crate::features::import::is_background_task_cancelled(task_id) {
+            if crate::features::import::is_task_cancelled(task_id) {
                 return Err(AppError::message("background task cancelled"));
             }
         }
@@ -758,7 +764,7 @@ pub(crate) async fn http_get_bytes_with_progress(
             // percent moves / ≥100ms. The final value is emitted below.
             if throttle.should_emit(std::time::Instant::now(), progress) {
                 app.emit(
-                    "background-task:progress",
+                    JOB_PROGRESS_EVENT,
                     &AssetDownloadProgress {
                         task_id: task_id.to_string(),
                         phase: phase.to_string(),
@@ -778,7 +784,7 @@ pub(crate) async fn http_get_bytes_with_progress(
         let progress = total_bytes
             .map(|total| ((downloaded_bytes.saturating_mul(100) / total.max(1)).min(100)) as u8);
         app.emit(
-            "background-task:progress",
+            JOB_PROGRESS_EVENT,
             &AssetDownloadProgress {
                 task_id: task_id.to_string(),
                 phase: phase.to_string(),

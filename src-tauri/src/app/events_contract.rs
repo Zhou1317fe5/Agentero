@@ -19,11 +19,13 @@
 //! `integration::bridge::client`) are intentionally excluded — they exist only
 //! in the iOS branch, mirroring the command exclusion in `bindings_test.rs`.
 //!
-//! `background-task:progress` is emitted from three sites with structurally
-//! compatible payloads (`AssetDownloadProgress`, model-assets `ProgressEvent`,
+//! `job:progress` is emitted from several sites with structurally compatible
+//! payloads (`AssetDownloadProgress`, model-assets `ProgressEvent`,
 //! citing-scan `CitingScanProgress`); `AssetDownloadProgress` is the canonical
 //! wire shape (superset; the citing-scan variant additionally omits null
-//! `totalBytes`/counters, which TS already treats as optional).
+//! `totalBytes`/counters, which TS already treats as optional). The wire name
+//! lives in `assets::JOB_PROGRESS_EVENT`; Host emitters route through
+//! `features::jobs::emit_job_progress`, core emitters use the constant.
 
 // Contract-only types: their fields are consumed by the specta exporter, never
 // read by Rust code.
@@ -97,8 +99,8 @@ pub struct VaultFileChangedEvent(pub crate::features::vault::watcher::FileChange
 pub struct SettingsChangedEvent(pub crate::features::system::settings::AppSettings);
 
 #[derive(specta::Type, tauri_specta::Event)]
-#[tauri_specta(event_name = "background-task:progress")]
-pub struct BackgroundTaskProgressEvent(
+#[tauri_specta(event_name = "job:progress")]
+pub struct JobProgressEvent(
     pub agentero_core::features::paper::import::assets::AssetDownloadProgress,
 );
 
@@ -113,21 +115,6 @@ pub struct LayoutRemoteProgressEvent {
     pub total_pages: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub request_id: Option<String>,
-}
-
-/// Owned mirror of the private `LayoutModelTaskEvent` in
-/// `features::paper::analyze::layout::model_assets`.
-#[derive(serde::Serialize, specta::Type, tauri_specta::Event)]
-#[serde(rename_all = "camelCase")]
-#[tauri_specta(event_name = "layout-model:task")]
-pub struct LayoutModelTaskEvent {
-    pub task_id: String,
-    /// `running` | `completed` | `failed` | `cancelled`
-    pub status: String,
-    pub progress: Option<u8>,
-    pub detail: Option<String>,
-    pub error: Option<String>,
-    pub source: Option<String>,
 }
 
 /// Owned mirror of the private `ToolLifecycleProgress` in
@@ -402,7 +389,7 @@ use std::path::{Path, PathBuf};
 /// Every event name registered in this file (the desktop contract surface).
 fn registered_event_names() -> BTreeSet<String> {
     use tauri_specta::Event as _;
-    let names: [&str; 43] = [
+    let names: [&str; 42] = [
         JobOfferEvent::NAME,
         JobChangedEvent::NAME,
         JobCompletedEvent::NAME,
@@ -413,9 +400,8 @@ fn registered_event_names() -> BTreeSet<String> {
         WindowClosedEvent::NAME,
         VaultFileChangedEvent::NAME,
         SettingsChangedEvent::NAME,
-        BackgroundTaskProgressEvent::NAME,
+        JobProgressEvent::NAME,
         LayoutRemoteProgressEvent::NAME,
-        LayoutModelTaskEvent::NAME,
         AgentLifecycleProgressEvent::NAME,
         AgentRegistryChangedEvent::NAME,
         AskUserRequestEvt::NAME,

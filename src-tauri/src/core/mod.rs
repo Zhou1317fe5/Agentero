@@ -18,8 +18,8 @@ pub mod app_handle;
 pub mod telemetry;
 pub mod usage;
 
-pub use agentero_core::background_tasks;
 pub use agentero_core::blocking;
+pub use agentero_core::cancel;
 pub use agentero_core::error;
 pub use agentero_core::frontmatter;
 pub use agentero_core::fs;

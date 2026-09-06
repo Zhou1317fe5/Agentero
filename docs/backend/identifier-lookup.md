@@ -554,9 +554,9 @@ await ensure_paper_assets(paperDir, record);           // PDF + arXiv LaTeX → 
   2. 按规范化 value（arXiv 去 version、DOI 小写等）去重：同一 batch 内重复 → `skipped`（`duplicate_in_batch`）。
   3. 对每条唯一标识符查 catalog：已存在同 `arxiv_id` / `doi` / `isbn` / `pmid` / `id` 的 paper → `skipped`（`already_in_library`）。
   4. 剩余条目以 `concurrency`（默认 5，范围 1–10）为上限**并发**调 `import_by_identifier_with_progress`。单条失败继续下一条，错误文本加入 `errors`。并发上限可在 **Settings → General → Batch import concurrency** 调整。commit 阶段仍按 `id` / `arxiv_id` / `doi` / `pmid` / `isbn` 做跨标识符去重（`DedupePolicy::ByIdentifiers`，#406），预检后出现的重复不会新建文件夹。
-  5. 返回全部 `imported` 条目；前端刷新树 / Library / wiki 后，对 `imported` 中仍缺资源的 paper 逐个加入下载队列，每篇对应一个独立的 `download` 后台任务，并按并发上限排队执行。
+  5. 返回全部 `imported` 条目；前端刷新树 / Library / wiki 后，对 `imported` 中仍缺资源的 paper 逐个入队 JobCenter `downloadAssets` job，按 kind 并发上限排队执行。
 
-魔棒界面使用通用的 `enqueueBackgroundTask` 为每个输入创建一个独立的前端任务。任务面板只展示每个标识符的状态和资源进度，不展示 Host 批处理的内部阶段或聚合计数；并发限制由同类任务共享的信号量执行。
+魔棒入库走 JobCenter `import` job（Renderer-host）：每个输入一个 job，面板行由 `job:changed` 投影产生，批次计数进度经 `job:progress` 写回行内。任务面板只展示每个标识符的状态和资源进度，不展示 Host 批处理的内部阶段或聚合计数；并发限制由 JobCenter 的 `Import` kind cap 执行（Settings → General → Batch import concurrency）。
 
 - **不自动精读**：批量入库不连跑 `paper-reader`，避免 Agent 与写笔记开销爆炸；用户可后续单篇手动 Zap 或等设置 `autoPaperReader` 对单篇触发。
 

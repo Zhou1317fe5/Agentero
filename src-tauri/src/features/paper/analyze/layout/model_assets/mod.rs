@@ -11,14 +11,12 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::Duration;
 use tauri::http::{header, Response, StatusCode};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 use tokio::sync::Mutex;
 
 const TARGET: &str = "agentero::layout::model_assets";
 /// Canonical on-disk name (either full or FP16 export).
 pub const LAYOUT_MODEL_FILE: &str = "pp-doclayoutv3.onnx";
-/// Fixed id so Host startup + frontend panel share one background-task row.
-pub const LAYOUT_MODEL_TASK_ID: &str = "layout-model";
 /// Reject truncated / HTML error pages.
 const MIN_MODEL_BYTES: u64 = 50 * 1024 * 1024;
 const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(600);
@@ -52,20 +50,8 @@ pub struct LayoutModelStatus {
     pub file_name: String,
 }
 
-/// Lifecycle for the IDE background-tasks panel (`layout-model:task`).
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct LayoutModelTaskEvent {
-    task_id: String,
-    /// `running` | `completed` | `failed` | `cancelled`
-    status: String,
-    progress: Option<u8>,
-    detail: Option<String>,
-    error: Option<String>,
-    source: Option<String>,
-}
-
-/// Same shape as import asset download progress (frontend `background-task:progress`).
+/// Byte progress for the projected JobCenter row (`job:progress`, task id =
+/// job id).
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct ProgressEvent {
@@ -88,7 +74,7 @@ impl ProgressCtx<'_> {
     fn check_cancelled(&self) -> Result<(), AppError> {
         if self
             .task_id
-            .is_some_and(crate::core::background_tasks::is_cancelled)
+            .is_some_and(crate::features::jobs::is_task_cancelled)
         {
             return Err(AppError::message("background task cancelled"));
         }
@@ -105,9 +91,9 @@ impl ProgressCtx<'_> {
                 .checked_div(t)
                 .map(|p| p.min(100) as u8)
         });
-        let _ = app.emit(
-            "background-task:progress",
-            ProgressEvent {
+        crate::features::jobs::emit_job_progress(
+            app,
+            &ProgressEvent {
                 task_id: task_id.to_string(),
                 phase: PROGRESS_PHASE.to_string(),
                 downloaded_bytes: downloaded,
@@ -115,43 +101,6 @@ impl ProgressCtx<'_> {
                 progress,
                 current_count: None,
                 total_count: None,
-            },
-        );
-        // Also push lifecycle so the panel can create the row even if the
-        // frontend missed the initial start event.
-        let _ = app.emit(
-            "layout-model:task",
-            LayoutModelTaskEvent {
-                task_id: task_id.to_string(),
-                status: "running".into(),
-                progress,
-                detail: None,
-                error: None,
-                source: None,
-            },
-        );
-    }
-
-    fn emit_status(
-        &self,
-        status: &str,
-        progress: Option<u8>,
-        detail: Option<String>,
-        error: Option<String>,
-        source: Option<String>,
-    ) {
-        let (Some(app), Some(task_id)) = (self.app, self.task_id) else {
-            return;
-        };
-        let _ = app.emit(
-            "layout-model:task",
-            LayoutModelTaskEvent {
-                task_id: task_id.to_string(),
-                status: status.into(),
-                progress,
-                detail,
-                error,
-                source,
             },
         );
     }
@@ -211,9 +160,10 @@ pub fn status() -> LayoutModelStatus {
 
 /// Ensure the layout model exists under XDG cache.
 ///
-/// Process-wide lock so background-task + analyze-path do not double-download.
-/// Tries ModelScope first, then HuggingFace. Emits panel events when `task_id`
-/// is set (`layout-model:task` + `background-task:progress`).
+/// Process-wide lock so concurrent jobs / analyze paths do not double-download.
+/// Tries ModelScope first, then HuggingFace. `task_id` is the JobCenter job id:
+/// byte progress is emitted as `job:progress` under it and cancellation is
+/// polled through the JobCenter task-id registry.
 pub async fn ensure(
     app: Option<&AppHandle>,
     task_id: Option<&str>,
@@ -234,14 +184,6 @@ pub async fn ensure(
         return Ok(status());
     }
 
-    progress.emit_status(
-        "running",
-        Some(0),
-        Some("ModelScope → HuggingFace".into()),
-        None,
-        None,
-    );
-
     let dir = agentero_models_dir();
     fs::create_dir_all(&dir)?;
 
@@ -255,13 +197,6 @@ pub async fn ensure(
             "downloading layout model from {} ({})",
             source.id,
             source.url
-        );
-        progress.emit_status(
-            "running",
-            Some(0),
-            Some(source.id.into()),
-            None,
-            Some(source.id.into()),
         );
         progress.emit_bytes(0, None);
 
@@ -294,19 +229,11 @@ pub async fn ensure(
                     source.id
                 );
                 progress.emit_bytes(bytes, Some(bytes));
-                progress.emit_status(
-                    "completed",
-                    Some(100),
-                    Some(format!("{} · {} bytes", source.id, bytes)),
-                    None,
-                    Some(source.id.into()),
-                );
                 return Ok(status());
             }
             Err(e) => {
                 let _ = fs::remove_file(&partial);
                 if e.to_string().contains("background task cancelled") {
-                    progress.emit_status("cancelled", None, Some("cancelled".into()), None, None);
                     return Err(e);
                 }
                 last_err = format!("{}: {e}", source.id);
@@ -317,7 +244,6 @@ pub async fn ensure(
 
     let msg =
         format!("failed to download layout model (tried ModelScope, HuggingFace): {last_err}");
-    progress.emit_status("failed", None, Some(msg.clone()), Some(msg.clone()), None);
     Err(AppError::message(msg))
 }
 
@@ -366,9 +292,67 @@ async fn download_to_file(
     Ok(written)
 }
 
-/// App startup: download into XDG cache as a fixed background-task id so the
-/// frontend panel can attach even if the first events fire before React mounts.
+/// Register the `ModelDownload` runner with the JobCenter (app assembly).
+pub fn register_job_runners(center: &crate::features::jobs::JobCenter) {
+    center.register_runner(
+        crate::features::jobs::JobKind::ModelDownload,
+        std::sync::Arc::new(model_download_runner),
+    );
+}
+
+/// Runner for [`JobKind::ModelDownload`]: download the ONNX model into the XDG
+/// cache. Byte progress flows via `job:progress` (task id = job id)
+/// to the projected "download" row; the terminal report carries the
+/// `{source} · {bytes}` detail the legacy panel row showed on completion.
+fn model_download_runner(
+    center: crate::features::jobs::JobCenter,
+    app: AppHandle,
+    started: crate::features::jobs::StartedJob,
+) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + Send>> {
+    use crate::features::jobs::{emit_job_changed, JobState, RunOutcome};
+    center.run_job(app, started, |center, app, started| async move {
+        let job_id = started.snapshot.id.clone();
+        match ensure(Some(&app), Some(&job_id)).await {
+            Ok(model_status) => {
+                let bytes = model_status.size_bytes;
+                let detail = match &model_status.source {
+                    Some(source) => format!("{source} · {bytes} bytes"),
+                    None => format!("{bytes} bytes"),
+                };
+                // Terminal job_report keeps the detail as phase; `run_job`'s
+                // finish() then no-ops on the already-settled job.
+                if let Some(snapshot) = center
+                    .job_report(
+                        &job_id,
+                        Some(100.0),
+                        Some(detail),
+                        None,
+                        Some(JobState::Succeeded),
+                    )
+                    .await
+                {
+                    emit_job_changed(&app, snapshot);
+                }
+                RunOutcome::Succeeded
+            }
+            Err(e) => {
+                let msg = e.to_string();
+                if msg.contains("background task cancelled") {
+                    RunOutcome::Cancelled
+                } else {
+                    RunOutcome::Failed(Some(msg))
+                }
+            }
+        }
+    })
+}
+
+/// App startup: enqueue the `ModelDownload` job when the model is missing.
+/// Concurrent triggers (startup, analyze path, frontend prefetch) dedupe into
+/// one active job through the JobCenter fingerprint.
 pub fn spawn_background_download(app: AppHandle) {
+    use crate::features::jobs::{emit_job_changed, JobLane, StartOutcome};
+    use tauri::Manager;
     if model_ready(&layout_model_path()) {
         log::info!(
             target: TARGET,
@@ -377,22 +361,15 @@ pub fn spawn_background_download(app: AppHandle) {
         return;
     }
     tauri::async_runtime::spawn(async move {
-        let task_id = LAYOUT_MODEL_TASK_ID;
-        log::info!(target: TARGET, "startup layout model download task_id={task_id}");
-        match ensure(Some(&app), Some(task_id)).await {
-            Ok(s) => {
-                log::info!(
-                    target: TARGET,
-                    "startup layout model ready source={:?} size={}",
-                    s.source,
-                    s.size_bytes
-                );
-            }
-            Err(e) => {
-                log::warn!(target: TARGET, "startup layout model download failed: {e}");
-            }
+        let center = app.state::<crate::features::jobs::JobCenter>().handle();
+        let snapshot = center.enqueue_model_download(JobLane::Normal, false).await;
+        log::info!(target: TARGET, "startup layout model download job={}", snapshot.id);
+        emit_job_changed(&app, snapshot.clone());
+        match center.try_start(&snapshot.id).await {
+            StartOutcome::Started(started) => center.run_started(&app, started).await,
+            StartOutcome::Skipped(skipped) => emit_job_changed(&app, skipped),
+            StartOutcome::Waiting => {}
         }
-        crate::core::background_tasks::finish(task_id);
     });
 }
 
@@ -474,58 +451,5 @@ mod tests {
         assert_eq!(MODEL_SOURCES[0].id, "modelscope");
         assert!(MODEL_SOURCES[0].url.contains("modelscope.cn"));
         assert_eq!(MODEL_SOURCES[1].id, "huggingface");
-    }
-}
-
-/// Anti-drift: bind the owned `LayoutModelTaskEvent` mirror (in
-/// `app::events_contract`, feeding the `layout-model:task` payload type in
-/// bindings.ts) to the private struct actually emitted here: serde shapes and
-/// field types must stay identical.
-#[cfg(test)]
-mod events_contract_shape_tests {
-    use super::LayoutModelTaskEvent;
-    use crate::app::events_contract::LayoutModelTaskEvent as MirrorLayoutModelTask;
-
-    fn samples() -> (LayoutModelTaskEvent, MirrorLayoutModelTask) {
-        (
-            LayoutModelTaskEvent {
-                task_id: "task-1".to_string(),
-                status: "running".to_string(),
-                progress: Some(42),
-                detail: Some("downloading".to_string()),
-                error: None,
-                source: Some("modelscope".to_string()),
-            },
-            MirrorLayoutModelTask {
-                task_id: "task-1".to_string(),
-                status: "running".to_string(),
-                progress: Some(42),
-                detail: Some("downloading".to_string()),
-                error: None,
-                source: Some("modelscope".to_string()),
-            },
-        )
-    }
-
-    #[test]
-    fn layout_model_task_mirror_matches_emit_payload_shape() {
-        let (real, mirror) = samples();
-        assert_eq!(
-            serde_json::to_value(&real).unwrap(),
-            serde_json::to_value(&mirror).unwrap(),
-            "LayoutModelTaskEvent mirror drifted from the emitted payload"
-        );
-    }
-
-    #[test]
-    fn layout_model_task_mirror_field_types_match() {
-        fn eq_type<T>(_: &T, _: &T) {}
-        let (real, mirror) = samples();
-        eq_type(&real.task_id, &mirror.task_id);
-        eq_type(&real.status, &mirror.status);
-        eq_type(&real.progress, &mirror.progress);
-        eq_type(&real.detail, &mirror.detail);
-        eq_type(&real.error, &mirror.error);
-        eq_type(&real.source, &mirror.source);
     }
 }
