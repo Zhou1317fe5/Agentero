@@ -12,6 +12,7 @@ use crate::features::agent::registry::templates::{
     CLAUDE_ACP_INSTALL_COMMAND, PI_ACP_INSTALL_COMMAND, PI_HOST_INSTALL_COMMAND,
 };
 use serde::Serialize;
+use std::collections::HashSet;
 use std::fs;
 use std::io::{self, Read};
 use std::process::{Command, Output, Stdio};
@@ -37,6 +38,37 @@ use std::time::{SystemTime, UNIX_EPOCH};
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 static TOOL_LIFECYCLE_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+
+/// Cancel requests for in-flight tool lifecycle runs, keyed by the
+/// frontend-generated per-run task id. The id is unique per run and the entry
+/// is cleared when the command exits, so a stale request can never kill a
+/// later run.
+static LIFECYCLE_CANCEL_REQUESTED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+
+fn lifecycle_cancel_set() -> &'static Mutex<HashSet<String>> {
+    LIFECYCLE_CANCEL_REQUESTED.get_or_init(|| Mutex::new(HashSet::new()))
+}
+
+/// Request cooperative cancellation of an in-flight tool lifecycle run (the
+/// Settings / onboarding cancel button kills the installer child process).
+pub fn request_lifecycle_cancel(task_id: &str) {
+    if let Ok(mut ids) = lifecycle_cancel_set().lock() {
+        ids.insert(task_id.to_string());
+    }
+}
+
+/// Drop the cancel request when a lifecycle command exits.
+pub fn clear_lifecycle_cancel(task_id: &str) {
+    if let Ok(mut ids) = lifecycle_cancel_set().lock() {
+        ids.remove(task_id);
+    }
+}
+
+fn lifecycle_cancel_requested(task_id: &str) -> bool {
+    lifecycle_cancel_set()
+        .lock()
+        .is_ok_and(|ids| ids.contains(task_id))
+}
 
 #[cfg(target_os = "windows")]
 static WINDOWS_BATCH_SEQUENCE: AtomicU64 = AtomicU64::new(0);
@@ -820,7 +852,7 @@ fn acquire_lifecycle_lock(
 }
 
 fn check_lifecycle_cancelled(task_id: Option<&str>) -> Result<(), String> {
-    if task_id.is_some_and(crate::core::background_tasks::is_cancelled) {
+    if task_id.is_some_and(lifecycle_cancel_requested) {
         return Err("background task cancelled".to_string());
     }
     Ok(())
@@ -846,7 +878,7 @@ fn run_command_with_cancellation(
     let mut last_emit = Instant::now() - Duration::from_secs(1);
 
     loop {
-        if task_id.is_some_and(crate::core::background_tasks::is_cancelled) {
+        if task_id.is_some_and(lifecycle_cancel_requested) {
             let _ = child.kill();
             let _ = child.wait();
             let _ = join_pipe_reader(stdout.take());

@@ -61,7 +61,7 @@ Host 通过 Tauri event 向前端推送事件。文件系统、任务和菜单�
 | `agent:permission-request` | 权限「每次询问」档：ACP 权限请求转交用户 | `{ requestId, sessionId, title, kind?, paths, options: { optionId, name, kind }[] }` |
 | `agent:elicitation-request` | form elicitation（Codex request_user_input） | `{ requestId, sessionId, message, toolCallId?, fields: { id, title, description?, required, kind, options[] }[] }` |
 | `agent:ask-user-request` | Grok `_x.ai/ask_user_question` | `{ requestId, sessionId, toolCallId?, mode, questions: { question, options[{label,description?}], multiSelect, allowOther }[] }` |
-| `background-task:progress` | 下载/解析任务进度 | `{ taskId, phase, downloadedBytes, totalBytes?, progress? }`；下载阶段的字节进度由前端聚合为总体进度（PDF 映射到 0–50%，TeX 映射到 50–100%），解析阶段显示为处理中，任务完成时为 100%。Host 对字节级进度做节流：百分比变化 ≥1 个点或距上次 emit ≥100ms 才发事件，下载完成时必发最终值 |
+| `job:progress` | 下载/解析任务字节与计数进度（`taskId` = JobCenter job id，投影行消费） | `{ taskId, phase, downloadedBytes, totalBytes?, progress?, currentCount?, totalCount? }`；下载阶段的字节进度由前端投影层聚合为总体进度（PDF 映射到 0–50%，TeX 映射到 50–100%），解析阶段显示为处理中，任务完成时为 100%。Host 对字节级进度做节流：百分比变化 ≥1 个点或距上次 emit ≥100ms 才发事件，下载完成时必发最终值 |
 | `paper:imported`（已实现） | `paper_commit` 成功（catalog 已写入、NOTES 已建）；本地与远程导入路径统一发；`paper_download_assets` 为孤儿文件夹补建 catalog 行时也发 | `{ vaultId, paperId, timestamp }`（`vaultId` 为 vault 根路径，远程为 `remote:<sessionId>`） |
 | `paper:assets-ready`（已实现） | 论文资产就绪：同步下载完成 / 本地 PDF 拷贝完成 / `DownloadAssets` job 成功 | `{ vaultId, paperId, timestamp }` |
 | `job:completed`（已实现） | job 状态机真实迁移到 `Succeeded` 时由 `job:changed` 单点派生 | `{ jobId, kind, paperId?, timestamp }` |
@@ -97,8 +97,8 @@ Host 通过 Tauri event 向前端推送事件。文件系统、任务和菜单�
 `src/lib/core/bindings.ts` 由 [tauri-specta](https://github.com/specta-rs/specta)（rc.25）从 Rust 签名生成，是 Frontend ↔ Host IPC 的类型化契约。**生成物，不要手改**。
 
 - **覆盖范围**
-  - **命令**：desktop 注册的全部 185 个 `#[tauri::command]`（`app/handlers.rs` 的 `common_commands!` + desktop-only extras）逐一 collect 于 `src-tauri/src/app/bindings_test.rs`。iOS-only 的 5 个 bridge client 命令（`bridge_connect` / `bridge_resume` / `bridge_disconnect` / `bridge_rpc` / client 版 `bridge_status`）不进 desktop bindings。
-  - **事件**：desktop 侧 emit 的 43 个事件（`job:*`、`agent:*`、`vault:file-changed`、`settings:changed`、`bridge:host-status`/`bridge:pair-request`、`connector:*`、`mcp:*`、`sync:*`、`background-task:progress`、`paper:*` 等），声明于 `src-tauri/src/app/events_contract.rs`（wrapper/mirror + `#[tauri_specta(event_name = "…")]`，事件名与 emit 字面量一致，emit 调用点不改造）。iOS-only bridge client 事件（`bridge:status` / `bridge:progress` / `bridge:pair-pending`）不在其中。
+  - **命令**：desktop 注册的全部 191 个 `#[tauri::command]`（`app/handlers.rs` 的 `common_commands!` + desktop-only extras）逐一 collect 于 `src-tauri/src/app/bindings_test.rs`。iOS-only 的 5 个 bridge client 命令（`bridge_connect` / `bridge_resume` / `bridge_disconnect` / `bridge_rpc` / client 版 `bridge_status`）不进 desktop bindings。
+  - **事件**：desktop 侧 emit 的 42 个事件（`job:*`（含 `job:progress` 字节/计数进度）、`agent:*`、`vault:file-changed`、`settings:changed`、`bridge:host-status`/`bridge:pair-request`、`connector:*`、`mcp:*`、`sync:*`、`paper:*` 等），声明于 `src-tauri/src/app/events_contract.rs`（wrapper/mirror + `#[tauri_specta(event_name = "…")]`，事件名与 emit 字面量一致，emit 调用点不改造）。iOS-only bridge client 事件（`bridge:status` / `bridge:progress` / `bridge:pair-pending`）不在其中。
 - **再生成 / 防漂移**
 
   ```bash
@@ -872,7 +872,7 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
 | `connector:status` | `ConnectorStatus` |
 | `connector:item-saved` | `{ path, id, title, deduped, sessionId }` — 新条目在附件成功/失败终结且 latest target 移动完成后仅发一次；`path` 已稳定，前端刷新树/Library 并 `openPaper` |
 | `connector:error` | `{ message, sessionId? }` |
-| `connector:progress` | `{ key, sessionId, path, title, status, progress, detail, error? }` — 映射到左下角后台任务条 |
+| `connector:progress` | `{ key, sessionId, path, title, status, progress, detail, error? }` — 前端按 `key` 中继成 JobCenter `connectorSync` job，任务条行来自 job 投影 |
 
 ### 3.5c 全库搜索
 
@@ -992,16 +992,12 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
   {
     vaultPath: string;
     path: string; // Vault 相对 paper 文件夹，如 papers/1706.03762
-    taskId?: string; // 前端后台任务 id，用于接收 background-task:progress
+    taskId?: string; // JobCenter job id，用于接收 job:progress 与协作取消
   }
   ```
 
 - **返回**：`{ ok: true; data: { pdf: boolean; tex: boolean; paperMd: boolean; messages: string[] } }`
-- **行为**：读 catalog 取 `pdf_url` / `arxiv_id` / `doi`；已有对应文件则跳过；PDF → `{paper}/{id}.pdf`（论文根目录）；arXiv e-print TeX → 解压进 `source/`；无 TeX + 有 PDF + 无 `PAPER.md` → liteparse → `PAPER.md`。下载客户端使用**浏览器 UA**（绕开部分出版商 403）；若直链/arXiv 候选都失败且有 `doi`，再查 **Crossref** 取直链 / OA PDF 兜底。打开 paper 预览时若无本地 PDF 也会自动调用本命令（失败则回退远程 `pdf_url`）。当传入 `taskId` 时，通过 `background-task:progress` 推送下载字节与 `parse` 阶段；liteparse 在可终止的子进程中运行，任务取消时立即终止，120 秒超时后保留已经下载的 PDF，并在结果 `messages` 中说明未生成 `PAPER.md`。
-
-#### `background_task_cancel`
-
-请求取消一个前端后台任务。参数为 `{ taskId: string }`；下载任务会中止当前读取流，批量任务和 Agent 工作流在协作取消点停止。取消是尽力而为，不回滚已经写入的文件。
+- **行为**：读 catalog 取 `pdf_url` / `arxiv_id` / `doi`；已有对应文件则跳过；PDF → `{paper}/{id}.pdf`（论文根目录）；arXiv e-print TeX → 解压进 `source/`；无 TeX + 有 PDF + 无 `PAPER.md` → liteparse → `PAPER.md`。下载客户端使用**浏览器 UA**（绕开部分出版商 403）；若直链/arXiv 候选都失败且有 `doi`，再查 **Crossref** 取直链 / OA PDF 兜底。打开 paper 预览时若无本地 PDF 也会自动调用本命令（失败则回退远程 `pdf_url`）。当传入 `taskId` 时，通过 `job:progress` 推送下载字节与 `parse` 阶段；liteparse 在可终止的子进程中运行，任务取消时立即终止，120 秒超时后保留已经下载的 PDF，并在结果 `messages` 中说明未生成 `PAPER.md`。取消状态由 JobCenter 按 task id 索引（`features::jobs::is_task_cancelled`，注入为 `agentero_core::cancel` 探针），随 runner 退出自动清理。
 
 #### `paper_stage_import_file`
 
@@ -1247,7 +1243,7 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
   - 三层过滤：L0 硬过滤（跳过高被引经典种子；候选按时间窗 / 已入库 / 无可导入标识剔除）→ L1 IDF 加权重叠 → L2 中心化 SPECTER2 max-sim 门槛（阈值由库自身 leave-one-out p10 自校准）。
   - 排序后经 MMR 多样化截到 `budget`，避免结果被单一方向占满。
   - 结果与每个种子的引用页写入 `.agentero/citing-scan.json`；下次扫描只重抓 `citationCount` 变化的种子。
-  - `taskId` 非空时：抓取阶段 emit `background-task:progress`（带 `currentCount`/`totalCount`），并在每个种子请求前检查取消。取消返回 `cancelled: true` 且不写缓存。
+  - `taskId` 非空时：抓取阶段 emit `job:progress`（带 `currentCount`/`totalCount`），并在每个种子请求前检查取消（JobCenter task-id 注册表）。取消返回 `cancelled: true` 且不写缓存。
 
 ### 3.6 论文
 
@@ -1647,7 +1643,7 @@ Host 作为 ACP Client：按注册表 spawn 用户本机 Agent（`cwd` = 当前 
   - `uninstall`：镜像安装矩阵做 best-effort 清理（先 `resolve_command("npm")` 预检，缺失即报错而非假成功）——npm 全局包逐个 `npm uninstall -g`（unix 上适配器带 `--prefix "$HOME/.local"`，与安装一致）；dsh 删除受管目录 `~/.agentero/dsh-acp`，kimi-code 在 npm 卸载后删除 `~/.kimi-code`（Windows 为 `%USERPROFILE%\.kimi-code`）；**不改 shell rc**（官方 installer 写入的 PATH 行保留）、不处理官方脚本/brew 安装的 CLI（无法可靠定位）。Hermes 无 npm 包/受管目录 → 仅移除注册项（不跑命令）。成功后同命令联动删除该模板的 catalog 注册项（`catalog-{templateId}`，或 command+args 匹配），避免二进制已删而注册项残留；phase 用 `agent-lifecycle-uninstall` 推送进度。
   - 本机 lifecycle 全局串行执行，避免多个 npm 全局安装/升级任务并发抢锁或互相覆盖临时脚本；设置页在对应 Agent 卡片内展示安装 / 扫描 / 探测阶段进度（#250）。
   - 安装子进程运行期间，Host 以 `agent-lifecycle:progress` 推送 `agent-lifecycle-*` phase tick，供设置页行内进度条消费，避免快捷下载脚本长时间停在无进度状态。
-  - 若传入 `taskId`，等待 lifecycle 锁和执行安装子进程时会检查 `background_task_cancel`；取消是尽力而为，不回滚已完成的包管理器写入。设置页 Agent 目录行与引导页 Agent 卡片在行内进度条上提供取消（X）按钮，点击即以本次 lifecycle 的 `taskId` 调 `background_task_cancel`；取消为静默处理（不弹错误 toast、不显示错误条）。
+  - 若传入 `taskId`，等待 lifecycle 锁和执行安装子进程时会检查 agent 域内的 lifecycle 取消注册表（`agent_lifecycle_cancel` 写入，命令出口清理）；取消是尽力而为，不回滚已完成的包管理器写入。设置页 Agent 目录行与引导页 Agent 卡片在行内进度条上提供取消（X）按钮，点击即以本次 lifecycle 的 `taskId` 调 `agent_lifecycle_cancel`（参数 `{ taskId: string }`）；取消为静默处理（不弹错误 toast、不显示错误条）。
   - macOS/Linux：注入 login shell 的 `PATH`（GUI 窄 PATH）。
   - Windows：写唯一临时 `.bat` + `CREATE_NO_WINDOW` + `call` 前缀；安装进程 PATH 合并 npm/pnpm/WinGet/Scoop shim；批处理切到 UTF-8，错误输出按 UTF-8 优先、GBK 回退解码。
   - 在 `spawn_blocking` 中执行，避免卡住 async runtime。
@@ -2187,23 +2183,22 @@ Windows：未设 `XDG_CONFIG_HOME` 时回退 `%APPDATA%/agentero/`。旧版 macO
 ### 3.10.1 版面模型（PP-DocLayoutV3）
 
 - **路径**：`$XDG_CACHE_HOME/agentero/models/pp-doclayoutv3.onnx`
-- **启动**：`setup` 在代理配置后 `spawn_background_download`（固定 task id `layout-model`）
+- **启动**：`setup` 在代理配置后 `spawn_background_download` 入队 JobCenter `modelDownload` job（已有文件则跳过）
 - **下载源**：ModelScope（`greatv/oar-ocr`）优先，失败则 HuggingFace EmbedPDF `model_fp16.onnx`
 - **代理**：走 Host 全局 `core::http::client_builder`（与设置 Network proxy 一致）
 - **协议**：`agentero-model` URI scheme 把本地文件喂给 `onnxruntime-web`
-- **后台任务**：
-  - `emit("layout-model:task", { taskId, status, progress, detail, error, source })`
-  - `emit("background-task:progress", { taskId: "layout-model", phase: "layout-model", … })`
-  - 取消：`background_task_cancel` + task id `layout-model`
+- **后台任务**：Host runner job（全局资源：vault/paper 为空，cap 1；重复触发按 fingerprint 去重合并）
+  - 面板行来自 JobCenter 投影；字节进度 `emit("job:progress", { taskId: <job id>, phase: "layout-model", … })`
+  - 取消：`job_cancel`（job 的 cancel token 按 task id 索引，runner 轮询 `features::jobs::is_task_cancelled(job id)`）
 
 #### `layout_model_status`（已实现）
 
 - **返回** `ApiResult<LayoutModelStatus>`：`{ ready, path, sizeBytes, source, fileName }`
 
-#### `layout_model_ensure`（已实现）
+#### `job_model_download_enqueue`（已实现）
 
-- **参数**：`{ progressTaskId?: string }`（来自 `enqueueBackgroundTask` 的 id）
-- **返回**：`LayoutModelStatus`；未就绪则下载（进程锁；支持取消与字节进度）
+- **参数**：`{ lane?, force? }`（无 vault/paper 目标）
+- **返回**：`ApiResult<JobSnapshot>`；未就绪则由 Host runner 下载（进程锁；支持取消与字节进度），并发触发合并为同一 job
 
 ### 3.10.2 版面解析后端（本地 ONNX / 远程 Provider）
 

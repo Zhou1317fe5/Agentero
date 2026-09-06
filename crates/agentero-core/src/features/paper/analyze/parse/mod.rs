@@ -165,7 +165,7 @@ pub struct PaperParseBodyArgs {
     /// When true, overwrite existing `PAPER.md`. Default false.
     #[serde(default)]
     pub force: bool,
-    /// Frontend background-task id; passed to the isolated parser worker for cancellation.
+    /// JobCenter job id (task id); passed to the isolated parser worker for cancellation.
     #[serde(default)]
     pub task_id: Option<String>,
 }
@@ -884,7 +884,7 @@ pub async fn run_liteparse_render_direct(
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 fn pdf_parse_task_is_cancelled(task_id: Option<&str>) -> bool {
-    task_id.is_some_and(crate::features::import::is_background_task_cancelled)
+    task_id.is_some_and(crate::features::import::is_task_cancelled)
 }
 
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
@@ -1214,23 +1214,23 @@ mod tests {
     #[tokio::test]
     async fn cancelled_task_does_not_enter_pdf_parse_admission() {
         let task_id = format!("pdf-parse-test-{}", uuid::Uuid::new_v4());
-        crate::background_tasks::cancel(&task_id);
+        crate::cancel::testing::cancel(&task_id);
 
         let result = enter_pdf_parse(Path::new("missing-test-input.pdf"), Some(&task_id)).await;
 
-        crate::background_tasks::finish(&task_id);
+        crate::cancel::testing::finish(&task_id);
         assert_eq!(result.unwrap_err().to_string(), "background task cancelled");
     }
 
     #[tokio::test]
     async fn cancelled_task_does_not_start_parser_worker() {
         let task_id = format!("pdf-parse-test-{}", uuid::Uuid::new_v4());
-        crate::background_tasks::cancel(&task_id);
+        crate::cancel::testing::cancel(&task_id);
 
         let result =
             run_liteparse_markdown(Path::new("missing-test-input.pdf"), Some(&task_id)).await;
 
-        crate::background_tasks::finish(&task_id);
+        crate::cancel::testing::finish(&task_id);
         assert_eq!(result.unwrap_err().to_string(), "background task cancelled");
     }
 }

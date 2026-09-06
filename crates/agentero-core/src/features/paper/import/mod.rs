@@ -55,7 +55,7 @@ use crate::features::catalog::{
     papers::{self, PaperRecord},
     CapsCache,
 };
-use crate::features::import::assets::AssetDownloadProgress;
+use crate::features::import::assets::{AssetDownloadProgress, JOB_PROGRESS_EVENT};
 use crate::features::scholar_api::sources::translator::TranslatorApi;
 use crate::features::scholar_api::traits::BibliographySource;
 use futures_util::StreamExt;
@@ -80,14 +80,14 @@ pub const DEFAULT_TRANSLATOR_BASE_URL: &str = "https://translator.philfan.cn";
 pub const PAPER_ASSET_TIMEOUT: Duration = Duration::from_secs(3 * 60);
 
 pub fn check_task_not_cancelled(task_id: Option<&str>) -> Result<(), AppError> {
-    if task_id.is_some_and(is_background_task_cancelled) {
+    if task_id.is_some_and(is_task_cancelled) {
         return Err(AppError::message("background task cancelled"));
     }
     Ok(())
 }
 
-pub fn is_background_task_cancelled(task_id: &str) -> bool {
-    crate::background_tasks::is_cancelled(task_id)
+pub fn is_task_cancelled(task_id: &str) -> bool {
+    crate::cancel::is_cancelled(task_id)
 }
 
 #[derive(Debug, Deserialize)]
@@ -100,7 +100,7 @@ pub struct LookupImportArgs {
     /// Optional override; empty → [`DEFAULT_TRANSLATOR_BASE_URL`].
     #[serde(default)]
     pub translator_base_url: Option<String>,
-    /// Frontend background-task id for byte-level download progress events.
+    /// JobCenter job id (task id) for byte-level `job:progress` events.
     #[serde(default)]
     pub task_id: Option<String>,
 }
@@ -111,7 +111,7 @@ pub struct PaperDownloadAssetsArgs {
     pub vault_path: String,
     /// Vault-relative paper folder, e.g. `papers/1706.03762`.
     pub path: String,
-    /// Frontend background-task id for byte-level download progress events.
+    /// JobCenter job id (task id) for byte-level `job:progress` events.
     #[serde(default)]
     pub task_id: Option<String>,
 }
@@ -216,7 +216,7 @@ pub struct ImportLocalPdfArgs {
     /// Preferred: path + optional title/authors/year/identifiers from the confirm dialog.
     #[serde(default)]
     pub entries: Vec<LocalPdfImportEntry>,
-    /// Frontend background-task id for parse-phase progress.
+    /// JobCenter job id (task id) for parse-phase `job:progress` events.
     #[serde(default)]
     pub task_id: Option<String>,
 }
@@ -534,7 +534,7 @@ fn emit_batch_progress(
     };
     let progress = ((current as f64 / total.max(1) as f64) * 100.0).round() as u8;
     app.emit(
-        "background-task:progress",
+        JOB_PROGRESS_EVENT,
         &AssetDownloadProgress {
             task_id: task_id.to_string(),
             phase: "import".to_string(),
@@ -1812,7 +1812,7 @@ mod tests {
     #[tokio::test]
     async fn cancelled_task_skips_title_search() {
         let task_id = "test-resolve-search-cancelled";
-        crate::background_tasks::cancel(task_id);
+        crate::cancel::testing::cancel(task_id);
         let mut errors = Vec::new();
         let groups = resolve_search_queries(
             &["attention is all you need".to_string()],
@@ -1820,7 +1820,7 @@ mod tests {
             Some(task_id),
         )
         .await;
-        crate::background_tasks::finish(task_id);
+        crate::cancel::testing::finish(task_id);
         // Cancelled before the first query runs: no groups, no network, no errors.
         assert!(groups.is_empty());
         assert!(errors.is_empty());

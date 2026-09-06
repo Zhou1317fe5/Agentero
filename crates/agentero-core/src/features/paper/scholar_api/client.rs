@@ -122,7 +122,7 @@ async fn handle_response(res: reqwest::Response) -> Result<String, ApiError> {
 /// Wrap a cancellation check so callers can short-circuit long-running work.
 pub fn check_cancelled(task_id: Option<&str>) -> Result<(), ApiError> {
     if let Some(id) = task_id {
-        if crate::background_tasks::is_cancelled(id) {
+        if crate::cancel::is_cancelled(id) {
             return Err(ApiError::Cancelled);
         }
     }

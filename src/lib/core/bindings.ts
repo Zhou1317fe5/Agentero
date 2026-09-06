@@ -41,12 +41,6 @@ export const commands = {
 	 */
 	easyScholarGetRank: (publicationName: string) => __TAURI_INVOKE<ApiResult<Json>>("easy_scholar_get_rank", { publicationName }),
 	layoutModelStatus: () => __TAURI_INVOKE<ApiResult<LayoutModelStatus>>("layout_model_status"),
-	/**
-	 *  Download (if needed) into XDG cache. Pass `progressTaskId` from
-	 *  `enqueueBackgroundTask` so the Host can emit `background-task:progress`
-	 *  and honor cancel.
-	 */
-	layoutModelEnsure: (progressTaskId: string | null) => __TAURI_INVOKE<ApiResult<LayoutModelStatus>>("layout_model_ensure", { progressTaskId }),
 	layoutRemoteAnalyzePdf: (args: LayoutRemoteAnalyzePdfArgs) => __TAURI_INVOKE<ApiResult<LayoutRemoteAnalyzePdfResult>>("layout_remote_analyze_pdf", { args }),
 	layoutRemoteProbe: (args: LayoutRemoteProbeArgs) => __TAURI_INVOKE<ApiResult<LayoutRemoteProbeResult>>("layout_remote_probe", { args }),
 	agentListAgents: () => __TAURI_INVOKE<ApiResult<AgentListResponse_Serialize>>("agent_list_agents"),
@@ -63,12 +57,44 @@ export const commands = {
 	agentProbeCatalog: (templateId: string) => typedError<ApiResult<ProbeResult_Serialize>, string>(__TAURI_INVOKE("agent_probe_catalog", { templateId })),
 	/**  Request cooperative cancellation for a currently streaming ACP session. */
 	agentCancelRun: (sessionId: string) => __TAURI_INVOKE<ApiResult<boolean>>("agent_cancel_run", { sessionId }),
-	/**  Request cooperative cancellation for a frontend background task. */
-	backgroundTaskCancel: (taskId: string) => __TAURI_INVOKE<ApiResult<boolean>>("background_task_cancel", { taskId }),
 	jobParseRefsEnqueue: (args: JobEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_parse_refs_enqueue", { args })),
 	jobParseBodyEnqueue: (args: JobParseBodyEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_parse_body_enqueue", { args })),
 	jobLayoutAnalyzeEnqueue: (args: JobEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_layout_analyze_enqueue", { args })),
 	jobDownloadAssetsEnqueue: (args: JobEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_download_assets_enqueue", { args })),
+	/**
+	 *  Enqueue a renderer-orchestrated import (magic wand / local PDF / plaza /
+	 *  papers.cool). Only the vault is resolved — the paper folder does not exist
+	 *  yet — and the frontend executor drives the multi-command orchestration.
+	 */
+	jobImportEnqueue: (args: JobImportEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_import_enqueue", { args })),
+	/**
+	 *  Enqueue a Zotero Connector attachment save. The Host writes the attachment
+	 *  and streams `connector:progress`; the renderer relays that stream into this
+	 *  job so the task panel row comes from the JobCenter projection.
+	 */
+	jobConnectorSyncEnqueue: (args: JobConnectorSyncEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_connector_sync_enqueue", { args })),
+	/**
+	 *  Enqueue the reverse-citation scan ("papers citing my library"). The
+	 *  renderer executor drives `library_citing_scan` under the job id.
+	 */
+	jobCitingScanEnqueue: (args: JobVaultScopeEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_citing_scan_enqueue", { args })),
+	/**
+	 *  Enqueue a bibliography import / export (`params.op`); dialog-driven, so the
+	 *  renderer executor owns the flow.
+	 */
+	jobLibraryIoEnqueue: (args: JobVaultScopeEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_library_io_enqueue", { args })),
+	/**
+	 *  Enqueue a bulk metadata refresh; `params.papers` (`[{ path, query }]`)
+	 *  joins the dedupe fingerprint and drives the renderer executor's batch.
+	 */
+	jobMetadataRefreshEnqueue: (args: JobVaultScopeEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_metadata_refresh_enqueue", { args })),
+	/**
+	 *  Enqueue the global layout-model download (XDG cache; no vault/paper
+	 *  target). Concurrent triggers dedupe into one active `ModelDownload` job
+	 *  whose Host runner streams byte progress under the job id.
+	 */
+	jobModelDownloadEnqueue: (args: JobModelDownloadEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_model_download_enqueue", { args })),
+	jobPaperAssetsStatus: (args: JobPaperAssetsStatusArgs) => typedError<ApiResult<PaperAssetsStatus>, string>(__TAURI_INVOKE("job_paper_assets_status", { args })),
 	/**
 	 *  Per-paper reconcile (pipeline-orchestration §7.4 入口②): backfill a
 	 *  `ParseBody` job when the paper has a PDF but no TeX and no `PAPER.md`, and
@@ -199,7 +225,7 @@ export const commands = {
 	paperImportLocalPdf: (args: ImportLocalPdfArgs) => typedError<ApiResult<ImportLocalPdfResult_Serialize>, string>(__TAURI_INVOKE("paper_import_local_pdf", { args })),
 	/**
 	 *  Parse a paper's local PDF into `PAPER.md` using liteparse.
-	 *  Runs as a standalone background task; `task_id` is used for cancellation.
+	 *  `task_id` is the cooperative-cancel polling id (the JobCenter job id).
 	 */
 	paperParseBody: (args: PaperParseBodyArgs) => typedError<ApiResult<PaperParseResult_Serialize>, string>(__TAURI_INVOKE("paper_parse_body", { args })),
 	/**
@@ -353,6 +379,11 @@ export const commands = {
 	 *  Blocking work runs on a worker thread so the async runtime is not stalled.
 	 */
 	agentRunToolLifecycle: (templateId: string, action: string, taskId: string | null) => typedError<ApiResult<Json>, string>(__TAURI_INVOKE("agent_run_tool_lifecycle", { templateId, action, taskId })),
+	/**
+	 *  Request cooperative cancellation of an in-flight tool lifecycle run; the
+	 *  Host supervision loop kills the installer child process.
+	 */
+	agentLifecycleCancel: (taskId: string) => __TAURI_INVOKE<ApiResult<boolean>>("agent_lifecycle_cancel", { taskId }),
 	/**
 	 *  What a silent uninstall of this template would remove (npm commands and
 	 *  managed dirs); null when the template has no managed uninstall.
@@ -514,7 +545,6 @@ export const events = {
 	agentStream: makeEvent<AgentStreamEvt>("agent:stream"),
 	agentTool: makeEvent<AgentToolEvt_Deserialize>("agent:tool"),
 	agentUsage: makeEvent<AgentUsageEvt>("agent:usage"),
-	backgroundTaskProgress: makeEvent<BackgroundTaskProgressEvent_Deserialize>("background-task:progress"),
 	bridgeHostStatus: makeEvent<BridgeHostStatusEvent>("bridge:host-status"),
 	bridgePairRequest: makeEvent<BridgePairRequestEvent>("bridge:pair-request"),
 	connectorError: makeEvent<ConnectorErrorEvent>("connector:error"),
@@ -525,7 +555,7 @@ export const events = {
 	jobCompleted: makeEvent<JobCompletedEvent_Deserialize>("job:completed"),
 	jobFailed: makeEvent<JobFailedEvent_Deserialize>("job:failed"),
 	jobOffer: makeEvent<JobOfferEvent>("job:offer"),
-	layoutModelTask: makeEvent<LayoutModelTaskEvent>("layout-model:task"),
+	jobProgress: makeEvent<JobProgressEvent_Deserialize>("job:progress"),
 	layoutRemoteProgress: makeEvent<LayoutRemoteProgressEvent_Deserialize>("layout-remote:progress"),
 	mcpStatus: makeEvent<McpStatusEvent>("mcp:status"),
 	mcpTunnelStatus: makeEvent<McpTunnelStatusEvent>("mcp:tunnel-status"),
@@ -1430,12 +1460,6 @@ export type AssetDownloadResult = {
 	messages: string[],
 };
 
-export type BackgroundTaskProgressEvent = BackgroundTaskProgressEvent_Serialize | BackgroundTaskProgressEvent_Deserialize;
-
-export type BackgroundTaskProgressEvent_Deserialize = AssetDownloadProgress_Deserialize;
-
-export type BackgroundTaskProgressEvent_Serialize = AssetDownloadProgress_Serialize;
-
 export type BacklinksResponse = BacklinksResponse_Serialize | BacklinksResponse_Deserialize;
 
 export type BacklinksResponse_Deserialize = {
@@ -2190,6 +2214,13 @@ export type ErrorBody = {
 	message: string,
 };
 
+/**
+ *  Where a job's business logic executes: in a Rust runner ([`ExecHost::Host`])
+ *  or in the renderer through the `job:offer` / `job_report` protocol
+ *  ([`ExecHost::Renderer`]). See [`JobKind::exec_host`].
+ */
+export type ExecHost = "host" | "renderer";
+
 export type ExportFontPayload = {
 	path: string,
 	/**  Standard base64 of font bytes (JSON-safe; avoid megabyte number arrays). */
@@ -2338,7 +2369,7 @@ export type ImportLocalPdfArgs = {
 	filePaths?: string[],
 	/**  Preferred: path + optional title/authors/year/identifiers from the confirm dialog. */
 	entries?: LocalPdfImportEntry[],
-	/**  Frontend background-task id for parse-phase progress. */
+	/**  JobCenter job id (task id) for parse-phase `job:progress` events. */
 	taskId?: string | null,
 };
 
@@ -2422,6 +2453,20 @@ export type JobCompletedEvent_Deserialize = JobTerminalPayload_Deserialize;
 
 export type JobCompletedEvent_Serialize = JobTerminalPayload_Serialize;
 
+export type JobConnectorSyncEnqueueArgs = {
+	vaultPath: string,
+	/**
+	 *  Vault-relative paper folder the attachment lands in. Not validated
+	 *  against the catalog: the Connector commits the paper and starts the
+	 *  attachment save in the same request, so the row may not be visible yet.
+	 */
+	path?: string | null,
+	lane?: JobLane | null,
+	force?: boolean,
+	/**  `connector:progress` key + title; participates in the dedupe fingerprint. */
+	params?: Json | null,
+};
+
 /**
  *  Shared enqueue args for kinds that take no extra parameters
  *  (ParseRefs / LayoutAnalyze / DownloadAssets).
@@ -2444,13 +2489,31 @@ export type JobFocusPaperArgs = {
 	path: string,
 };
 
-export type JobKind = "parseRefs" | "parseBody" | "layoutAnalyze" | "layoutTranslate" | "downloadAssets" | "pageCount" | "wikiReindex" | "recognizeMetadata";
+export type JobImportEnqueueArgs = {
+	vaultPath: string,
+	/**
+	 *  Vault-relative destination folder (`parentDir`); imports have no paper
+	 *  dir yet, so this is not validated against the catalog.
+	 */
+	path?: string | null,
+	lane?: JobLane | null,
+	force?: boolean,
+	/**  Mode + source identifiers; participates in the dedupe fingerprint. */
+	params?: Json | null,
+};
+
+export type JobKind = "parseRefs" | "parseBody" | "layoutAnalyze" | "layoutTranslate" | "downloadAssets" | "pageCount" | "wikiReindex" | "recognizeMetadata" | "import" | "connectorSync" | "modelDownload" | "citingScan" | "libraryIo" | "metadataRefresh";
 
 export type JobLane = "focus" | "normal" | "idle";
 
 export type JobListArgs = {
 	vaultPath?: string | null,
 	path?: string | null,
+};
+
+export type JobModelDownloadEnqueueArgs = {
+	lane?: JobLane | null,
+	force?: boolean,
 };
 
 export type JobOfferEvent = JobOfferPayload;
@@ -2461,6 +2524,12 @@ export type JobOfferPayload = {
 	vaultPath: string,
 	paperPath: string | null,
 	force: boolean,
+	params: Json | null,
+};
+
+export type JobPaperAssetsStatusArgs = {
+	vaultPath: string,
+	path: string,
 };
 
 export type JobPapersNeedingAssetsArgs = {
@@ -2474,6 +2543,12 @@ export type JobParseBodyEnqueueArgs = {
 	force?: boolean,
 	taskId?: string | null,
 };
+
+export type JobProgressEvent = JobProgressEvent_Serialize | JobProgressEvent_Deserialize;
+
+export type JobProgressEvent_Deserialize = AssetDownloadProgress_Deserialize;
+
+export type JobProgressEvent_Serialize = AssetDownloadProgress_Serialize;
 
 export type JobReconcilePaperArgs = {
 	vaultPath: string,
@@ -2506,6 +2581,8 @@ export type JobSnapshot = {
 	phase: string | null,
 	error: string | null,
 	force: boolean,
+	params: Json | null,
+	host: ExecHost,
 };
 
 export type JobState = "queued" | "running" | "succeeded" | "failed" | "cancelled" | "skipped";
@@ -2540,6 +2617,19 @@ export type JobTerminalPayload_Serialize = {
 	error?: string | null,
 };
 
+/**
+ *  Shared args for the vault-scope renderer kinds (`CitingScan` / `LibraryIo`
+ *  / `MetadataRefresh`): the target is the vault (or an operation on it), not
+ *  a single paper, so `path` stays empty and `params` carries the payload that
+ *  feeds the dedupe fingerprint.
+ */
+export type JobVaultScopeEnqueueArgs = {
+	vaultPath: string,
+	lane?: JobLane | null,
+	force?: boolean,
+	params?: Json | null,
+};
+
 /**  TypeScript-side representation of arbitrary JSON values. */
 export type Json = 
 /**  JSON `null`. */
@@ -2562,20 +2652,6 @@ export type LayoutModelStatus = {
 	source: string | null,
 	/**  Relative path segment for the `agentero-model` URI scheme. */
 	fileName: string,
-};
-
-/**
- *  Owned mirror of the private `LayoutModelTaskEvent` in
- *  `features::paper::analyze::layout::model_assets`.
- */
-export type LayoutModelTaskEvent = {
-	taskId: string,
-	/**  `running` | `completed` | `failed` | `cancelled` */
-	status: string,
-	progress: number | null,
-	detail: string | null,
-	error: string | null,
-	source: string | null,
 };
 
 export type LayoutProviderConfig = {
@@ -2919,6 +2995,16 @@ export type PairingRequest = {
 
 export type PaperAssetsReadyEvent = PaperFactPayload;
 
+/**
+ *  Local asset presence for one paper (post-`DownloadAssets` follow-ups:
+ *  paper-reader gate + activity telemetry).
+ */
+export type PaperAssetsStatus = {
+	pdf: boolean,
+	tex: boolean,
+	paperMd: boolean,
+};
+
 export type PaperBackfillPublicationArgs = {
 	vaultPath: string,
 	/**  Optional Translator base URL; left empty for direct Crossref/arXiv/S2. */
@@ -2962,7 +3048,7 @@ export type PaperDownloadAssetsArgs = {
 	vaultPath: string,
 	/**  Vault-relative paper folder, e.g. `papers/1706.03762`. */
 	path: string,
-	/**  Frontend background-task id for byte-level download progress events. */
+	/**  JobCenter job id (task id) for byte-level `job:progress` events. */
 	taskId?: string | null,
 };
 
@@ -3123,7 +3209,7 @@ export type PaperParseBodyArgs = {
 	path: string,
 	/**  When true, overwrite existing `PAPER.md`. Default false. */
 	force?: boolean,
-	/**  Frontend background-task id; passed to the isolated parser worker for cancellation. */
+	/**  JobCenter job id (task id); passed to the isolated parser worker for cancellation. */
 	taskId?: string | null,
 };
 

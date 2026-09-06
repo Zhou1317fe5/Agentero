@@ -119,7 +119,6 @@ export {
 export type { PdfHighlight } from "@/lib/pdf/highlight/types";
 export {
 	applyLayoutTranslateSidecar,
-	attachLayoutModelTaskListener,
 	compareLayoutReadingOrder,
 	currentLayoutTranslateCacheKey,
 	dedupeLayoutRegions,
@@ -164,7 +163,7 @@ export {
 	toggleLayoutOverlayVisible,
 	toLayoutTranslateItems,
 } from "@/lib/pdf/layout";
-export { initJobCenterExecutors } from "@/lib/pdf/layout/enqueue-paper-layout";
+export { registerLayoutTaskExecutor } from "@/lib/pdf/layout/enqueue-paper-layout";
 export {
 	layoutBackendsAfterClearingProvider,
 	persistLayoutProviderConfig,

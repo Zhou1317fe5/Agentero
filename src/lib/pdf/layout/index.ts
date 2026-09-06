@@ -154,10 +154,8 @@ export {
 	verticalCeilingForTitle,
 } from "@/lib/pdf/layout/merge-captions";
 export {
-	attachLayoutModelTaskListener,
 	ensureLayoutModel,
 	getLayoutModelStatus,
-	LAYOUT_MODEL_TASK_ID,
 	type LayoutModelStatus,
 	layoutModelLocalUrl,
 	prefetchLayoutModel,

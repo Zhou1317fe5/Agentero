@@ -12,12 +12,19 @@ import { useVaultOpenRequest } from "@/hooks/use-vault-open-request";
 import { applyLocale } from "@/i18n";
 import { startActivityTracking } from "@/lib/activity";
 import { commands } from "@/lib/core/bindings";
+import { startTaskRuntime } from "@/lib/core/tasks";
 import { isTauri } from "@/lib/core/tauri";
 import { initLifecycleBridge, lifecycle } from "@/lib/lifecycle";
 import { registerLifecycleHandlers } from "@/lib/lifecycle/register";
+import {
+	registerConnectorTaskExecutor,
+	startConnectorProgressRelay,
+} from "@/lib/paper/import/connector-tasks";
+import { registerImportTaskExecutor } from "@/lib/paper/import/import-tasks";
 import { startJobCompletionRefresh } from "@/lib/paper/job-refresh";
 import { refreshLibrary } from "@/lib/paper/library-store";
-import { initJobCenterExecutors } from "@/lib/pdf/layout/enqueue-paper-layout";
+import { registerLibraryTaskExecutors } from "@/lib/paper/library-tasks";
+import { registerLayoutTaskExecutor } from "@/lib/pdf/layout/enqueue-paper-layout";
 import { applyDocumentChrome } from "@/lib/settings";
 import { validateRestoredVault } from "@/lib/vault/actions";
 import { setTree, setTreeLoading } from "@/lib/vault/store";
@@ -104,10 +111,16 @@ export function useAppBootstrap(): void {
 	// Start listening for renderer-executed JobCenter offers.
 	useEffect(() => {
 		if (!isTauri()) return;
-		const disposeExecutors = initJobCenterExecutors();
+		registerLayoutTaskExecutor();
+		registerImportTaskExecutor();
+		registerConnectorTaskExecutor();
+		registerLibraryTaskExecutors();
+		const disposeRuntime = startTaskRuntime();
+		const disposeConnector = startConnectorProgressRelay();
 		const disposeRefresh = startJobCompletionRefresh();
 		return () => {
-			disposeExecutors();
+			disposeRuntime();
+			disposeConnector();
 			disposeRefresh();
 		};
 	}, []);

@@ -102,13 +102,6 @@ function looksLikeIdentifierToken(token: string): boolean {
 	return false;
 }
 
-export type PaperAssetsDownloadResult = {
-	pdf: boolean;
-	tex: boolean;
-	paperMd?: boolean;
-	messages: string[];
-};
-
 function resolveTranslatorBaseUrl(
 	settings: AppSettings | undefined,
 	override?: string,
@@ -225,29 +218,6 @@ export async function discardSkillDiscovery(
 	await callApi(() => commands.skillDiscard(discoveryId), {
 		fallback: i18n.t("sidebar:lookup.fetchFailed"),
 	});
-}
-
-/**
- * Download PDF (+ arXiv LaTeX) for a paper folder missing local assets.
- * `paperPath` is vault-relative (e.g. `papers/1706.03762`).
- */
-export async function downloadPaperAssets(opts: {
-	vaultRoot: string;
-	paperPath: string;
-	progressTaskId?: string;
-}): Promise<PaperAssetsDownloadResult> {
-	if (!isTauri()) {
-		throw new Error(i18n.t("sidebar:lookup.desktopOnly"));
-	}
-	return callApiResult(
-		() =>
-			commands.paperDownloadAssets({
-				vaultPath: opts.vaultRoot,
-				path: opts.paperPath.replace(/\\/g, "/").replace(/^\/+|\/+$/g, ""),
-				taskId: opts.progressTaskId ?? null,
-			}),
-		{ fallback: i18n.t("sidebar:fileTree.downloadFailed") },
-	);
 }
 
 export type LocalPdfImportResult = {

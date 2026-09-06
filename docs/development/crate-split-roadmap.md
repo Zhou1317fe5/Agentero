@@ -10,7 +10,7 @@
 
 ## Phase 1（已完成）：tauri 无关基座
 
-`agentero_core` 顶层 13 个模块：`background_tasks`、`blocking`、`error`、`frontmatter`、`fs`、`http`、`install_dirs`、`log_util`、`paths`、`process`、`remote`、`sqlite`、`time`、`usage`（存储层）。`src-tauri/src/core/mod.rs` 以 `pub use agentero_core::{…}` 桥接，全仓 `crate::core::X` 路径零改动。
+`agentero_core` 顶层 13 个模块：`cancel`、`blocking`、`error`、`frontmatter`、`fs`、`http`、`install_dirs`、`log_util`、`paths`、`process`、`remote`、`sqlite`、`time`、`usage`（存储层）。`src-tauri/src/core/mod.rs` 以 `pub use agentero_core::{…}` 桥接，全仓 `crate::core::X` 路径零改动。
 
 ## Phase 2（已完成）：CLI 消费的数据域迁入 core
 
@@ -42,7 +42,7 @@ Host 侧桥接策略：原目录留 `mod.rs` 薄壳（`pub use agentero_core::�
 
 `agentero_core::app_handle::HostHooks`：
 
-- `emit(event, payload_json)` —— lifecycle paper 事件、`background-task:progress`（批量导入 / 资产下载节流进度）。
+- `emit(event, payload_json)` —— lifecycle paper 事件、`job:progress`（批量导入 / 资产下载节流进度）。
 - `spawn_parse_body_after_assets` / `spawn_parse_after_import`（返回 `true` 表示宿主接管调度）/ `spawn_recognize_metadata` —— JobCenter 跟随任务。
 
 desktop 在 `src-tauri/src/core/app_handle.rs` 用 `TauriHostHooks(tauri::AppHandle)` 实现，`wrap(&app)` 生成 core `AppHandle`；命令壳/JobCenter/Connector/MCP/Remote 在调用迁移后的服务时包一层。headless（CLI）传 `None` → 全部 no-op，与迁移前 `cfg(not(desktop))` 行为一致（refs 的 tokio 直跑 fallback 保留）。
