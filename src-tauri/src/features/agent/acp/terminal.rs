@@ -375,42 +375,52 @@ impl HandleDispatchFrom<Agent> for AcpTerminalHandler {
             .await
             .if_request({
                 let terminals = terminals.clone();
+                let connection = connection.clone();
                 async move |request: WaitForTerminalExitRequest, responder| {
                     let terminal = terminals.lock().await.get(&request.terminal_id);
-                    match terminal {
-                        Ok(terminal) => match terminal.wait_for_exit().await {
-                            Ok(resp) => responder.respond(resp),
+                    // Dispatch is serial: capture the handle in order, then wait off-loop.
+                    connection.spawn(async move {
+                        match terminal {
+                            Ok(terminal) => match terminal.wait_for_exit().await {
+                                Ok(resp) => responder.respond(resp),
+                                Err(e) => responder.respond_with_internal_error(e),
+                            },
                             Err(e) => responder.respond_with_internal_error(e),
-                        },
-                        Err(e) => responder.respond_with_internal_error(e),
-                    }
+                        }
+                    })
                 }
             })
             .await
             .if_request({
                 let terminals = terminals.clone();
+                let connection = connection.clone();
                 async move |request: KillTerminalRequest, responder| {
                     let terminal = terminals.lock().await.get(&request.terminal_id);
-                    match terminal {
-                        Ok(terminal) => match terminal.kill().await {
-                            Ok(resp) => responder.respond(resp),
+                    connection.spawn(async move {
+                        match terminal {
+                            Ok(terminal) => match terminal.kill().await {
+                                Ok(resp) => responder.respond(resp),
+                                Err(e) => responder.respond_with_internal_error(e),
+                            },
                             Err(e) => responder.respond_with_internal_error(e),
-                        },
-                        Err(e) => responder.respond_with_internal_error(e),
-                    }
+                        }
+                    })
                 }
             })
             .await
             .if_request({
                 let terminals = terminals.clone();
+                let connection = connection.clone();
                 async move |request: ReleaseTerminalRequest, responder| {
                     let terminal = terminals.lock().await.remove(&request.terminal_id);
-                    if let Some(terminal) = terminal {
-                        if let Err(e) = terminal.kill().await {
-                            return responder.respond_with_internal_error(e);
+                    connection.spawn(async move {
+                        if let Some(terminal) = terminal {
+                            if let Err(e) = terminal.kill().await {
+                                return responder.respond_with_internal_error(e);
+                            }
                         }
-                    }
-                    responder.respond(ReleaseTerminalResponse::new())
+                        responder.respond(ReleaseTerminalResponse::new())
+                    })
                 }
             })
             .await
@@ -581,6 +591,79 @@ mod tests {
             .expect("wait_for_exit failed");
 
         manager.remove(&response.terminal_id);
+    }
+
+    #[tokio::test]
+    async fn pending_wait_does_not_block_acp_requests() {
+        use agent_client_protocol::Client;
+
+        let mut manager = AcpTerminalManager::new();
+        let request = CreateTerminalRequest::new(
+            "session-dispatch",
+            if cfg!(windows) {
+                "powershell.exe"
+            } else {
+                "sleep"
+            },
+        )
+        .args(if cfg!(windows) {
+            vec![
+                "-NoProfile".to_string(),
+                "-NonInteractive".to_string(),
+                "-Command".to_string(),
+                "Start-Sleep -Seconds 30".to_string(),
+            ]
+        } else {
+            vec!["30".to_string()]
+        });
+        let id = manager.create(request).unwrap().terminal_id;
+        let terminal = manager.get(&id).unwrap();
+        let host = Client
+            .builder()
+            .with_handler(AcpTerminalHandler::new(Arc::new(Mutex::new(manager))));
+        let run =
+            Agent
+                .builder()
+                .connect_with(host, async move |connection: ConnectionTo<Client>| {
+                    let wait = connection
+                        .send_request(WaitForTerminalExitRequest::new(
+                            "session-dispatch",
+                            id.clone(),
+                        ))
+                        .block_task();
+                    let stop = async {
+                        let output = connection
+                            .send_request(TerminalOutputRequest::new(
+                                "session-dispatch",
+                                id.clone(),
+                            ))
+                            .block_task()
+                            .await?;
+                        assert!(output.exit_status.is_none());
+                        connection
+                            .send_request(KillTerminalRequest::new("session-dispatch", id.clone()))
+                            .block_task()
+                            .await?;
+                        connection
+                            .send_request(ReleaseTerminalRequest::new("session-dispatch", id))
+                            .block_task()
+                            .await?;
+                        Ok::<_, agent_client_protocol::Error>(())
+                    };
+                    let (wait, stop) = tokio::join!(wait, stop);
+                    wait?;
+                    stop?;
+                    Ok(())
+                });
+        let result = timeout(Duration::from_secs(5), run).await;
+        // Clean up through the controller even if the protocol dispatcher stalls.
+        timeout(Duration::from_secs(2), terminal.kill())
+            .await
+            .expect("terminal cleanup must not hang")
+            .expect("terminal cleanup failed");
+        result
+            .expect("pending wait must not block output, kill or release on the connection")
+            .expect("ACP terminal requests failed");
     }
 
     #[tokio::test]

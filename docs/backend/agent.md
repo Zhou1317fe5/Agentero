@@ -75,7 +75,9 @@ ACP `terminal` 能力：Host 在 initialize 时声明 `terminal: true`，并本�
 `terminal/create`、`terminal/output`、`terminal/release`、`terminal/wait_for_exit`、
 `terminal/kill`。每个 ACP 连接持有独立的 `AcpTerminalManager`，按 `TerminalId`
 管理子进程；每个 terminal 由单独任务独占 `Child`，`wait_for_exit` 不占 manager
-锁，`kill` / `release` 通过控制通道保持可用。`terminal/output` 只快照当前缓冲区，
+锁，`kill` / `release` 通过控制通道保持可用。ACP 消息分发本身是串行的，因此
+wait / kill / release 在分发时先获取或移除句柄，再经 `connection.spawn` 完成响应，
+避免等待退出时堵住同连接后续请求。`terminal/output` 只快照当前缓冲区，
 不会等待进程退出；输出按 `outputByteLimit` 从头部截断并保证 UTF-8 字符边界。该能力
 让 Kimi Code 等需要执行 shell 命令的 Agent 可以在 Vault 工作目录下运行命令并
 读取结果。

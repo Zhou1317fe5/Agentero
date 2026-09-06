@@ -1,6 +1,6 @@
-# Windows ACP 终端工具 Pending/Error：Hermes MSYS2 挂死 + Host 侧五处真实缺陷
+# Windows ACP 终端工具 Pending/Error：Hermes MSYS2 挂死与 Host 侧缺陷
 
-**状态**：已修复（Host 侧五处缺陷已修；Hermes 自家 terminal 工具的挂死属上游问题——已提
+**状态**：已修复（Host 侧缺陷已修；Hermes 自家 terminal 工具的挂死属上游问题——已提
 [#103398](https://github.com/NousResearch/hermes-agent/issues/103398) + PR
 [#103502](https://github.com/NousResearch/hermes-agent/pull/103502)，受影响机器以环境变量绕过 + local.py 热修过渡）
 **影响面**：Windows → Agent 会话终端类工具调用（Pending 卡片 / Error 卡片 / kill·release 失效）→ `cargo test`（Windows 测试二进制无法启动，独立缺陷）
@@ -69,6 +69,10 @@ Hermes 未触发它们，但对 Kimi Code 等真正委托 `terminal/*` 的 agent
    且子进程 POSIX cwd 初始化失败后 mktemp/cd 全部 ENOENT。本地 ACP 的
    run / warm / list / load 入口统一经 `simplified_agent_cwd` 规范化，终端默认
    cwd 复用同一结果；扩展 UNC 形式保持不变。
+6. **ACP 分发循环被终端等待阻塞**（PR #474 审查补充）：协议库逐条等待
+   handler 完成；仅释放 manager 锁仍不能让后续 `kill` 进入 handler。
+   wait / kill / release 在分发时先获取或移除句柄，再通过 `connection.spawn`
+   等待并响应，让同连接继续处理消息，任务生命周期仍由连接管理。
 
 修复要点：manager 锁只保护句柄存取；`Child` 所有权移入单一 controller
 任务，`kill` 经 mpsc 控制通道 + oneshot ack；reader 排空限时 250ms/个并
@@ -99,6 +103,9 @@ manifest 内容本就相同，合并无副作用；GNU 工具链排除）。
   修复前测试二进制无法启动。
 - 隔离 crate 全量终端测试 8/8（含"运行中 output 即时返回"、"wait 挂起时
   kill 可用"两个核心回归场景）。
+- PR #474 审查新增协议层回归：同一 ACP 连接先发送 `wait_for_exit`，再发送
+  output → kill → release，必须在长命令自然退出前完成；对象级测试无法覆盖
+  串行分发循环被阻塞的问题。
 - ACP 探针实测：修复后 terminal 恢复（见 2.1 绕过验证）。
 - 前端 vitest 34/34；`tsc --noEmit` 干净。
 
