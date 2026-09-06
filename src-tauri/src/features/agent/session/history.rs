@@ -59,7 +59,9 @@ pub async fn list_acp_sessions(
     remote: Option<&dyn crate::features::agent::remote_host::RemoteAgentLaunch>,
 ) -> Result<AcpListSessionsResult, AppError> {
     let acp = to_acp_agent(desc, Some(&cwd), remote)?;
-    let terminals = Arc::new(tokio::sync::Mutex::new(AcpTerminalManager::new()));
+    let terminals = Arc::new(tokio::sync::Mutex::new(AcpTerminalManager::with_cwd(
+        cwd.clone(),
+    )));
 
     let result = agent_client_protocol::Client
         .builder()
@@ -396,7 +398,9 @@ pub async fn load_acp_session(
     let last_replay: Arc<Mutex<std::time::Instant>> =
         Arc::new(Mutex::new(std::time::Instant::now()));
     let last_replay_for_notif = last_replay.clone();
-    let terminals = Arc::new(tokio::sync::Mutex::new(AcpTerminalManager::new()));
+    let terminals = Arc::new(tokio::sync::Mutex::new(AcpTerminalManager::with_cwd(
+        cwd.clone(),
+    )));
 
     let result = agent_client_protocol::Client
         .builder()
