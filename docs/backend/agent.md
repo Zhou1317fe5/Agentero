@@ -6,9 +6,14 @@ Agentero 作为 **ACP Client**，stdio JSON-RPC 连接用户本机或远端 Agen
 
 - Crate：`agent-client-protocol`（及 Codex 的 npm ACP 适配器进程）。
 - ACP `initialize` 最多等待 30 秒，覆盖 BYOA 冷启动；其余 session RPC 保持 15 秒预算。
-- 会话 `cwd` = 当前 Vault 根（远程则为远端 Vault 根）。
-- 本地 Pi / 自定义 Agent 会先经 shell 切到 Vault；Windows 仅在传给 `cmd.exe` 时将
-  `\\?\D:\...` 形式的本地盘符路径还原为 `D:\...`，避免 CMD 将其误判为 UNC（#458）。
+- 会话 `cwd` = 当前 Vault 根（远程则为远端 Vault 根），下发给 Agent 前经
+  `simplified_agent_cwd` 归一一次（run / warm / list / load 四处入口）：Windows 把
+  canonicalize 出的 `\\?\D:\...` 还原为 `D:\...`，否则 Agent 把该路径转交给 MSYS2
+  shell（Git Bash）时无法 `cd`，POSIX cwd 也会初始化错误，`mktemp`/`cd` 报 ENOENT；
+  扩展 UNC（`\\?\UNC\...`）与 POSIX 路径保持不变。详见
+  [bug_fix/hermes-terminal-pending-msys2-hang.md](../bug_fix/hermes-terminal-pending-msys2-hang.md)。
+- 本地 Pi / 自定义 Agent 仍先经 shell 切到 Vault，其 `cmd.exe` 包装对同一前缀再剥一次
+  （幂等），避免 CMD 把 `\\?\D:\...` 误判为 UNC（#458）。
 - Windows 的 cwd 与完整 Agent 命令通过环境变量展开，避免 Rust argv 转义破坏 CMD 内层引号；
   cwd 环境变量始终携带双引号，防止无空格路径中的括号等 CMD 元字符被当作语法（#458）。
 - 统一接口：OpenCode、OpenClaw、Hermes、Gemini、Claude ACP、Codex ACP、Qoder、Grok、Pi、Dsh（DeepSeek Harness）、Kimi Code、自定义 `command`/`args`/`env`。
