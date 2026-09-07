@@ -10,10 +10,10 @@ pub mod bbl;
 pub mod bib;
 pub mod citing;
 pub mod latex;
-pub mod online;
 
 use crate::error::AppError;
 use crate::features::catalog::papers::{self, PaperRecord};
+use crate::features::scholar_api::references;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -306,15 +306,17 @@ async fn parse_paper_refs_prepared(
     let mut enriched: Vec<usize> = Vec::new();
     let mut online_only = false;
     if online_enabled && (doi.is_some() || arxiv.is_some()) {
-        let outcome = online::fetch_references(doi.as_deref(), arxiv.as_deref()).await;
+        let outcome = references::fetch_references(doi.as_deref(), arxiv.as_deref()).await;
         messages.extend(outcome.messages);
         if let Some(p) = outcome.provider {
             provider = Some(p);
+            let online_drafts: Vec<RefDraft> =
+                outcome.refs.into_iter().map(draft_from_api_paper).collect();
             if drafts.is_empty() {
-                drafts = outcome.refs;
+                drafts = online_drafts;
                 online_only = true;
             } else {
-                enriched = merge_online(&mut drafts, &outcome.refs);
+                enriched = merge_online(&mut drafts, &online_drafts);
                 messages.push(format!(
                     "merged: {} of {} enriched online",
                     enriched.len(),
@@ -568,6 +570,26 @@ fn dedupe_by_key(drafts: &mut Vec<RefDraft>) {
         Some(k) => seen.insert(k.to_lowercase()),
         None => true,
     });
+}
+
+pub fn draft_from_api_paper(paper: crate::features::scholar_api::ApiPaper) -> RefDraft {
+    use crate::features::scholar_api::identifiers::strip_arxiv_version;
+    RefDraft {
+        key: None,
+        raw: paper.raw,
+        title: Some(paper.title).filter(|s| !s.trim().is_empty()),
+        authors: paper.authors,
+        year: paper.year,
+        venue: paper.venue,
+        doi: paper.identifiers.doi,
+        arxiv_id: paper
+            .identifiers
+            .arxiv_id
+            .as_deref()
+            .map(|s| strip_arxiv_version(s).to_string()),
+        url: paper.urls.landing.or(paper.urls.html),
+        source: paper.source,
+    }
 }
 
 fn draft_from_bib(e: &bib::BibEntry) -> RefDraft {

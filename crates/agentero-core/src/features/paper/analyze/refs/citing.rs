@@ -19,19 +19,17 @@
 use super::latex;
 use crate::error::AppError;
 use crate::features::catalog::papers;
-use crate::http;
+use crate::features::scholar_api::sources::semantic_scholar::SemanticScholarApi;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::Duration;
 
 use futures_util::stream::{self, StreamExt};
 
 const CITING_SCAN_REL: &str = ".agentero/citing-scan.json";
 const CACHE_SCHEMA_VERSION: u32 = 1;
-const S2_BASE: &str = "https://api.semanticscholar.org/graph/v1";
 
 /// Above this, a paper is a field-defining classic: its citers say nothing
 /// about *my* direction, and paging through 100k of them is pointless.
@@ -40,9 +38,6 @@ const SEED_CITES_MAX: u32 = 2000;
 /// sustained 429s on the shared pool.
 const FETCH_CONCURRENCY: usize = 8;
 const BATCH_IDS_MAX: usize = 500;
-const CITATION_PAGE: usize = 1000;
-/// S2 rejects `offset + limit >= 10000`.
-const OFFSET_CAP: usize = 10000;
 const DEFAULT_SINCE_DAYS: i64 = 183;
 const DEFAULT_BUDGET: usize = 20;
 /// Relevance vs. redundancy in the final pick. 0.7 keeps the strongest hits
@@ -50,7 +45,6 @@ const DEFAULT_BUDGET: usize = 20;
 const MMR_LAMBDA: f32 = 0.7;
 /// MMR is quadratic; there is no point diversifying a long tail.
 const MMR_POOL: usize = 150;
-const MAX_RETRIES: usize = 6;
 
 // ---------------------------------------------------------------- public types
 
@@ -394,85 +388,7 @@ fn since_date(days: i64) -> String {
         .to_string()
 }
 
-// ------------------------------------------------------------------ S2 client
-
-fn http_client() -> Result<reqwest::Client, AppError> {
-    http::shared_client()
-}
-
-async fn s2_get(client: &reqwest::Client, url: &str) -> Result<serde_json::Value, AppError> {
-    for attempt in 0..MAX_RETRIES {
-        let res = client
-            .get(url)
-            .header("Accept", "application/json")
-            .header("User-Agent", http::USER_AGENT)
-            .timeout(Duration::from_secs(90))
-            .send()
-            .await;
-        match res {
-            Ok(r) if r.status().as_u16() == 429 => {
-                tokio::time::sleep(Duration::from_secs(2 + attempt as u64 * 2)).await;
-            }
-            Ok(r) if r.status().is_success() => {
-                return r
-                    .json()
-                    .await
-                    .map_err(|e| AppError::message(format!("s2 json: {e}")));
-            }
-            Ok(r) => return Err(AppError::message(format!("s2 http {}", r.status()))),
-            Err(e) if attempt + 1 < MAX_RETRIES => {
-                tokio::time::sleep(Duration::from_secs(1 + attempt as u64)).await;
-                let _ = e;
-            }
-            Err(e) => return Err(AppError::message(format!("s2 request: {e}"))),
-        }
-    }
-    Err(AppError::message("s2 rate limited"))
-}
-
-/// `POST /paper/batch` — up to 500 ids in one request; entries align with the
-/// input and are `null` for unknown ids.
-async fn s2_batch(
-    client: &reqwest::Client,
-    ids: &[String],
-    fields: &str,
-) -> Result<Vec<Option<serde_json::Value>>, AppError> {
-    let url = format!("{S2_BASE}/paper/batch?fields={fields}");
-    for attempt in 0..MAX_RETRIES {
-        let res = client
-            .post(&url)
-            .header("User-Agent", http::USER_AGENT)
-            .timeout(Duration::from_secs(120))
-            .json(&serde_json::json!({ "ids": ids }))
-            .send()
-            .await;
-        match res {
-            Ok(r) if r.status().as_u16() == 429 => {
-                tokio::time::sleep(Duration::from_secs(2 + attempt as u64 * 2)).await;
-            }
-            Ok(r) if r.status().is_success() => {
-                let value: serde_json::Value = r
-                    .json()
-                    .await
-                    .map_err(|e| AppError::message(format!("s2 batch json: {e}")))?;
-                let arr = value
-                    .as_array()
-                    .ok_or_else(|| AppError::message("s2 batch: expected array"))?;
-                return Ok(arr
-                    .iter()
-                    .map(|v| if v.is_null() { None } else { Some(v.clone()) })
-                    .collect());
-            }
-            Ok(r) => return Err(AppError::message(format!("s2 batch http {}", r.status()))),
-            Err(e) if attempt + 1 < MAX_RETRIES => {
-                tokio::time::sleep(Duration::from_secs(1 + attempt as u64)).await;
-                let _ = e;
-            }
-            Err(e) => return Err(AppError::message(format!("s2 batch request: {e}"))),
-        }
-    }
-    Err(AppError::message("s2 batch rate limited"))
-}
+// ------------------------------------------------------------------ S2 parsing helpers
 
 fn str_field(v: &serde_json::Value, key: &str) -> Option<String> {
     v.get(key)
@@ -513,39 +429,6 @@ fn parse_citing(cp: &serde_json::Value) -> Option<CitingRaw> {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string()),
     })
-}
-
-/// All citers of one paper. Paginated at 1000; the offset cap means the tail of
-/// a mega-cited paper is unreachable — which is why those are skipped upstream.
-async fn s2_citations(client: &reqwest::Client, s2_id: &str) -> Result<Vec<CitingRaw>, AppError> {
-    let mut out = Vec::new();
-    let mut offset = 0usize;
-    loop {
-        let url = format!(
-            "{S2_BASE}/paper/{}/citations?fields=title,publicationDate,year,externalIds,citationCount,openAccessPdf&limit={CITATION_PAGE}&offset={offset}",
-            urlencoding::encode(s2_id)
-        );
-        let value = s2_get(client, &url).await?;
-        let Some(items) = value.get("data").and_then(|v| v.as_array()) else {
-            break;
-        };
-        for item in items {
-            if let Some(cp) = item.get("citingPaper") {
-                if let Some(raw) = parse_citing(cp) {
-                    out.push(raw);
-                }
-            }
-        }
-        let next = value
-            .get("next")
-            .and_then(|v| v.as_u64())
-            .map(|n| n as usize);
-        match next {
-            Some(n) if n + CITATION_PAGE <= OFFSET_CAP => offset = n,
-            _ => break,
-        }
-    }
-    Ok(out)
 }
 
 // ------------------------------------------------------------------ scan entry
@@ -602,7 +485,6 @@ pub async fn scan(
 
     // One batch request buys citation counts (the L0 skip list) and SPECTER2
     // vectors (the L2 gate) for the entire library.
-    let client = http_client()?;
     let query_indices: Vec<usize> = library
         .iter()
         .enumerate()
@@ -613,7 +495,10 @@ pub async fn scan(
             .iter()
             .map(|i| library[*i].s2_query_id.clone().unwrap_or_default())
             .collect();
-        match s2_batch(&client, &ids, "paperId,citationCount,embedding.specter_v2").await {
+        match SemanticScholarApi
+            .batch_papers(&ids, "paperId,citationCount,embedding.specter_v2")
+            .await
+        {
             Ok(rows) => {
                 for (i, row) in chunk.iter().zip(rows) {
                     let Some(row) = row else { continue };
@@ -696,14 +581,22 @@ pub async fn scan(
     let fetched: Vec<(usize, Result<Vec<CitingRaw>, AppError>)> =
         stream::iter(stale.iter().copied())
             .map(|idx| {
-                let client = client.clone();
                 let s2_id = library[idx].s2_id.clone().unwrap_or_default();
                 let done = &done;
                 async move {
                     if hooks.is_cancelled() {
                         return (idx, Ok(Vec::new()));
                     }
-                    let result = s2_citations(&client, &s2_id).await;
+                    let result: Result<Vec<CitingRaw>, AppError> = SemanticScholarApi
+                        .citations(&s2_id)
+                        .await
+                        .map_err(|e| AppError::message(e.to_string()))
+                        .map(|items| {
+                            items
+                                .into_iter()
+                                .filter_map(|cp| parse_citing(&cp))
+                                .collect::<Vec<CitingRaw>>()
+                        });
                     let n = done.fetch_add(1, Ordering::Relaxed) + 1;
                     // The fetch phase owns 5%..85% of the task.
                     let pct = 5 + (n * 80 / total_fetch.max(1)).min(80);
@@ -814,7 +707,10 @@ pub async fn scan(
     let mut cand_vectors: HashMap<String, Vec<f32>> = HashMap::new();
     for chunk in filtered.chunks(BATCH_IDS_MAX) {
         let ids: Vec<String> = chunk.iter().map(|c| c.s2_id.clone()).collect();
-        match s2_batch(&client, &ids, "paperId,embedding.specter_v2").await {
+        match SemanticScholarApi
+            .batch_papers(&ids, "paperId,embedding.specter_v2")
+            .await
+        {
             Ok(rows) => {
                 for (cand, row) in chunk.iter().zip(rows) {
                     let Some(row) = row else { continue };
