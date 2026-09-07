@@ -56,7 +56,10 @@ impl AcademicApi for CrossrefApi {
             urlencoding::encode(doi.trim())
         );
         let value = client::get_json(&url).await?;
-        let Some(items) = value.pointer("/message/reference").and_then(|v| v.as_array()) else {
+        let Some(items) = value
+            .pointer("/message/reference")
+            .and_then(|v| v.as_array())
+        else {
             return Ok(Vec::new());
         };
         let mut out = Vec::new();
@@ -87,7 +90,9 @@ fn map_reference(item: &Value) -> Option<ApiPaper> {
             pmid: None,
         },
         title: title.unwrap_or_default(),
-        authors: str_field(item, "author").map(|a| vec![a]).unwrap_or_default(),
+        authors: str_field(item, "author")
+            .map(|a| vec![a])
+            .unwrap_or_default(),
         year,
         date: year.map(|y| y.to_string()),
         venue: str_field(item, "journal-title"),

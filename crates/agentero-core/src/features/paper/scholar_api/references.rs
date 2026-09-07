@@ -3,7 +3,9 @@
 //! Semantic Scholar is tried first; Crossref is the fallback for DOI.
 //! Free endpoints only; failures degrade silently to local parsing.
 
-use crate::features::scholar_api::sources::{crossref::CrossrefApi, semantic_scholar::SemanticScholarApi};
+use crate::features::scholar_api::sources::{
+    crossref::CrossrefApi, semantic_scholar::SemanticScholarApi,
+};
 use crate::features::scholar_api::traits::AcademicApi;
 use crate::features::scholar_api::ApiPaper;
 
