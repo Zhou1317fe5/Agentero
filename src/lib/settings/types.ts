@@ -38,7 +38,8 @@ export type LibraryColumnKey =
 	| "year"
 	| "publication"
 	| "tags"
-	| "id";
+	| "id"
+	| "citations";
 
 /** Per-column display preference: order comes from array position. */
 export type LibraryColumnPref = {
@@ -54,6 +55,7 @@ export const LIBRARY_COLUMN_KEYS: LibraryColumnKey[] = [
 	"publication",
 	"tags",
 	"id",
+	"citations",
 ];
 
 /** Default: every column visible, in canonical order. */

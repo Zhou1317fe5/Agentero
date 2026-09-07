@@ -62,6 +62,7 @@ export function buildPaperRow(p: PaperLibraryRow): PaperRow {
 				.map((t) => t.name)
 				.join(", ")
 				.toLocaleLowerCase(),
+			citations: p.citation_count ?? Number.NEGATIVE_INFINITY,
 		},
 	};
 }

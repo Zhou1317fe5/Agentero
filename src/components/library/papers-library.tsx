@@ -139,8 +139,8 @@ export function PapersLibrary({
 				return;
 			}
 			setSortKey(key);
-			// Year defaults to newest first; text columns ascending
-			setSortDir(key === "year" ? "desc" : "asc");
+			// Year / citation count default to newest/highest first; text columns ascending
+			setSortDir(key === "year" || key === "citations" ? "desc" : "asc");
 		},
 		[sortKey],
 	);

@@ -226,6 +226,19 @@ export const COLUMN_META = {
 			);
 		},
 	},
+	citations: {
+		labelKey: "papersLibrary.colCitations",
+		widthWeight: 10,
+		headerClassName: "min-w-[80px]",
+		render: (p) => {
+			const count = p.citation_count;
+			return (
+				<td className="whitespace-nowrap px-3 py-2.5 text-right tabular-nums text-muted-foreground text-xs">
+					{count != null ? new Intl.NumberFormat(undefined).format(count) : "—"}
+				</td>
+			);
+		},
+	},
 } as const satisfies Record<SortKey, ColumnDef>;
 
 export { SortIcon };
