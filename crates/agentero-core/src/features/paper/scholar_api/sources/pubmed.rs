@@ -32,6 +32,10 @@ impl AcademicApi for PubMedApi {
             | ApiCapability::PROVIDE_ABSTRACT
     }
 
+    fn priority(&self) -> i32 {
+        60
+    }
+
     async fn fetch(&self, query: &ApiQuery) -> Result<Vec<ApiPaper>, ApiError> {
         match query {
             ApiQuery::Title(title) => search_by_title(title, 5).await,

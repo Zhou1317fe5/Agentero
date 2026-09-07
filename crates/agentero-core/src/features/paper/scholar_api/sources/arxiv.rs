@@ -29,6 +29,10 @@ impl AcademicApi for ArxivApi {
             | ApiCapability::PROVIDE_VENUE
     }
 
+    fn priority(&self) -> i32 {
+        70
+    }
+
     async fn fetch(&self, query: &ApiQuery) -> Result<Vec<ApiPaper>, ApiError> {
         match query {
             ApiQuery::ArxivId(id) => fetch_by_id(id).await.map(|p| vec![p]),

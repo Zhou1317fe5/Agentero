@@ -16,6 +16,12 @@ pub trait AcademicApi: Send + Sync {
     /// Capabilities advertised by this source.
     fn capabilities(&self) -> ApiCapability;
 
+    /// Search/merge priority for this source. Higher is preferred when multiple
+    /// sources return the same candidate.
+    fn priority(&self) -> i32 {
+        0
+    }
+
     /// Whether this source can handle `query`. The default implementation maps
     /// query variants to capability flags.
     fn supports(&self, query: &ApiQuery) -> bool {
@@ -37,6 +43,18 @@ pub trait AcademicApi: Send + Sync {
     /// cannot satisfy a supported query should return an empty vector rather
     /// than an error when the upstream simply has no record.
     async fn fetch(&self, query: &ApiQuery) -> Result<Vec<ApiPaper>, ApiError>;
+
+    /// Fetch outgoing references for a paper identified by DOI or arXiv id.
+    ///
+    /// The default implementation returns an empty vector so sources that do
+    /// not support reference lookup do not need to implement it.
+    async fn fetch_references(
+        &self,
+        _doi: Option<&str>,
+        _arxiv_id: Option<&str>,
+    ) -> Result<Vec<ApiPaper>, ApiError> {
+        Ok(Vec::new())
+    }
 }
 
 /// Abstracts a service that can return journal/venue metrics and rankings.

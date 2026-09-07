@@ -30,6 +30,10 @@ impl AcademicApi for CrossrefApi {
             | ApiCapability::PROVIDE_VENUE
     }
 
+    fn priority(&self) -> i32 {
+        90
+    }
+
     async fn fetch(&self, query: &ApiQuery) -> Result<Vec<ApiPaper>, ApiError> {
         match query {
             ApiQuery::Doi(doi) => fetch_by_doi(doi).await.map(|p| vec![p]),

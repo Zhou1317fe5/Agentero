@@ -31,6 +31,10 @@ impl AcademicApi for SemanticScholarApi {
             | ApiCapability::PROVIDE_VENUE
     }
 
+    fn priority(&self) -> i32 {
+        100
+    }
+
     async fn fetch(&self, query: &ApiQuery) -> Result<Vec<ApiPaper>, ApiError> {
         match query {
             ApiQuery::Title(title) => search_by_title(title, 5).await,
