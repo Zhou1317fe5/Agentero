@@ -1,5 +1,7 @@
 use crate::install_dirs;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 /// Extra directories GUI apps often miss when launched outside a login shell.
 /// Shares the candidate list with the remote SSH bootstrap (`core::install_dirs`).
@@ -153,6 +155,62 @@ pub fn probe_command(command: &str) -> Result<PathBuf, String> {
     })
 }
 
+/// Cached login-shell environment variables.
+///
+/// GUI apps on macOS/Linux are often launched by `launchd`/`systemd` and do not
+/// inherit the user's interactive shell configuration (`.zshrc`, `.bashrc`, etc.).
+/// BYOA agents like `codex-acp` expect variables such as `OPENAI_API_KEY` and
+/// `OPENAI_BASE_URL` to be present, so we bootstrap them from the login shell.
+static LOGIN_SHELL_ENV: OnceLock<Option<HashMap<String, String>>> = OnceLock::new();
+
+/// Parse `env -0` output (null-separated `key=value` entries).
+fn parse_env_zero(output: &[u8]) -> HashMap<String, String> {
+    let mut map = HashMap::new();
+    for chunk in output.split(|&b| b == 0) {
+        if chunk.is_empty() {
+            continue;
+        }
+        let line = String::from_utf8_lossy(chunk);
+        if let Some((key, value)) = line.split_once('=') {
+            map.insert(key.to_string(), value.to_string());
+        }
+    }
+    map
+}
+
+/// Read the user's login-shell environment once and cache it.
+///
+/// Returns `None` if the shell cannot be queried. The result is intentionally
+/// not logged to avoid leaking secrets.
+#[cfg(not(windows))]
+pub fn login_shell_env() -> Option<&'static HashMap<String, String>> {
+    LOGIN_SHELL_ENV
+        .get_or_init(|| {
+            let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".to_string());
+            let output = std::process::Command::new(&shell)
+                .args(["-lic", "env -0"])
+                .output()
+                .ok()?;
+            if !output.status.success() {
+                return None;
+            }
+            let map = parse_env_zero(&output.stdout);
+            if map.is_empty() {
+                None
+            } else {
+                Some(map)
+            }
+        })
+        .as_ref()
+}
+
+/// Windows GUI apps inherit a reasonably complete environment block from the
+/// Explorer shell; there is no single "login shell" equivalent to query.
+#[cfg(windows)]
+pub fn login_shell_env() -> Option<&'static HashMap<String, String>> {
+    LOGIN_SHELL_ENV.get_or_init(|| None).as_ref()
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(unix)]
@@ -170,5 +228,26 @@ mod tests {
         let mut v = vec!["v9.11.2", "v24.3.0", "v10.0.0"];
         v.sort_by_key(|b| std::cmp::Reverse(super::version_key(b)));
         assert_eq!(v, vec!["v24.3.0", "v10.0.0", "v9.11.2"]);
+    }
+
+    #[test]
+    fn parse_env_zero_handles_null_separated_pairs() {
+        let bytes = b"OPENAI_API_KEY=sk-abc\0OPENAI_BASE_URL=https://example/v1\0PATH=/usr/bin\0";
+        let map = super::parse_env_zero(bytes);
+        assert_eq!(map.get("OPENAI_API_KEY"), Some(&"sk-abc".to_string()));
+        assert_eq!(
+            map.get("OPENAI_BASE_URL"),
+            Some(&"https://example/v1".to_string())
+        );
+        assert_eq!(map.get("PATH"), Some(&"/usr/bin".to_string()));
+    }
+
+    #[test]
+    fn parse_env_zero_skips_empty_and_malformed_entries() {
+        let bytes = b"FOO=bar\0BAD_NO_EQUAL\0\0BAZ=qux\0";
+        let map = super::parse_env_zero(bytes);
+        assert_eq!(map.get("FOO"), Some(&"bar".to_string()));
+        assert_eq!(map.get("BAZ"), Some(&"qux".to_string()));
+        assert!(!map.contains_key("BAD_NO_EQUAL"));
     }
 }
