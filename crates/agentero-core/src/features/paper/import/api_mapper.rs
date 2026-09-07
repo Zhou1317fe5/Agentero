@@ -9,7 +9,7 @@ use crate::features::scholar_api::sources::translator::map_zotero_item;
 use crate::features::scholar_api::urls::{
     acl_anthology_pdf_url, arxiv_canonical_urls, doi_landing_url,
 };
-use crate::features::scholar_api::ApiPaper;
+use crate::features::scholar_api::{ApiPaper, PaperIdentifiers, PaperUrls};
 
 /// Convert a single API candidate into a `PaperRecord`, choosing an id and
 /// paper type from the available identifiers.
@@ -149,6 +149,164 @@ pub fn merge_api_papers(base: &ApiPaper, other: &ApiPaper) -> PaperRecord {
     enrich_remote_urls(&mut merged);
 
     merged
+}
+
+/// Source preference order for venue/publication names.
+const VENUE_SOURCE_ORDER: &[&str] = &["s2", "crossref", "openalex", "arxiv", "pubmed"];
+
+/// Source preference order for bibliographic detail fields (volume/issue/pages/publisher).
+const BIBLIO_SOURCE_ORDER: &[&str] = &["crossref", "s2", "openalex", "arxiv", "pubmed"];
+
+/// Source preference order for abstracts.
+const ABSTRACT_SOURCE_ORDER: &[&str] = &["arxiv", "s2", "crossref", "openalex", "pubmed"];
+
+fn pick_by_source<T: Clone>(
+    candidates: &[ApiPaper],
+    extractor: fn(&ApiPaper) -> &Option<T>,
+    order: &[&str],
+) -> Option<T> {
+    for name in order {
+        if let Some(v) = candidates
+            .iter()
+            .find(|p| p.source == *name)
+            .and_then(|p| extractor(p).clone())
+        {
+            return Some(v);
+        }
+    }
+    candidates.iter().find_map(|p| extractor(p).clone())
+}
+
+fn best_title(candidates: &[ApiPaper]) -> String {
+    candidates
+        .iter()
+        .max_by(|a, b| {
+            let a_usable = !a
+                .title
+                .chars()
+                .all(|c| c.is_uppercase() || c.is_whitespace() || c.is_ascii_punctuation());
+            let b_usable = !b
+                .title
+                .chars()
+                .all(|c| c.is_uppercase() || c.is_whitespace() || c.is_ascii_punctuation());
+            a_usable
+                .cmp(&b_usable)
+                .then_with(|| a.title.len().cmp(&b.title.len()))
+        })
+        .map(|p| p.title.clone())
+        .unwrap_or_default()
+}
+
+fn best_authors(candidates: &[ApiPaper]) -> Vec<String> {
+    candidates
+        .iter()
+        .max_by_key(|p| p.authors.len())
+        .map(|p| p.authors.clone())
+        .unwrap_or_default()
+}
+
+fn best_year(candidates: &[ApiPaper]) -> Option<i32> {
+    candidates
+        .iter()
+        .filter(|p| p.year.is_some())
+        .max_by_key(|p| p.date.as_ref().map(|d| d.len()).unwrap_or(0))
+        .and_then(|p| p.year)
+}
+
+fn best_date(candidates: &[ApiPaper]) -> Option<String> {
+    candidates
+        .iter()
+        .filter(|p| p.year.is_some())
+        .max_by_key(|p| p.date.as_ref().map(|d| d.len()).unwrap_or(0))
+        .and_then(|p| p.date.clone())
+}
+
+fn merge_identifiers(candidates: &[ApiPaper]) -> PaperIdentifiers {
+    let mut doi = None;
+    let mut arxiv_id = None;
+    let mut isbn = None;
+    let mut pmid = None;
+    for p in candidates {
+        if doi.is_none() {
+            doi = p.identifiers.doi.clone().map(|d| d.trim().to_lowercase());
+        }
+        if arxiv_id.is_none() {
+            arxiv_id = p
+                .identifiers
+                .arxiv_id
+                .clone()
+                .map(|a| strip_arxiv_version(a.trim()));
+        }
+        if isbn.is_none() {
+            isbn = p.identifiers.isbn.clone();
+        }
+        if pmid.is_none() {
+            pmid = p.identifiers.pmid.clone();
+        }
+    }
+    PaperIdentifiers {
+        doi,
+        arxiv_id,
+        isbn,
+        pmid,
+    }
+}
+
+fn merge_urls(candidates: &[ApiPaper]) -> PaperUrls {
+    let mut pdf = None;
+    let mut html = None;
+    let mut landing = None;
+    for p in candidates {
+        if pdf.is_none() {
+            pdf = p.urls.pdf.clone();
+        }
+        if html.is_none() {
+            html = p.urls.html.clone();
+        }
+        if landing.is_none() {
+            landing = p.urls.landing.clone();
+        }
+    }
+    PaperUrls { pdf, html, landing }
+}
+
+fn merge_citation_count(candidates: &[ApiPaper]) -> Option<i64> {
+    candidates.iter().filter_map(|p| p.citation_count).max()
+}
+
+fn first_language(candidates: &[ApiPaper]) -> Option<String> {
+    candidates
+        .iter()
+        .find_map(|p| p.language.clone().filter(|l| !l.trim().is_empty()))
+}
+
+/// Merge multiple `ApiPaper` candidates describing the same work.
+///
+/// `candidates` must be pre-sorted by preferred source priority (highest first).
+/// The returned `ApiPaper` combines the richest fields from all candidates,
+/// with source-specific preferences (e.g. Crossref for bibliographic details,
+/// arXiv for abstracts).
+pub fn merge_api_paper_candidates(candidates: &[ApiPaper]) -> ApiPaper {
+    assert!(!candidates.is_empty());
+    let base = &candidates[0];
+
+    ApiPaper {
+        identifiers: merge_identifiers(candidates),
+        title: best_title(candidates),
+        authors: best_authors(candidates),
+        year: best_year(candidates),
+        date: best_date(candidates),
+        venue: pick_by_source(candidates, |p| &p.venue, VENUE_SOURCE_ORDER),
+        volume: pick_by_source(candidates, |p| &p.volume, BIBLIO_SOURCE_ORDER),
+        issue: pick_by_source(candidates, |p| &p.issue, BIBLIO_SOURCE_ORDER),
+        pages: pick_by_source(candidates, |p| &p.pages, BIBLIO_SOURCE_ORDER),
+        publisher: pick_by_source(candidates, |p| &p.publisher, BIBLIO_SOURCE_ORDER),
+        abstract_text: pick_by_source(candidates, |p| &p.abstract_text, ABSTRACT_SOURCE_ORDER),
+        urls: merge_urls(candidates),
+        citation_count: merge_citation_count(candidates),
+        language: first_language(candidates).or_else(|| base.language.clone()),
+        source: base.source,
+    }
 }
 
 /// Canonicalize remote URLs on a `PaperRecord`.
@@ -357,6 +515,140 @@ mod tests {
         assert!(json.contains("\"pdf_url\""), "got {json}");
         assert!(json.contains("\"arxiv_id\""), "got {json}");
         assert!(!json.contains("\"pdfUrl\""));
+    }
+
+    fn api_paper_with(
+        source: &'static str,
+        title: &str,
+        identifiers: PaperIdentifiers,
+        extra: impl FnOnce(&mut ApiPaper),
+    ) -> ApiPaper {
+        let mut p = ApiPaper {
+            title: title.into(),
+            authors: vec!["Vaswani".into()],
+            year: Some(2017),
+            date: None,
+            venue: None,
+            volume: None,
+            issue: None,
+            pages: None,
+            publisher: None,
+            abstract_text: None,
+            language: None,
+            citation_count: None,
+            identifiers,
+            urls: PaperUrls::default(),
+            source,
+        };
+        extra(&mut p);
+        p
+    }
+
+    #[test]
+    fn merge_api_paper_candidates_prefers_crossref_bibliography() {
+        let s2 = api_paper_with(
+            "s2",
+            "Attention Is All You Need",
+            PaperIdentifiers {
+                arxiv_id: Some("1706.03762".into()),
+                ..Default::default()
+            },
+            |p| {
+                p.venue = Some("NeurIPS".into());
+                p.citation_count = Some(123_456);
+            },
+        );
+        let crossref = api_paper_with(
+            "crossref",
+            "Attention is all you need",
+            PaperIdentifiers {
+                doi: Some("10.1/attention".into()),
+                ..Default::default()
+            },
+            |p| {
+                p.volume = Some("30".into());
+                p.issue = Some("1".into());
+                p.pages = Some("1-11".into());
+                p.publisher = Some("NeurIPS Proceedings".into());
+            },
+        );
+
+        let merged = merge_api_paper_candidates(&[s2, crossref]);
+        assert_eq!(merged.identifiers.doi.as_deref(), Some("10.1/attention"));
+        assert_eq!(merged.identifiers.arxiv_id.as_deref(), Some("1706.03762"));
+        assert_eq!(merged.volume.as_deref(), Some("30"));
+        assert_eq!(merged.issue.as_deref(), Some("1"));
+        assert_eq!(merged.pages.as_deref(), Some("1-11"));
+        assert_eq!(merged.publisher.as_deref(), Some("NeurIPS Proceedings"));
+        assert_eq!(merged.citation_count, Some(123_456));
+    }
+
+    #[test]
+    fn merge_api_paper_candidates_prefers_arxiv_abstract() {
+        let s2 = api_paper_with(
+            "s2",
+            "Attention Is All You Need",
+            PaperIdentifiers::default(),
+            |p| {
+                p.abstract_text = Some("Short abstract.".into());
+            },
+        );
+        let arxiv = api_paper_with(
+            "arxiv",
+            "Attention Is All You Need",
+            PaperIdentifiers::default(),
+            |p| {
+                p.abstract_text = Some("The dominant sequence transduction models...".into());
+            },
+        );
+
+        let merged = merge_api_paper_candidates(&[s2, arxiv]);
+        assert_eq!(
+            merged.abstract_text.as_deref(),
+            Some("The dominant sequence transduction models...")
+        );
+    }
+
+    #[test]
+    fn merge_api_paper_candidates_keeps_max_citation_count() {
+        let low = api_paper_with("s2", "X", PaperIdentifiers::default(), |p| {
+            p.citation_count = Some(900);
+        });
+        let high = api_paper_with("crossref", "X", PaperIdentifiers::default(), |p| {
+            p.citation_count = Some(1_500);
+        });
+        let none = api_paper_with("openalex", "X", PaperIdentifiers::default(), |_| {});
+
+        assert_eq!(
+            merge_api_paper_candidates(&[low, high.clone(), none]).citation_count,
+            Some(1_500)
+        );
+    }
+
+    #[test]
+    fn merge_api_paper_candidates_merges_identifiers() {
+        let arxiv = api_paper_with(
+            "arxiv",
+            "X",
+            PaperIdentifiers {
+                arxiv_id: Some("1706.03762".into()),
+                ..Default::default()
+            },
+            |_| {},
+        );
+        let crossref = api_paper_with(
+            "crossref",
+            "X",
+            PaperIdentifiers {
+                doi: Some("10.1/attention".into()),
+                ..Default::default()
+            },
+            |_| {},
+        );
+
+        let merged = merge_api_paper_candidates(&[arxiv, crossref]);
+        assert_eq!(merged.identifiers.arxiv_id.as_deref(), Some("1706.03762"));
+        assert_eq!(merged.identifiers.doi.as_deref(), Some("10.1/attention"));
     }
 
     #[test]
