@@ -83,6 +83,7 @@ mod tests {
             identifiers: ids,
             urls: PaperUrls::default(),
             source: "test",
+            raw: None,
         }
     }
 

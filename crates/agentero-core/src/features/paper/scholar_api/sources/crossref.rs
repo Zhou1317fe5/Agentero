@@ -28,6 +28,7 @@ impl AcademicApi for CrossrefApi {
             | ApiCapability::PROVIDE_ABSTRACT
             | ApiCapability::PROVIDE_CITATION_COUNT
             | ApiCapability::PROVIDE_VENUE
+            | ApiCapability::FETCH_REFERENCES
     }
 
     fn priority(&self) -> i32 {
@@ -41,6 +42,70 @@ impl AcademicApi for CrossrefApi {
             _ => Err(ApiError::UnsupportedQuery(query.clone())),
         }
     }
+
+    async fn fetch_references(
+        &self,
+        doi: Option<&str>,
+        _arxiv_id: Option<&str>,
+    ) -> Result<Vec<ApiPaper>, ApiError> {
+        let Some(doi) = doi.filter(|d| !d.trim().is_empty()) else {
+            return Ok(Vec::new());
+        };
+        let url = format!(
+            "{API_BASE}/{}?mailto={CROSSREF_MAILTO}",
+            urlencoding::encode(doi.trim())
+        );
+        let value = client::get_json(&url).await?;
+        let Some(items) = value.pointer("/message/reference").and_then(|v| v.as_array()) else {
+            return Ok(Vec::new());
+        };
+        let mut out = Vec::new();
+        for item in items {
+            if let Some(paper) = map_reference(item) {
+                out.push(paper);
+            }
+        }
+        Ok(out)
+    }
+}
+
+const CROSSREF_MAILTO: &str = "agentero@users.noreply.github.com";
+
+fn map_reference(item: &Value) -> Option<ApiPaper> {
+    let title = str_field(item, "article-title").or_else(|| str_field(item, "volume-title"));
+    let doi = str_field(item, "DOI");
+    let raw = str_field(item, "unstructured");
+    if title.is_none() && doi.is_none() && raw.is_none() {
+        return None;
+    }
+    let year = str_field(item, "year").and_then(|y| y.trim().parse::<i32>().ok());
+    Some(ApiPaper {
+        identifiers: PaperIdentifiers {
+            doi,
+            arxiv_id: None,
+            isbn: None,
+            pmid: None,
+        },
+        title: title.unwrap_or_default(),
+        authors: str_field(item, "author").map(|a| vec![a]).unwrap_or_default(),
+        year,
+        date: year.map(|y| y.to_string()),
+        venue: str_field(item, "journal-title"),
+        volume: None,
+        issue: None,
+        pages: None,
+        publisher: None,
+        abstract_text: None,
+        urls: PaperUrls {
+            pdf: None,
+            html: None,
+            landing: None,
+        },
+        citation_count: None,
+        language: None,
+        source: SOURCE,
+        raw,
+    })
 }
 
 async fn fetch_by_doi(doi: &str) -> Result<ApiPaper, ApiError> {
@@ -150,6 +215,7 @@ fn map_work(message: &Value, known_doi: Option<&str>) -> Option<ApiPaper> {
             .and_then(|v| v.as_i64()),
         language: str_or_first(message, "language"),
         source: SOURCE,
+        raw: None,
     })
 }
 

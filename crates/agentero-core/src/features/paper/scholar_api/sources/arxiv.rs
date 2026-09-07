@@ -110,6 +110,7 @@ fn parse_entries(xml: &str, limit: usize) -> Vec<ApiPaper> {
             citation_count: None,
             language: None,
             source: SOURCE,
+            raw: None,
         });
         if out.len() >= limit {
             break;

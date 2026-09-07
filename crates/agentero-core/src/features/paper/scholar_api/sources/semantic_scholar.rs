@@ -2,6 +2,7 @@
 
 use async_trait::async_trait;
 use serde_json::Value;
+use std::time::Duration;
 
 use crate::features::scholar_api::client;
 use crate::features::scholar_api::identifiers::strip_arxiv_version;
@@ -29,6 +30,7 @@ impl AcademicApi for SemanticScholarApi {
             | ApiCapability::FETCH_BY_ARXIV
             | ApiCapability::PROVIDE_CITATION_COUNT
             | ApiCapability::PROVIDE_VENUE
+            | ApiCapability::FETCH_REFERENCES
     }
 
     fn priority(&self) -> i32 {
@@ -42,6 +44,37 @@ impl AcademicApi for SemanticScholarApi {
             ApiQuery::ArxivId(id) => fetch_by_id(&format!("ARXIV:{id}")).await.map(|p| vec![p]),
             _ => Err(ApiError::UnsupportedQuery(query.clone())),
         }
+    }
+
+    async fn fetch_references(
+        &self,
+        doi: Option<&str>,
+        arxiv_id: Option<&str>,
+    ) -> Result<Vec<ApiPaper>, ApiError> {
+        let ext_id = arxiv_id
+            .map(|a| format!("ARXIV:{}", strip_arxiv_version(a)))
+            .or_else(|| doi.map(|d| format!("DOI:{}", d.trim())));
+        let Some(ext_id) = ext_id else {
+            return Ok(Vec::new());
+        };
+        let url = format!(
+            "{API_BASE}/paper/{}/references?fields=title,authors,year,venue,publicationVenue,journal,externalIds,url&limit=1000",
+            urlencoding::encode(&ext_id)
+        );
+        let value = client::get_json(&url).await?;
+        let Some(items) = value.get("data").and_then(|v| v.as_array()) else {
+            return Ok(Vec::new());
+        };
+        let mut out = Vec::new();
+        for item in items {
+            let Some(cp) = item.get("citedPaper") else {
+                continue;
+            };
+            if let Some(paper) = map_paper(cp) {
+                out.push(paper);
+            }
+        }
+        Ok(out)
     }
 }
 
@@ -163,6 +196,7 @@ fn map_paper(item: &Value) -> Option<ApiPaper> {
         citation_count: item.get("citationCount").and_then(|v| v.as_i64()),
         language: None,
         source: SOURCE,
+        raw: None,
     })
 }
 
@@ -274,6 +308,87 @@ impl SemanticScholarApi {
             return self.fetch_venue_by_doi(doi).await;
         }
         None
+    }
+
+    /// `POST /paper/batch` — up to 500 ids in one request; entries align with the
+    /// input and are `null` for unknown ids.
+    pub async fn batch_papers(
+        &self,
+        ids: &[String],
+        fields: &str,
+    ) -> Result<Vec<Option<Value>>, ApiError> {
+        const BATCH_TIMEOUT: Duration = Duration::from_secs(120);
+        const MAX_RETRIES: usize = 6;
+        let url = format!("{API_BASE}/paper/batch?fields={fields}");
+        let body = serde_json::json!({ "ids": ids });
+        for attempt in 0..MAX_RETRIES {
+            match client::post_json_with_timeout(&url, body.clone(), BATCH_TIMEOUT).await {
+                Ok(value) => {
+                    let Some(arr) = value.as_array() else {
+                        return Err(ApiError::Parse("s2 batch: expected array".to_string()));
+                    };
+                    return Ok(arr
+                        .iter()
+                        .map(|v| if v.is_null() { None } else { Some(v.clone()) })
+                        .collect());
+                }
+                Err(ApiError::RateLimited) if attempt + 1 < MAX_RETRIES => {
+                    tokio::time::sleep(Duration::from_secs(2 + attempt as u64 * 2)).await;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        Err(ApiError::RateLimited)
+    }
+
+    /// All citers of one paper. Paginated at 1000; the offset cap means the tail
+    /// of a mega-cited paper is unreachable — callers should skip those upstream.
+    pub async fn citations(&self, s2_id: &str) -> Result<Vec<Value>, ApiError> {
+        const CITATION_PAGE: usize = 1000;
+        const OFFSET_CAP: usize = 10000;
+        const CITATION_TIMEOUT: Duration = Duration::from_secs(90);
+        const MAX_RETRIES: usize = 6;
+        let mut out = Vec::new();
+        let mut offset = 0usize;
+        loop {
+            let url = format!(
+                "{API_BASE}/paper/{}/citations?fields=title,publicationDate,year,externalIds,citationCount,openAccessPdf&limit={CITATION_PAGE}&offset={offset}",
+                urlencoding::encode(s2_id)
+            );
+            let mut value = None;
+            for attempt in 0..MAX_RETRIES {
+                match client::get_json_with_timeout(&url, CITATION_TIMEOUT).await {
+                    Ok(v) => {
+                        value = Some(v);
+                        break;
+                    }
+                    Err(ApiError::RateLimited) if attempt + 1 < MAX_RETRIES => {
+                        tokio::time::sleep(Duration::from_secs(2 + attempt as u64 * 2)).await;
+                    }
+                    Err(e) => return Err(e),
+                }
+            }
+            let Some(value) = value else {
+                return Err(ApiError::RateLimited);
+            };
+            let Some(items) = value.get("data").and_then(|v| v.as_array()) else {
+                break;
+            };
+            for item in items {
+                if let Some(cp) = item.get("citingPaper") {
+                    out.push(cp.clone());
+                }
+            }
+            let next = value
+                .get("next")
+                .and_then(|v| v.as_u64())
+                .map(|n| n as usize);
+            match next {
+                Some(n) if n + CITATION_PAGE <= OFFSET_CAP => offset = n,
+                _ => break,
+            }
+        }
+        Ok(out)
     }
 }
 

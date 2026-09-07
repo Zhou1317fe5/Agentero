@@ -457,6 +457,7 @@ mod tests {
                 ..Default::default()
             },
             source: "arxiv",
+            raw: None,
         };
         let c = PaperSearchCandidate::from(p);
         assert_eq!(c.title, "Attention Is All You Need");

@@ -406,6 +406,7 @@ mod tests {
             identifiers,
             urls: PaperUrls::default(),
             source,
+            raw: None,
         }
     }
 

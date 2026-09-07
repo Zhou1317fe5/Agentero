@@ -306,6 +306,7 @@ pub fn merge_api_paper_candidates(candidates: &[ApiPaper]) -> ApiPaper {
         citation_count: merge_citation_count(candidates),
         language: first_language(candidates).or_else(|| base.language.clone()),
         source: base.source,
+        raw: None,
     }
 }
 
@@ -406,6 +407,7 @@ mod tests {
             citation_count,
             language: None,
             source,
+            raw: None,
         }
     }
 
@@ -539,6 +541,7 @@ mod tests {
             identifiers,
             urls: PaperUrls::default(),
             source,
+            raw: None,
         };
         extra(&mut p);
         p

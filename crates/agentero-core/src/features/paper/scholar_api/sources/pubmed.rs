@@ -195,6 +195,7 @@ fn parse_article(xml: &str) -> Option<ApiPaper> {
         citation_count: None,
         language: None,
         source: SOURCE,
+        raw: None,
     })
 }
 

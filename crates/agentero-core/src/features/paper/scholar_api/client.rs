@@ -100,6 +100,29 @@ pub async fn post_text_json_with_timeout(
     serde_json::from_str(&text).map_err(|e| ApiError::Parse(format!("json: {e}")))
 }
 
+/// POST `body` as JSON to `url` and parse the response as JSON.
+pub async fn post_json(url: &str, body: Value) -> Result<Value, ApiError> {
+    post_json_with_timeout(url, body, DEFAULT_TIMEOUT).await
+}
+
+pub async fn post_json_with_timeout(
+    url: &str,
+    body: Value,
+    timeout: Duration,
+) -> Result<Value, ApiError> {
+    let _permit = acquire_permit().await;
+    let client = http_client(timeout)?;
+    let res = client
+        .post(url)
+        .header("Content-Type", "application/json")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| ApiError::Network(e.to_string()))?;
+    let text = handle_response(res).await?;
+    serde_json::from_str(&text).map_err(|e| ApiError::Parse(format!("json: {e}")))
+}
+
 async fn handle_response(res: reqwest::Response) -> Result<String, ApiError> {
     let status = res.status();
     if status == 429 {

@@ -243,6 +243,7 @@ pub(crate) fn map_zotero_item(item: &Value) -> Option<ApiPaper> {
         citation_count: None,
         language: str_field(item, "language"),
         source: "translator",
+        raw: None,
     })
 }
 

@@ -11,6 +11,7 @@
 pub mod client;
 pub mod dedup;
 pub mod identifiers;
+pub mod references;
 pub mod scoring;
 pub mod search;
 pub mod sources;
@@ -83,7 +84,7 @@ pub struct PaperUrls {
 /// source. It intentionally does **not** contain storage-level fields such as
 /// `status` or `added_at`; those belong to
 /// [`PaperRecord`](crate::features::catalog::papers::PaperRecord).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiPaper {
     pub identifiers: PaperIdentifiers,
@@ -102,6 +103,8 @@ pub struct ApiPaper {
     pub citation_count: Option<i64>,
     pub language: Option<String>,
     pub source: &'static str,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub raw: Option<String>,
 }
 
 bitflags! {
@@ -126,6 +129,8 @@ bitflags! {
         const PROVIDE_CITATION_COUNT = 1 << 7;
         /// Can return venue/publication information.
         const PROVIDE_VENUE = 1 << 8;
+        /// Can fetch outgoing references for a paper.
+        const FETCH_REFERENCES = 1 << 9;
     }
 }
 

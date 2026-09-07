@@ -133,6 +133,7 @@ fn map_item(server: &str, item: &Value) -> Option<ApiPaper> {
         } else {
             "biorxiv"
         },
+        raw: None,
     })
 }
 

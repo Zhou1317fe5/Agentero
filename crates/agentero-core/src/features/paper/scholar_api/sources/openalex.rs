@@ -146,6 +146,7 @@ fn map_work(work: &Value) -> Option<ApiPaper> {
         citation_count: work.get("cited_by_count").and_then(|v| v.as_i64()),
         language: None,
         source: SOURCE,
+        raw: None,
     })
 }
 
