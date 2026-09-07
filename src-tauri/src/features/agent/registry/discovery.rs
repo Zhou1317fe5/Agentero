@@ -3,7 +3,7 @@
 //! Generic PATH / executable resolution lives in `crate::core::process::discover`;
 //! this module adds the probe wrapper used by the Agent registry.
 
-pub use crate::core::process::discover::{path_entries, resolve_command};
+pub use crate::core::process::discover::{login_shell_env, path_entries, resolve_command};
 use std::path::PathBuf;
 
 pub fn probe_command(command: &str) -> Result<PathBuf, String> {

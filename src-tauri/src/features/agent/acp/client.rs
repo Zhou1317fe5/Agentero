@@ -1,7 +1,7 @@
 use crate::core::error::AppError;
 use crate::features::agent::models::{AgentDescriptor, AgentResultPayload, AgentTemplate};
 use crate::features::agent::prompt::envelope::extract_sources;
-use crate::features::agent::registry::discovery::{path_entries, resolve_command};
+use crate::features::agent::registry::discovery::{login_shell_env, path_entries, resolve_command};
 use agent_client_protocol::schema::v1::{
     ClientCapabilities, ElicitationCapabilities, ElicitationFormCapabilities, EnvVariable,
     InitializeRequest, McpServer, McpServerStdio,
@@ -134,12 +134,32 @@ fn acp_agent_with_debug(agent: AcpAgent, name: &str) -> AcpAgent {
     )
 }
 
-pub(crate) fn to_acp_agent_local(
-    desc: &AgentDescriptor,
-    cwd: Option<&Path>,
-) -> Result<AcpAgent, AppError> {
-    let command = resolve_command(&desc.command).unwrap_or_else(|| PathBuf::from(&desc.command));
-    let mut child_env: HashMap<String, String> = desc.env.clone();
+/// Build the environment for an ACP child process.
+///
+/// Priority (low → high):
+/// 1. `process_env` (current process)
+/// 2. `shell_env` (login-shell exports like `.zshrc` / `.bashrc`)
+/// 3. `desc_env` (user-configured values)
+///
+/// `shell_env` only fills missing keys so the current process values are not
+/// unexpectedly overwritten; callers that need shell overrides can pass them
+/// explicitly via `desc_env`.
+fn build_child_env(
+    process_env: impl Iterator<Item = (String, String)>,
+    shell_env: Option<&HashMap<String, String>>,
+    desc_env: &HashMap<String, String>,
+    template: AgentTemplate,
+) -> HashMap<String, String> {
+    let mut child_env: HashMap<String, String> = process_env.collect();
+    if let Some(shell_env) = shell_env {
+        for (key, value) in shell_env {
+            child_env.entry(key.clone()).or_insert(value.clone());
+        }
+    }
+    for (key, value) in desc_env {
+        child_env.insert(key.clone(), value.clone());
+    }
+
     if !child_env.contains_key("PATH") {
         if let Ok(path) = std::env::join_paths(path_entries()) {
             child_env.insert("PATH".to_string(), path.to_string_lossy().to_string());
@@ -149,10 +169,23 @@ pub(crate) fn to_acp_agent_local(
     // `new_session` when it has no cached credentials; our 15s ACP timeout kills
     // the child before login can finish, so the browser would pop up on every
     // spawn. Sign-in must happen in a terminal instead (BYOA).
-    if matches!(desc.template, AgentTemplate::Antigravity) && !child_env.contains_key("NO_BROWSER")
-    {
+    if matches!(template, AgentTemplate::Antigravity) && !child_env.contains_key("NO_BROWSER") {
         child_env.insert("NO_BROWSER".to_string(), "true".to_string());
     }
+    child_env
+}
+
+pub(crate) fn to_acp_agent_local(
+    desc: &AgentDescriptor,
+    cwd: Option<&Path>,
+) -> Result<AcpAgent, AppError> {
+    let command = resolve_command(&desc.command).unwrap_or_else(|| PathBuf::from(&desc.command));
+    let mut child_env = build_child_env(
+        std::env::vars(),
+        login_shell_env(),
+        &desc.env,
+        desc.template.clone(),
+    );
 
     let (command, args) =
         if let Some(cwd) = cwd.filter(|_| desc.template.needs_local_cwd_shell_wrap()) {
@@ -399,5 +432,62 @@ mod cwd_shell_wrap_tests {
             env.get("AGENTERO_AGENT_COMMAND"),
             Some(&r#""C:\Program Files\pi-acp.cmd" --foo "bar baz""#.to_string())
         );
+    }
+
+    #[test]
+    fn build_child_env_priority_order() {
+        let process_env = vec![
+            ("OPENAI_API_KEY".to_string(), "process-key".to_string()),
+            ("SHARED".to_string(), "process".to_string()),
+        ]
+        .into_iter();
+        let mut shell_env = HashMap::new();
+        shell_env.insert(
+            "OPENAI_BASE_URL".to_string(),
+            "https://shell/v1".to_string(),
+        );
+        shell_env.insert("SHARED".to_string(), "shell".to_string());
+        let mut desc_env = HashMap::new();
+        desc_env.insert("OPENAI_API_KEY".to_string(), "desc-key".to_string());
+
+        let env = build_child_env(
+            process_env,
+            Some(&shell_env),
+            &desc_env,
+            AgentTemplate::CodexAcp,
+        );
+
+        // desc_env wins over everything.
+        assert_eq!(env.get("OPENAI_API_KEY"), Some(&"desc-key".to_string()));
+        // shell_env fills missing keys but does not overwrite process env.
+        assert_eq!(
+            env.get("OPENAI_BASE_URL"),
+            Some(&"https://shell/v1".to_string())
+        );
+        assert_eq!(env.get("SHARED"), Some(&"process".to_string()));
+    }
+
+    #[test]
+    fn build_child_env_injects_no_browser_for_antigravity() {
+        let env = build_child_env(
+            std::iter::empty(),
+            None,
+            &HashMap::new(),
+            AgentTemplate::Antigravity,
+        );
+        assert_eq!(env.get("NO_BROWSER"), Some(&"true".to_string()));
+    }
+
+    #[test]
+    fn build_child_env_respects_existing_no_browser() {
+        let mut desc_env = HashMap::new();
+        desc_env.insert("NO_BROWSER".to_string(), "false".to_string());
+        let env = build_child_env(
+            std::iter::empty(),
+            None,
+            &desc_env,
+            AgentTemplate::Antigravity,
+        );
+        assert_eq!(env.get("NO_BROWSER"), Some(&"false".to_string()));
     }
 }
