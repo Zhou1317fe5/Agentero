@@ -31,6 +31,7 @@ import {
 	loadModelFavorites,
 	loadModelPref,
 	loadReasoningEffortPref,
+	probeCatalogAgent,
 	resolveReasoningEffort,
 	saveCollaborationPref,
 	saveModelCatalog,
@@ -174,6 +175,7 @@ export function useAgentConfig({
 	const [fastAvailable, setFastAvailable] = useState(false);
 	const [fastEnabled, setFastEnabled] = useState(false);
 	const warmGenRef = useRef(0);
+	const autoProbedRef = useRef(false);
 
 	const applyModelsEvent = useCallback(
 		(ev: {
@@ -303,6 +305,26 @@ export function useAgentConfig({
 			off();
 		};
 	}, [refresh]);
+
+	// Soft-probe catalog agents that are installed but not yet ACP-ready so the
+	// sidebar switcher can populate without forcing the user to open Settings first.
+	useEffect(() => {
+		if (!isTauri() || !catalog || autoProbedRef.current) return;
+		const candidates = catalog.entries.filter(
+			(e) =>
+				e.acpCommandAvailable &&
+				(e.acpStatus === "not-probed" || e.acpStatus === "failed"),
+		);
+		if (candidates.length === 0) return;
+		autoProbedRef.current = true;
+		void Promise.allSettled(
+			candidates.map((entry) =>
+				probeCatalogAgent(entry.templateId).catch(() => null),
+			),
+		).then(() => {
+			void refresh();
+		});
+	}, [catalog, refresh]);
 
 	// Restore last model catalog / preference for the selected agent.
 	useEffect(() => {
