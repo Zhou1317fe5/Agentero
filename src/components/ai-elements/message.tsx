@@ -350,7 +350,7 @@ export const MessageResponse = memo(
 				className={cn(
 					// Keep the renderer's height content-driven. `size-full` sets
 					// height: 100%, which can clip later blocks in auto-sized embeds.
-					"w-full min-w-0 select-text [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+					"w-full min-w-0 select-text text-base leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
 					className,
 				)}
 				components={{ a: ExternalLink }}
