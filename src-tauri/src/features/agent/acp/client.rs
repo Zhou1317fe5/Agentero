@@ -122,11 +122,36 @@ pub(crate) fn wrap_local_command_with_cwd(
     )
 }
 
+/// Summarize an ACP stdio line for debug logs without dumping the full payload.
+fn summarize_acp_line(line: &str) -> String {
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(line) {
+        if let Some(method) = value.get("method").and_then(|m| m.as_str()) {
+            return method.to_string();
+        }
+        if let Some(id) = value.get("id") {
+            if value.get("error").is_some() {
+                return format!("error(id={id})");
+            }
+            return format!("response(id={id})");
+        }
+    }
+    if line.len() > 120 {
+        format!("{}...", &line[..120])
+    } else {
+        line.to_string()
+    }
+}
+
 fn acp_agent_with_debug(agent: AcpAgent, name: &str) -> AcpAgent {
     let name = name.to_string();
     agent.with_debug(
         move |line: &str, direction: agent_client_protocol::LineDirection| {
+            let summary = summarize_acp_line(line);
             log::debug!(
+                target: "agentero::acp::stdio",
+                "{name} {direction:?}: {summary}",
+            );
+            log::trace!(
                 target: "agentero::acp::stdio",
                 "{name} {direction:?}: {line}",
             );
