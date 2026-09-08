@@ -276,7 +276,7 @@ export function AgentComposer(props: AgentComposerProps) {
 												"agentero-scroll min-h-0 flex-1 overflow-y-auto px-0 py-1 placeholder:text-muted-foreground/80",
 												compact
 													? "h-6 max-h-none min-w-0 py-0 text-sm leading-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-													: "text-[15px] leading-6",
+													: "text-[15px] leading-5",
 											)}
 											value={composerText}
 											onChange={(event) => {
@@ -308,9 +308,7 @@ export function AgentComposer(props: AgentComposerProps) {
 											role="combobox"
 											disabled={switching}
 											placeholder={
-												activeTabIsRunning
-													? t("composer.queueHint")
-													: t("composer.placeholder")
+												activeTabIsRunning ? "" : t("composer.placeholder")
 											}
 										/>
 										{compact ? (
