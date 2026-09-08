@@ -166,6 +166,12 @@ export type PageAnnotationComment = {
 	linkAlias: string | null;
 	/** Visual marks with an Agent conversation show a truncated inline preview. */
 	messages?: PageAnnotationCommentMessage[];
+	/**
+	 * True when this card represents a freshly-created note that has not been
+	 * saved yet. If the editor closes without a non-empty comment, the underlying
+	 * mark is removed instead of leaving an empty highlight (#491).
+	 */
+	isNew?: boolean;
 };
 
 /**
@@ -182,4 +188,9 @@ export type RailEditState = {
 	anchorY: number;
 	/** Normalized rects covering the highlighted text / visual region. */
 	rects: PdfAskNormalizedRect[];
+	/**
+	 * True when the editor was opened for a freshly-created note. Closing or
+	 * saving an empty new note deletes the underlying mark (#491).
+	 */
+	isNew?: boolean;
 };

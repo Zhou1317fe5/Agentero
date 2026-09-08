@@ -983,6 +983,7 @@ function PdfViewerInner({
 				color: railEdit.color,
 				kind: railEdit.kind,
 				linkAlias: null,
+				isNew: railEdit.isNew,
 			},
 		]);
 		return next;

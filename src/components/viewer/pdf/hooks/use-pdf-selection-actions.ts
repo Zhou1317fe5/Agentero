@@ -113,6 +113,7 @@ export function usePdfSelectionActions({
 			color: DEFAULT_HIGHLIGHT_COLOR,
 			anchorY: selectionMenu.anchor.rects[0]?.y ?? 0,
 			rects: selectionMenu.anchor.rects,
+			isNew: true,
 		});
 	}, [
 		selectionMenu,
