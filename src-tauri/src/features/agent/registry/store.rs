@@ -396,151 +396,172 @@ impl AgentRegistry {
     }
 
     pub fn scan_catalog(&self) -> Result<CatalogScanResponse, AppError> {
-        let state = self.snapshot()?;
-        let default_id = state.default_id.clone();
+        // Catalog agents that are present on PATH but not yet persisted in the
+        // registry are auto-registered here, so panels like the sidebar chat
+        // switcher can list them without requiring a visit to Settings first.
+        // The ACP probe still happens lazily (Settings or first use). If any
+        // registration happened we re-scan once so default/registered ids are
+        // consistent.
+        loop {
+            let state = self.snapshot()?;
+            let default_id = state.default_id.clone();
 
-        let mut entries = Vec::new();
-        for info in catalog_templates() {
-            // dsh lives in a managed launcher dir (project npm install) or as a
-            // global `dsh-acp-demo` on PATH — "installed" means either entrypoint.
-            let (detect_path, binary_available, acp_command_available) = if info.id == "dsh" {
-                let local = dsh_entrypoint_exists();
-                let global = resolve_command("dsh-acp-demo");
-                let ready = local || global.is_some();
-                (
-                    global.or_else(|| ready.then(dsh_launcher_dir)),
-                    ready,
-                    ready,
-                )
-            } else {
-                let detect = info
-                    .detect_command
-                    .as_deref()
-                    .unwrap_or(info.command.as_str());
-                let detect_path = resolve_command(detect);
-                let binary_available = detect_path.is_some();
-                let acp_command_available = resolve_command(&info.command).is_some();
-                (detect_path, binary_available, acp_command_available)
-            };
-
-            let registered = state.agents.iter().find(|a| {
-                a.template.as_str() == info.id || (a.command == info.command && a.args == info.args)
-            });
-
-            let (acp_status, acp_agent_name, last_probe_error, last_probed_at) =
-                if !acp_command_available && !binary_available {
-                    (CatalogAcpStatus::Missing, None, None, None)
-                } else if let Some(reg) = registered {
-                    match reg.last_probe_ok {
-                        Some(true) => (
-                            CatalogAcpStatus::Ready,
-                            reg.last_probe_agent_name.clone(),
-                            None,
-                            reg.last_probed_at.clone(),
-                        ),
-                        Some(false) => (
-                            CatalogAcpStatus::Failed,
-                            reg.last_probe_agent_name.clone(),
-                            reg.last_probe_error.clone(),
-                            reg.last_probed_at.clone(),
-                        ),
-                        None => {
-                            if acp_command_available {
-                                (CatalogAcpStatus::NotProbed, None, None, None)
-                            } else {
-                                (
-                                    CatalogAcpStatus::Missing,
-                                    None,
-                                    Some(format!("ACP command `{}` not found", info.command)),
-                                    None,
-                                )
-                            }
-                        }
-                    }
-                } else if acp_command_available {
-                    (CatalogAcpStatus::NotProbed, None, None, None)
-                } else if binary_available {
-                    // Host CLI present (e.g. `claude`) but ACP entrypoint missing.
+            let mut entries = Vec::new();
+            let mut registered_new = false;
+            for info in catalog_templates() {
+                // dsh lives in a managed launcher dir (project npm install) or as a
+                // global `dsh-acp-demo` on PATH — "installed" means either entrypoint.
+                let (detect_path, binary_available, acp_command_available) = if info.id == "dsh" {
+                    let local = dsh_entrypoint_exists();
+                    let global = resolve_command("dsh-acp-demo");
+                    let ready = local || global.is_some();
                     (
-                        CatalogAcpStatus::Missing,
-                        None,
-                        Some(format!("ACP command `{}` not found", info.command)),
-                        None,
+                        global.or_else(|| ready.then(dsh_launcher_dir)),
+                        ready,
+                        ready,
                     )
                 } else {
-                    (
-                        CatalogAcpStatus::Missing,
-                        None,
-                        Some(format!(
-                            "command `{}` not found on PATH",
-                            info.detect_command
-                                .as_deref()
-                                .unwrap_or(info.command.as_str())
-                        )),
-                        None,
-                    )
+                    let detect = info
+                        .detect_command
+                        .as_deref()
+                        .unwrap_or(info.command.as_str());
+                    let detect_path = resolve_command(detect);
+                    let binary_available = detect_path.is_some();
+                    let acp_command_available = resolve_command(&info.command).is_some();
+                    (detect_path, binary_available, acp_command_available)
                 };
 
-            let registered_id = registered.map(|a| a.id.clone());
-            let is_default = registered_id
-                .as_ref()
-                .zip(default_id.as_ref())
-                .is_some_and(|(a, d)| a == d);
+                let registered = state.agents.iter().find(|a| {
+                    a.template.as_str() == info.id
+                        || (a.command == info.command && a.args == info.args)
+                });
 
-            // Two install layers: Agent (detect binary) vs ACP entrypoint.
-            let adapter_distinct = info
-                .detect_command
-                .as_ref()
-                .is_some_and(|d| d != &info.command);
-            let can_install = lifecycle::supports_lifecycle(&info.id);
-            // Offer ACP install when host is present but ACP entry is missing.
-            let offer_install = binary_available
-                && !acp_command_available
-                && (can_install
-                    || info
-                        .install_command
-                        .as_ref()
-                        .is_some_and(|c| !c.trim().is_empty()));
+                let (acp_status, acp_agent_name, last_probe_error, last_probed_at) =
+                    if !acp_command_available && !binary_available {
+                        (CatalogAcpStatus::Missing, None, None, None)
+                    } else if let Some(reg) = registered {
+                        match reg.last_probe_ok {
+                            Some(true) => (
+                                CatalogAcpStatus::Ready,
+                                reg.last_probe_agent_name.clone(),
+                                None,
+                                reg.last_probed_at.clone(),
+                            ),
+                            Some(false) => (
+                                CatalogAcpStatus::Failed,
+                                reg.last_probe_agent_name.clone(),
+                                reg.last_probe_error.clone(),
+                                reg.last_probed_at.clone(),
+                            ),
+                            None => {
+                                if acp_command_available {
+                                    (CatalogAcpStatus::NotProbed, None, None, None)
+                                } else {
+                                    (
+                                        CatalogAcpStatus::Missing,
+                                        None,
+                                        Some(format!("ACP command `{}` not found", info.command)),
+                                        None,
+                                    )
+                                }
+                            }
+                        }
+                    } else if acp_command_available {
+                        (CatalogAcpStatus::NotProbed, None, None, None)
+                    } else if binary_available {
+                        // Host CLI present (e.g. `claude`) but ACP entrypoint missing.
+                        (
+                            CatalogAcpStatus::Missing,
+                            None,
+                            Some(format!("ACP command `{}` not found", info.command)),
+                            None,
+                        )
+                    } else {
+                        (
+                            CatalogAcpStatus::Missing,
+                            None,
+                            Some(format!(
+                                "command `{}` not found on PATH",
+                                info.detect_command
+                                    .as_deref()
+                                    .unwrap_or(info.command.as_str())
+                            )),
+                            None,
+                        )
+                    };
 
-            entries.push(CatalogEntry {
-                template_id: info.id,
-                name: info.name,
-                description: info.description,
-                command: info.command,
-                args: info.args,
-                install_hint: info.install_hint,
-                install_command: info.install_command,
-                offer_install,
-                can_install,
-                adapter_distinct,
-                binary_available,
-                resolved_path: detect_path.map(|p| p.display().to_string()),
-                acp_command_available,
-                acp_status,
-                registered_id,
-                is_default,
-                acp_agent_name,
-                last_probe_error,
-                last_probed_at,
+                let mut registered_id = registered.map(|a| a.id.clone());
+                if acp_command_available && registered.is_none() {
+                    if let Ok(agent) = self.ensure_catalog_agent(&info.id, false) {
+                        registered_new = true;
+                        registered_id = Some(agent.id.clone());
+                    }
+                }
+
+                let is_default = registered_id
+                    .as_ref()
+                    .zip(default_id.as_ref())
+                    .is_some_and(|(a, d)| a == d);
+
+                // Two install layers: Agent (detect binary) vs ACP entrypoint.
+                let adapter_distinct = info
+                    .detect_command
+                    .as_ref()
+                    .is_some_and(|d| d != &info.command);
+                let can_install = lifecycle::supports_lifecycle(&info.id);
+                // Offer ACP install when host is present but ACP entry is missing.
+                let offer_install = binary_available
+                    && !acp_command_available
+                    && (can_install
+                        || info
+                            .install_command
+                            .as_ref()
+                            .is_some_and(|c| !c.trim().is_empty()));
+
+                entries.push(CatalogEntry {
+                    template_id: info.id,
+                    name: info.name,
+                    description: info.description,
+                    command: info.command,
+                    args: info.args,
+                    install_hint: info.install_hint,
+                    install_command: info.install_command,
+                    offer_install,
+                    can_install,
+                    adapter_distinct,
+                    binary_available,
+                    resolved_path: detect_path.map(|p| p.display().to_string()),
+                    acp_command_available,
+                    acp_status,
+                    registered_id,
+                    is_default,
+                    acp_agent_name,
+                    last_probe_error,
+                    last_probed_at,
+                });
+            }
+
+            if registered_new {
+                continue;
+            }
+
+            let custom_agents = state
+                .agents
+                .into_iter()
+                .filter(|a| matches!(a.template, AgentTemplate::Custom))
+                .collect();
+
+            return Ok(CatalogScanResponse {
+                entries,
+                custom_agents,
+                default_id,
+                enabled: state.enabled,
+                proxy_enabled: state.proxy_enabled,
+                proxy_url: state.proxy_url,
+                user_agent: state.user_agent,
+                user_agent_provider_ids: state.user_agent_provider_ids,
             });
         }
-
-        let custom_agents = state
-            .agents
-            .into_iter()
-            .filter(|a| matches!(a.template, AgentTemplate::Custom))
-            .collect();
-
-        Ok(CatalogScanResponse {
-            entries,
-            custom_agents,
-            default_id,
-            enabled: state.enabled,
-            proxy_enabled: state.proxy_enabled,
-            proxy_url: state.proxy_url,
-            user_agent: state.user_agent,
-            user_agent_provider_ids: state.user_agent_provider_ids,
-        })
     }
 
     /// Anonymous summary of registered agents for telemetry (template ids +
