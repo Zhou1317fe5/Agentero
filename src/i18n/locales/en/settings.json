@@ -524,6 +524,8 @@
 		"remoteUnavailable": "Doctor is available for local Vaults only in this version.",
 		"openVault": "Open a local Vault to run Doctor.",
 		"sections": {
+			"host": "Host runtime",
+			"agents": "Agent ACP connectivity",
 			"vault": "Vault structure",
 			"catalog": "Catalog schema",
 			"wikilinks": "Wiki links",
@@ -531,11 +533,49 @@
 			"visualMarks": "Visual annotations"
 		},
 		"sectionHints": {
+			"host": "Advisory checks for the Node.js, npm, and Codex sign-in used by ACP Agents.",
+			"agents": "Re-probes each registered Agent via ACP initialize (no prompt is sent). Slow Agents can take up to 30s.",
 			"vault": "Checks top-level papers/, notes/, and .agentero/ folders.",
 			"catalog": "Checks that .agentero/catalog.sqlite exists and its schema matches this app.",
 			"wikilinks": "Checks local wiki links for missing, ambiguous, or invalid heading targets.",
 			"aliases": "Checks paper NOTES.md for at least two distinct frontmatter aliases.",
 			"visualMarks": "Migrates legacy agent-trace marks to nested visual v2 (note-only marks stay valid)."
+		},
+		"host": {
+			"toolStatus": {
+				"available": "Available",
+				"missing": "Not found",
+				"unusable": "Cannot run"
+			},
+			"authStatus": {
+				"authenticated": "Signed in",
+				"unauthenticated": "Not signed in",
+				"not-applicable": "ACP not installed",
+				"unknown": "Unknown"
+			},
+			"authMethod": "Auth method: {{method}}",
+			"npmPrefix": "npm global prefix: {{prefix}}"
+		},
+		"agent": {
+			"probing": "Probing agents…",
+			"none": "No Agents registered yet.",
+			"ready": "Ready",
+			"categories": {
+				"command-missing": "Command missing",
+				"not-logged-in": "Not signed in",
+				"timeout": "Timeout",
+				"spawn-failed": "Launch failed",
+				"protocol-failed": "Protocol error",
+				"unknown": "Unknown"
+			},
+			"hints": {
+				"command-missing": "Install the CLI (Settings → Agent) or fix PATH, then run the diagnosis again.",
+				"not-logged-in": "Sign in with the Agent's own CLI in a terminal (e.g. codex login), then run the diagnosis again.",
+				"timeout": "Check the proxy / network and the Agent's cold-start time.",
+				"spawn-failed": "The process could not start; check the executable permission and path.",
+				"protocol-failed": "The process started but the ACP handshake failed; update the ACP adapter.",
+				"unknown": "See the raw error above."
+			}
 		},
 		"visualMarks": {
 			"select": "Select {{path}}",

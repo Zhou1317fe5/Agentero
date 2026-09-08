@@ -11,8 +11,17 @@ import {
 } from "@/components/ui/tooltip";
 import { errorText } from "@/lib/core/error";
 import { notifyError } from "@/lib/core/notify";
-import { type DoctorReport, doctorCheck } from "@/lib/doctor/api";
+import {
+	type AgentAcpDiagnostic,
+	type DoctorReport,
+	doctorCheck,
+	doctorCheckAgents,
+	doctorCheckHost,
+	type HostDoctorReport,
+} from "@/lib/doctor/api";
+import { DoctorAgentSection } from "./doctor-agent-section";
 import { DoctorAliasSection } from "./doctor-alias-section";
+import { DoctorHostRuntimeSection } from "./doctor-host-runtime-section";
 import {
 	DoctorCatalogSection,
 	DoctorVaultSection,
@@ -29,24 +38,51 @@ export function DoctorPane({
 }) {
 	const { t } = useTranslation("settings");
 	const [report, setReport] = useState<DoctorReport | null>(null);
+	const [hostReport, setHostReport] = useState<HostDoctorReport | null>(null);
+	const [agentReport, setAgentReport] = useState<AgentAcpDiagnostic[] | null>(
+		null,
+	);
 	const [loading, setLoading] = useState(false);
+	const [agentsLoading, setAgentsLoading] = useState(false);
 	const [wikiPlanning, setWikiPlanning] = useState(false);
 
 	const refresh = useCallback(async () => {
-		if (!vaultPath || hostContext.kind === "remote") return;
+		if (hostContext.kind === "remote") return;
 		setLoading(true);
 		try {
-			setReport(await doctorCheck(vaultPath));
-		} catch (error) {
-			notifyError(errorText(error));
+			const requests: Promise<void>[] = [doctorCheckHost().then(setHostReport)];
+			if (vaultPath) {
+				requests.push(doctorCheck(vaultPath).then(setReport));
+			}
+			const results = await Promise.allSettled(requests);
+			for (const result of results) {
+				if (result.status === "rejected") {
+					notifyError(errorText(result.reason));
+				}
+			}
 		} finally {
 			setLoading(false);
 		}
 	}, [hostContext.kind, vaultPath]);
 
+	// ACP re-probes can take ~30s per agent, so they load independently of the
+	// fast host/vault checks above.
+	const refreshAgents = useCallback(async () => {
+		if (hostContext.kind === "remote") return;
+		setAgentsLoading(true);
+		try {
+			setAgentReport(await doctorCheckAgents());
+		} catch (error) {
+			notifyError(errorText(error));
+		} finally {
+			setAgentsLoading(false);
+		}
+	}, [hostContext.kind]);
+
 	useEffect(() => {
 		void refresh();
-	}, [refresh]);
+		void refreshAgents();
+	}, [refresh, refreshAgents]);
 
 	if (hostContext.kind === "remote") {
 		return (
@@ -58,17 +94,6 @@ export function DoctorPane({
 			</>
 		);
 	}
-	if (!vaultPath) {
-		return (
-			<>
-				<PageTitle title={t("doctor.title")} />
-				<p className="rounded-xl border bg-muted/30 px-4 py-3 text-muted-foreground text-sm">
-					{t("doctor.openVault")}
-				</p>
-			</>
-		);
-	}
-
 	const catalogIssues = report?.catalog.issues ?? [];
 	const hasCatalogDuplicates =
 		(report?.catalog.duplicateReport?.duplicateIds.length ?? 0) > 0 ||
@@ -86,8 +111,11 @@ export function DoctorPane({
 								size="icon-sm"
 								variant="ghost"
 								aria-label={t("doctor.refresh")}
-								disabled={loading || wikiPlanning}
-								onClick={() => void refresh()}
+								disabled={loading || wikiPlanning || agentsLoading}
+								onClick={() => {
+									void refresh();
+									void refreshAgents();
+								}}
 							>
 								<RefreshCw className={loading ? "animate-spin" : undefined} />
 							</Button>
@@ -97,38 +125,50 @@ export function DoctorPane({
 				}
 			/>
 
-			<DoctorVaultSection
-				ok={report?.vault.ok ?? true}
-				issues={report?.vault.issues ?? []}
-			/>
+			<DoctorHostRuntimeSection report={hostReport} />
 
-			<DoctorCatalogSection
-				vaultPath={vaultPath}
-				ok={report?.catalog.ok ?? true}
-				issues={catalogIssues}
-				hasDuplicates={hasCatalogDuplicates}
-				onRefresh={refresh}
-			/>
+			<DoctorAgentSection report={agentReport} loading={agentsLoading} />
 
-			<DoctorWikilinkSection
-				vaultPath={vaultPath}
-				wikilinks={report?.wikilinks}
-				planning={wikiPlanning}
-				onPlanningChange={setWikiPlanning}
-				onRefresh={refresh}
-			/>
+			{vaultPath ? (
+				<>
+					<DoctorVaultSection
+						ok={report?.vault.ok ?? true}
+						issues={report?.vault.issues ?? []}
+					/>
 
-			<DoctorAliasSection
-				vaultPath={vaultPath}
-				aliases={report?.aliases}
-				onRefresh={refresh}
-			/>
+					<DoctorCatalogSection
+						vaultPath={vaultPath}
+						ok={report?.catalog.ok ?? true}
+						issues={catalogIssues}
+						hasDuplicates={hasCatalogDuplicates}
+						onRefresh={refresh}
+					/>
 
-			<DoctorVisualMarksSection
-				vaultPath={vaultPath}
-				visualMarks={report?.visualMarks}
-				onRefresh={refresh}
-			/>
+					<DoctorWikilinkSection
+						vaultPath={vaultPath}
+						wikilinks={report?.wikilinks}
+						planning={wikiPlanning}
+						onPlanningChange={setWikiPlanning}
+						onRefresh={refresh}
+					/>
+
+					<DoctorAliasSection
+						vaultPath={vaultPath}
+						aliases={report?.aliases}
+						onRefresh={refresh}
+					/>
+
+					<DoctorVisualMarksSection
+						vaultPath={vaultPath}
+						visualMarks={report?.visualMarks}
+						onRefresh={refresh}
+					/>
+				</>
+			) : (
+				<p className="rounded-xl border bg-muted/30 px-4 py-3 text-muted-foreground text-sm">
+					{t("doctor.openVault")}
+				</p>
+			)}
 		</>
 	);
 }

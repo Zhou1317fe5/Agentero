@@ -1,5 +1,8 @@
+import { invoke } from "@tauri-apps/api/core";
 import {
+	type AgentAcpDiagnostic_Serialize,
 	type AliasRepairCandidate_Serialize,
+	type ApiResult,
 	commands,
 	type DoctorIssue_Serialize,
 	type DoctorReport_Serialize,
@@ -11,10 +14,35 @@ import {
 	type WikilinkRepairResidual_Serialize,
 	type WikilinkRepairSuggestion_Serialize,
 } from "@/lib/core/bindings";
-import { callApi, callApiResult } from "@/lib/core/ipc";
+import { callApi, callApiResult, type TypedResult } from "@/lib/core/ipc";
+
+export type HostToolStatus = "available" | "missing" | "unusable";
+export type HostToolDiagnostic = {
+	status: HostToolStatus;
+	resolvedPath?: string | null;
+	version?: string | null;
+	detail?: string | null;
+};
+export type CodexAuthStatus =
+	| "authenticated"
+	| "unauthenticated"
+	| "not-applicable"
+	| "unknown";
+export type CodexAuthDiagnostic = {
+	status: CodexAuthStatus;
+	method?: string | null;
+	detail?: string | null;
+};
+export type HostDoctorReport = {
+	node: HostToolDiagnostic;
+	npm: HostToolDiagnostic;
+	npmPrefix?: string | null;
+	codexAuth: CodexAuthDiagnostic;
+};
 
 /** Read models come straight from the generated wire contract. */
 export type DoctorIssue = DoctorIssue_Serialize;
+export type AgentAcpDiagnostic = AgentAcpDiagnostic_Serialize;
 export type AliasRepairCandidate = AliasRepairCandidate_Serialize;
 export type WikiCheckIssue = WikiCheckIssue_Serialize;
 export type { VisualMarkCandidate };
@@ -46,6 +74,17 @@ type VisualMarkRepairChange = {
 
 export function doctorCheck(vaultPath: string): Promise<DoctorReport> {
 	return callApi(() => commands.doctorCheck({ vaultPath }));
+}
+
+export function doctorCheckHost(): Promise<HostDoctorReport> {
+	return callApiResult(() =>
+		invoke<TypedResult<ApiResult<HostDoctorReport>>>("doctor_check_host"),
+	);
+}
+
+/** Re-probe every registered Agent over ACP; may take up to ~30s per agent. */
+export function doctorCheckAgents(): Promise<AgentAcpDiagnostic[]> {
+	return callApiResult(() => commands.doctorCheckAgents());
 }
 
 export function doctorApplyAliases(

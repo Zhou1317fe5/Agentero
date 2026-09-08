@@ -524,6 +524,8 @@
 		"remoteUnavailable": "当前版本仅支持诊断本地 Vault。",
 		"openVault": "请打开本地 Vault 后运行诊断。",
 		"sections": {
+			"host": "主机运行环境",
+			"agents": "Agent ACP 连通性",
 			"vault": "Vault 结构",
 			"catalog": "Catalog 结构",
 			"wikilinks": "双链语义",
@@ -531,11 +533,49 @@
 			"visualMarks": "视觉批注"
 		},
 		"sectionHints": {
+			"host": "提示性检查 ACP Agent 使用的 Node.js、npm 和 Codex 登录状态。",
+			"agents": "对每个已注册 Agent 重新执行 ACP initialize 探测（不发送 prompt），慢速 Agent 可能需要 30 秒。",
 			"vault": "检查顶层 papers/、notes/、.agentero/ 目录是否齐全。",
 			"catalog": "检查 .agentero/catalog.sqlite 是否存在，以及 schema 是否与当前应用一致。",
 			"wikilinks": "检查笔记中的本地双链是否可解析（缺失、歧义、无效标题锚点）。",
 			"aliases": "检查论文 NOTES.md 是否具备至少两个可区分的 frontmatter aliases。",
 			"visualMarks": "将旧版 agent-trace 批注升级为嵌套 visual v2（纯批注也可单独保存）。"
+		},
+		"host": {
+			"toolStatus": {
+				"available": "可用",
+				"missing": "未找到",
+				"unusable": "无法运行"
+			},
+			"authStatus": {
+				"authenticated": "已登录",
+				"unauthenticated": "未登录",
+				"not-applicable": "未安装 ACP",
+				"unknown": "未知"
+			},
+			"authMethod": "认证方式：{{method}}",
+			"npmPrefix": "npm 全局目录：{{prefix}}"
+		},
+		"agent": {
+			"probing": "正在探测 Agent…",
+			"none": "尚未注册 Agent。",
+			"ready": "可用",
+			"categories": {
+				"command-missing": "命令缺失",
+				"not-logged-in": "未登录",
+				"timeout": "超时",
+				"spawn-failed": "启动失败",
+				"protocol-failed": "协议失败",
+				"unknown": "其他"
+			},
+			"hints": {
+				"command-missing": "安装对应 CLI（设置 → Agent）或修正 PATH 后重新诊断。",
+				"not-logged-in": "在终端用该 Agent 自带 CLI 登录（如 codex login）后重新诊断。",
+				"timeout": "检查代理/网络设置与 Agent 冷启动耗时。",
+				"spawn-failed": "进程无法启动，检查可执行权限与命令路径。",
+				"protocol-failed": "进程已启动但 ACP 握手失败，请更新 ACP adapter。",
+				"unknown": "查看上方原始错误信息。"
+			}
 		},
 		"visualMarks": {
 			"select": "选择 {{path}}",
