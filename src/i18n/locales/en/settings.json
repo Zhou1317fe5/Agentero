@@ -644,7 +644,8 @@
 			"installFailed": "Could not install CLI command",
 			"uninstallFailed": "Could not remove CLI command",
 			"statusFailed": "Could not read CLI status",
-			"openReleaseFailed": "Could not open the release page"
+			"openReleaseFailed": "Could not open the release page",
+			"syncFailed": "Could not auto-sync the installed CLI with this app version. Update it from Settings → About"
 		},
 		"finder": {
 			"label": "Finder integration",
