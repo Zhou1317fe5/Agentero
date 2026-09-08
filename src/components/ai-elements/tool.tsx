@@ -99,6 +99,7 @@ export const ToolHeader = ({
 			className={cn(
 				// Left-aligned compact header (not space-between)
 				"flex w-full items-center justify-start gap-1.5 px-2 py-1 text-left",
+				swapIconOnHover && "group/tool-header",
 				className,
 			)}
 			{...props}
@@ -108,14 +109,14 @@ export const ToolHeader = ({
 					<ChevronDownIcon
 						className={cn(
 							"absolute size-3.5 text-muted-foreground opacity-0 transition-all",
-							"group-hover:opacity-100",
+							"group-hover/tool-header:opacity-100",
 							"-rotate-90 group-data-[state=open]:rotate-0",
 						)}
 					/>
 					<WrenchIcon
 						className={cn(
 							"absolute size-3.5 text-muted-foreground transition-opacity",
-							"group-hover:opacity-0",
+							"group-hover/tool-header:opacity-0",
 						)}
 					/>
 				</span>
