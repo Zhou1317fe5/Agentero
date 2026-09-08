@@ -130,7 +130,7 @@ function AgentProcessCollapsible({
 		<Collapsible
 			open={open}
 			onOpenChange={(next) => onPartOpenChange(processKey, next)}
-			className="not-prose w-full rounded-lg border bg-muted/20"
+			className="not-prose w-full"
 		>
 			<CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground">
 				<span className="font-medium">{t("chainOfThought.title")}</span>
@@ -142,7 +142,9 @@ function AgentProcessCollapsible({
 				/>
 			</CollapsibleTrigger>
 			<CollapsibleContent className="p-2">
-				<div className="flex flex-col gap-1">{children}</div>
+				<div className="flex flex-col gap-1 rounded-lg border bg-muted/20 p-2">
+					{children}
+				</div>
 			</CollapsibleContent>
 		</Collapsible>
 	);
