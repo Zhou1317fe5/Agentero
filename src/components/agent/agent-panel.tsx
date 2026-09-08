@@ -3,6 +3,7 @@ import type {
 	PointerEvent as ReactPointerEvent,
 } from "react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
 	AgentAskUserSurface,
 	isAskUserSurfaceActive,
@@ -44,6 +45,7 @@ export const AgentPanel = memo(function AgentPanel({
 	onOpenAgentSettings,
 	onOpenSource,
 }: AgentPanelProps) {
+	const { t } = useTranslation("agent");
 	const panel = useAgentPanel({
 		vaultPath,
 		selectedPath,
@@ -158,7 +160,6 @@ export const AgentPanel = memo(function AgentPanel({
 		: composerHeightPx;
 
 	const {
-		t,
 		lines,
 		activeTabId,
 		selected,
@@ -327,7 +328,6 @@ export const AgentPanel = memo(function AgentPanel({
 					<ChatTranscript
 						lines={lines}
 						activeTabId={activeTabId}
-						agentName={selected?.name ?? t("defaultName")}
 						compact={composerCompact}
 						activeTabIsRunning={activeTabIsRunning}
 						submitting={submitting}

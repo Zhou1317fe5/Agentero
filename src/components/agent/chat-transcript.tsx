@@ -162,7 +162,6 @@ function CopyAction({ text }: { text: string }) {
 const ChatTranscriptRow = memo(function ChatTranscriptRow({
 	line,
 	activeTabId,
-	agentName,
 	activeTabIsRunning,
 	submitting,
 	switching,
@@ -175,7 +174,6 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 }: {
 	line: ChatLine;
 	activeTabId: string;
-	agentName: string;
 	activeTabIsRunning: boolean;
 	submitting: boolean;
 	switching: boolean;
@@ -306,9 +304,6 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 			<div className="flex w-full flex-col gap-2">
 				<Message from="assistant">
 					<MessageContent>
-						<p className="mb-1 font-medium text-muted-foreground text-xs">
-							{agentName}
-						</p>
 						{parts.map((part, index) => {
 							const partKey = `${rowKey}:${part.id}`;
 							if (part.type === "reasoning") {
@@ -506,7 +501,6 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 function TranscriptBody({
 	lines,
 	activeTabId,
-	agentName,
 	activeTabIsRunning,
 	submitting,
 	switching,
@@ -520,7 +514,6 @@ function TranscriptBody({
 }: {
 	lines: ChatLine[];
 	activeTabId: string;
-	agentName: string;
 	activeTabIsRunning: boolean;
 	submitting: boolean;
 	switching: boolean;
@@ -554,7 +547,6 @@ function TranscriptBody({
 			<ChatTranscriptRow
 				line={line}
 				activeTabId={activeTabId}
-				agentName={agentName}
 				activeTabIsRunning={activeTabIsRunning}
 				submitting={submitting}
 				switching={switching}
@@ -604,7 +596,6 @@ function TranscriptBody({
 export function ChatTranscript({
 	lines,
 	activeTabId,
-	agentName,
 	compact = false,
 	forceVirtualize = false,
 	activeTabIsRunning,
@@ -624,7 +615,6 @@ export function ChatTranscript({
 }: {
 	lines: ChatLine[];
 	activeTabId: string;
-	agentName: string;
 	compact?: boolean;
 	/** Storybook / tests: windowed rendering even below the line threshold. */
 	forceVirtualize?: boolean;
@@ -758,7 +748,6 @@ export function ChatTranscript({
 					<TranscriptBody
 						lines={lines}
 						activeTabId={activeTabId}
-						agentName={agentName}
 						activeTabIsRunning={activeTabIsRunning}
 						submitting={submitting}
 						switching={switching}
