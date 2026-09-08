@@ -98,32 +98,32 @@ export const ToolHeader = ({
 		<CollapsibleTrigger
 			className={cn(
 				// Left-aligned compact header (not space-between)
-				"flex w-full items-center justify-start gap-1.5 px-2 py-1 text-left",
+				"flex w-full items-center justify-start gap-2 px-2 py-1 text-left",
 				swapIconOnHover && "group/tool-header",
 				className,
 			)}
 			{...props}
 		>
 			{swapIconOnHover ? (
-				<span className="relative flex size-3.5 shrink-0 items-center justify-center">
+				<span className="relative flex size-4 shrink-0 items-center justify-center">
 					<ChevronDownIcon
 						className={cn(
-							"absolute size-3.5 text-muted-foreground opacity-0 transition-all",
+							"absolute size-4 text-muted-foreground opacity-0 transition-all",
 							"group-hover/tool-header:opacity-100",
 							"-rotate-90 group-data-[state=open]:rotate-0",
 						)}
 					/>
 					<WrenchIcon
 						className={cn(
-							"absolute size-3.5 text-muted-foreground transition-opacity",
+							"absolute size-4 text-muted-foreground transition-opacity",
 							"group-hover/tool-header:opacity-0",
 						)}
 					/>
 				</span>
 			) : (
 				<>
-					<ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform -rotate-90 group-data-[state=open]:rotate-0" />
-					<WrenchIcon className="size-3.5 shrink-0 text-muted-foreground" />
+					<ChevronDownIcon className="size-4 shrink-0 text-muted-foreground transition-transform -rotate-90 group-data-[state=open]:rotate-0" />
+					<WrenchIcon className="size-4 shrink-0 text-muted-foreground" />
 				</>
 			)}
 			<span className="min-w-0 truncate font-medium text-xs">

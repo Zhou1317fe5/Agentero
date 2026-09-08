@@ -158,7 +158,7 @@ export const ReasoningTrigger = memo(
 			if (streaming) {
 				return <Shimmer duration={1}>{t("reasoning.thinking")}</Shimmer>;
 			}
-			return <p>{t("reasoning.thought")}</p>;
+			return <span>{t("reasoning.thought")}</span>;
 		};
 
 		const renderThinkingMessage =
