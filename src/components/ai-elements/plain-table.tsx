@@ -1,6 +1,7 @@
 "use client";
 
 import { Copy, Download, Maximize2 } from "lucide-react";
+import type { ComponentPropsWithoutRef } from "react";
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -37,11 +38,16 @@ function downloadText(filename: string, text: string) {
 	URL.revokeObjectURL(url);
 }
 
+type PlainTableProps = ComponentPropsWithoutRef<"table"> & {
+	node?: unknown;
+};
+
 export function PlainTable({
 	children,
 	className,
+	node: _node,
 	...props
-}: React.ComponentProps<"table">) {
+}: PlainTableProps) {
 	const { t } = useTranslation("aiElements");
 	const tableRef = useRef<HTMLTableElement>(null);
 
@@ -109,22 +115,24 @@ export function PlainTable({
 			>
 				<TooltipProvider>
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
+						<Tooltip>
 							<TooltipTrigger asChild>
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon"
-									className={iconButtonClass}
-									aria-label={t("table.copy")}
-								>
-									<Copy className="size-4" />
-								</Button>
+								<DropdownMenuTrigger asChild>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										className={iconButtonClass}
+										aria-label={t("table.copy")}
+									>
+										<Copy className="size-4" />
+									</Button>
+								</DropdownMenuTrigger>
 							</TooltipTrigger>
-						</DropdownMenuTrigger>
-						<TooltipContent>
-							<p>{t("table.copy")}</p>
-						</TooltipContent>
+							<TooltipContent>
+								<p>{t("table.copy")}</p>
+							</TooltipContent>
+						</Tooltip>
 						<DropdownMenuContent align="end">
 							<DropdownMenuItem onClick={() => handleCopy("md")}>
 								{t("table.copyAsMarkdown")}
@@ -139,22 +147,24 @@ export function PlainTable({
 					</DropdownMenu>
 
 					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
+						<Tooltip>
 							<TooltipTrigger asChild>
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon"
-									className={iconButtonClass}
-									aria-label={t("table.download")}
-								>
-									<Download className="size-4" />
-								</Button>
+								<DropdownMenuTrigger asChild>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										className={iconButtonClass}
+										aria-label={t("table.download")}
+									>
+										<Download className="size-4" />
+									</Button>
+								</DropdownMenuTrigger>
 							</TooltipTrigger>
-						</DropdownMenuTrigger>
-						<TooltipContent>
-							<p>{t("table.download")}</p>
-						</TooltipContent>
+							<TooltipContent>
+								<p>{t("table.download")}</p>
+							</TooltipContent>
+						</Tooltip>
 						<DropdownMenuContent align="end">
 							<DropdownMenuItem onClick={() => handleDownload("csv")}>
 								{t("table.downloadAsCsv")}
