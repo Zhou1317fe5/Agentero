@@ -84,13 +84,6 @@ export function DoctorHostRuntimeSection({
 				<>
 					<ToolRow label="Node.js" tool={report.node} />
 					<ToolRow label="npm" tool={report.npm} />
-					{report.npmPrefix ? (
-						<div className="px-3.5 py-2.5">
-							<p className="text-muted-foreground text-xs">
-								{t("doctor.host.npmPrefix", { prefix: report.npmPrefix })}
-							</p>
-						</div>
-					) : null}
 				</>
 			) : null}
 		</DoctorSection>

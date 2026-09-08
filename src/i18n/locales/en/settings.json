@@ -546,8 +546,7 @@
 				"available": "Available",
 				"missing": "Not found",
 				"unusable": "Cannot run"
-			},
-			"npmPrefix": "npm global prefix: {{prefix}}"
+			}
 		},
 		"agent": {
 			"probing": "Probing agents…",

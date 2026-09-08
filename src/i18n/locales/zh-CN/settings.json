@@ -546,8 +546,7 @@
 				"available": "可用",
 				"missing": "未找到",
 				"unusable": "无法运行"
-			},
-			"npmPrefix": "npm 全局目录：{{prefix}}"
+			}
 		},
 		"agent": {
 			"probing": "正在探测 Agent…",
