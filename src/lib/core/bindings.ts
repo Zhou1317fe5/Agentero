@@ -55,6 +55,12 @@ export const commands = {
 	agentProbe: (id: string) => typedError<ApiResult<ProbeResult_Serialize>, string>(__TAURI_INVOKE("agent_probe", { id })),
 	/**  Ensure catalog agent is registered, then run ACP initialize probe. */
 	agentProbeCatalog: (templateId: string) => typedError<ApiResult<ProbeResult_Serialize>, string>(__TAURI_INVOKE("agent_probe_catalog", { templateId })),
+	doctorCheckHost: () => typedError<ApiResult<HostDoctorReport_Serialize>, string>(__TAURI_INVOKE("doctor_check_host")),
+	/**
+	 *  Re-probe every registered Agent over ACP and return classified failures.
+	 *  Can take up to ~30s per slow agent (probes run with limited concurrency).
+	 */
+	doctorCheckAgents: () => typedError<ApiResult<AgentAcpDiagnostic_Serialize[]>, string>(__TAURI_INVOKE("doctor_check_agents")),
 	/**  Request cooperative cancellation for a currently streaming ACP session. */
 	agentCancelRun: (sessionId: string) => __TAURI_INVOKE<ApiResult<boolean>>("agent_cancel_run", { sessionId }),
 	jobParseRefsEnqueue: (args: JobEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_parse_refs_enqueue", { args })),
@@ -574,6 +580,8 @@ export const events = {
 };
 
 /* Types */
+export type AcpFailureCategory = "command-missing" | "not-logged-in" | "timeout" | "spawn-failed" | "protocol-failed" | "unknown";
+
 /**  A single history line reconstructed from ACP `session/load` replay. */
 export type AcpHistoryLine = AcpHistoryLine_Serialize | AcpHistoryLine_Deserialize;
 
@@ -700,6 +708,36 @@ export type AcpSessionInfo_Serialize = {
 
 export type ActivityRecordArgs = {
 	events: UsageRecord[],
+};
+
+export type AgentAcpDiagnostic = AgentAcpDiagnostic_Serialize | AgentAcpDiagnostic_Deserialize;
+
+export type AgentAcpDiagnostic_Deserialize = {
+	agentId: string,
+	name: string,
+	template: AgentTemplate,
+	command: string,
+	resolvedPath: string | null,
+	ok: boolean,
+	failureCategory: AcpFailureCategory | null,
+	error: string | null,
+	agentName: string | null,
+	protocolVersion: string | null,
+	probedAt: string | null,
+};
+
+export type AgentAcpDiagnostic_Serialize = {
+	agentId: string,
+	name: string,
+	template: AgentTemplate,
+	command: string,
+	resolvedPath?: string | null,
+	ok: boolean,
+	failureCategory?: AcpFailureCategory | null,
+	error?: string | null,
+	agentName?: string | null,
+	protocolVersion?: string | null,
+	probedAt?: string | null,
 };
 
 /**  Collaboration mode selector (Codex `collaboration_mode`: Default / Plan). */
@@ -1223,13 +1261,9 @@ export type AppSettings_Deserialize = {
 	easyScholarKey?: string,
 	networkProxyEnabled?: boolean,
 	networkProxyUrl?: string,
-	/**
-	 *  URL-prefix GitHub mirror for Skill import fallback when GitHub is unreachable.
-	 */
+	/**  URL-prefix GitHub mirror for Skill import fallback when GitHub is unreachable. */
 	githubMirrorEnabled?: boolean,
-	/**
-	 *  e.g. `https://gh.llkk.cc` — requests become `{base}/https://codeload.github.com/...`.
-	 */
+	/**  e.g. `https://gh.llkk.cc` — requests become `{base}/https://codeload.github.com/...`. */
 	githubMirrorBaseUrl?: string,
 	paperTreeLabelMode?: string,
 	paperTreeSortMode?: string,
@@ -1305,13 +1339,9 @@ export type AppSettings_Serialize = {
 	easyScholarKey: string,
 	networkProxyEnabled: boolean,
 	networkProxyUrl: string,
-	/**
-	 *  URL-prefix GitHub mirror for Skill import fallback when GitHub is unreachable.
-	 */
+	/**  URL-prefix GitHub mirror for Skill import fallback when GitHub is unreachable. */
 	githubMirrorEnabled: boolean,
-	/**
-	 *  e.g. `https://gh.llkk.cc` — requests become `{base}/https://codeload.github.com/...`.
-	 */
+	/**  e.g. `https://gh.llkk.cc` — requests become `{base}/https://codeload.github.com/...`. */
 	githubMirrorBaseUrl: string,
 	paperTreeLabelMode: string,
 	paperTreeSortMode: string,
@@ -1882,6 +1912,22 @@ export type CliInstallStatus = {
 	message: string | null,
 };
 
+export type CodexAuthDiagnostic = CodexAuthDiagnostic_Serialize | CodexAuthDiagnostic_Deserialize;
+
+export type CodexAuthDiagnostic_Deserialize = {
+	status: CodexAuthStatus,
+	method: string | null,
+	detail: string | null,
+};
+
+export type CodexAuthDiagnostic_Serialize = {
+	status: CodexAuthStatus,
+	method?: string | null,
+	detail?: string | null,
+};
+
+export type CodexAuthStatus = "authenticated" | "unauthenticated" | "not-applicable" | "unknown";
+
 export type CommitStatus = 
 /**  New paper folder + catalog row were written. */
 "created" | 
@@ -2382,6 +2428,40 @@ export type FsDirEntry = {
 	/**  Vault-relative path using `/`. */
 	path: string,
 };
+
+export type HostDoctorReport = HostDoctorReport_Serialize | HostDoctorReport_Deserialize;
+
+export type HostDoctorReport_Deserialize = {
+	node: HostToolDiagnostic_Deserialize,
+	npm: HostToolDiagnostic_Deserialize,
+	npmPrefix: string | null,
+	codexAuth: CodexAuthDiagnostic_Deserialize,
+};
+
+export type HostDoctorReport_Serialize = {
+	node: HostToolDiagnostic_Serialize,
+	npm: HostToolDiagnostic_Serialize,
+	npmPrefix?: string | null,
+	codexAuth: CodexAuthDiagnostic_Serialize,
+};
+
+export type HostToolDiagnostic = HostToolDiagnostic_Serialize | HostToolDiagnostic_Deserialize;
+
+export type HostToolDiagnostic_Deserialize = {
+	status: HostToolStatus,
+	resolvedPath: string | null,
+	version: string | null,
+	detail: string | null,
+};
+
+export type HostToolDiagnostic_Serialize = {
+	status: HostToolStatus,
+	resolvedPath?: string | null,
+	version?: string | null,
+	detail?: string | null,
+};
+
+export type HostToolStatus = "available" | "missing" | "unusable";
 
 export type ImportLocalPdfArgs = {
 	vaultPath: string,

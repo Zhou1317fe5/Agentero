@@ -734,7 +734,7 @@ fn stable_id_for(template: &AgentTemplate, command: &str, args: &[String]) -> St
     }
 }
 
-fn chrono_like_now() -> String {
+pub(crate) fn chrono_like_now() -> String {
     // RFC3339-ish without extra deps: unix secs is enough for UI ordering.
     use std::time::{SystemTime, UNIX_EPOCH};
     let secs = SystemTime::now()

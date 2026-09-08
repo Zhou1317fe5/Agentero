@@ -78,10 +78,41 @@ Doctor 聚合本地 Vault 的只读完整性检查，并为论文别名、双链
 
 读路径（桌面）始终 dual-read v1/v2，不依赖 Doctor 也能打开旧 Vault。
 
+## Host / Agent 诊断
+
+除 Vault Doctor 外，设置页诊断还有两个 **host 级**检查（不依赖 Vault，代码在 `src-tauri/src/features/agent/`）：
+
+### 主机运行环境（`doctor_check_host`）
+
+`agent/doctor.rs` `diagnose_host`：在 Agent 实际使用的合并环境（`effective_local_agent_env`，PATH 按 descriptor → 进程 → login shell → 常见 GUI 缺失目录顺序合并）里检查：
+
+- `node` / `npm`：解析路径 + `--version`（5s 超时），状态 `available / missing / unusable`；
+- `npm prefix -g`：追加进环境 PATH 后再查 node（覆盖 npm 全局安装但 GUI PATH 缺失的场景）；
+- Codex 登录：`codex-acp cli login status`，失败再回退 `codex login status`，输出解析为 `authenticated / unauthenticated / not-applicable / unknown`（不回传原始输出，避免泄露账号）。
+
+### Agent ACP 连通性（`doctor_check_agents`）
+
+`agent/doctor_agents.rs` `diagnose_agents`：对 registry 中**每个已注册 Agent**（含 custom）重新执行 ACP initialize 探测（不发 prompt），并分类失败原因：
+
+- 编排：`snapshot()` 一次（内部已刷新命令可用性）；`buffered(3)` 限流并行探测；`!available` 的 Agent 不 spawn，直接按 `last_error` 合成「命令缺失」结果（镜像 `agent_probe` 快路径）；
+- 写回：每个结果 `apply_probe_result` 持久化到 registry，结束后 `emit_registry_changed`，Agent 目录页同步刷新；成功时清除该 Agent 的 warm-gate 熔断，失败**不**记录新熔断（Doctor 是用户主动重试，应无视 120s 冷却）；
+- 分类（`classify_acp_error`，按序匹配原始错误文本）：
+
+| 分类 | 匹配模式（示例） | 典型原因 |
+|---|---|---|
+| `command-missing` | `not found on PATH`、`No such file or directory (os error 2)` | CLI 未安装或 GUI PATH 缺失 |
+| `not-logged-in` | `not logged in`、`invalid_grant`、`authentication required` 等（与前端 `isAgentAuthFailure` 一致；优先于协议类，auth 错误常被包进 `initialize failed:`） | Agent 未登录 / token 过期 |
+| `timeout` | `timed out` | 冷启动慢、代理/网络问题 |
+| `spawn-failed` | `failed to start`、`Permission denied (os error 13)`、`(os error 193)` | 权限或无效可执行文件 |
+| `protocol-failed` | `initialize failed`、`no initialize response`、`method not found` | ACP adapter 版本/实现问题 |
+| `unknown` | 兜底 | 展示原始错误 |
+
+hint 文案不在 wire 类型里，前端按分类映射 `doctor.agent.hints.*` i18n key。探测不随设置窗关闭而取消，由 30s initialize 超时兜底。
+
 ## 入口
 
 - 桌面：设置 → 知识库诊断；远程 Vault 当前显示不可用。
 - CLI：`agentero doctor`、`agentero doctor fix aliases`、`agentero doctor fix visual-marks`、`agentero doctor fix catalog-duplicates`、`agentero -y doctor fix …`（CLI 诊断同样尊重 `.agentero/doctor.json` 忽略列表）。
-- Host：`doctor_check`、`doctor_apply_aliases`、`doctor_ignore_aliases`、`doctor_set_dirty_paths`、`doctor_plan_wikilinks`、`doctor_apply_wikilinks`、`doctor_apply_visual_marks`、`doctor_fix_catalog_duplicates`。
+- Host：`doctor_check`、`doctor_apply_aliases`、`doctor_ignore_aliases`、`doctor_set_dirty_paths`、`doctor_plan_wikilinks`、`doctor_apply_wikilinks`、`doctor_apply_visual_marks`、`doctor_fix_catalog_duplicates`；host 级：`doctor_check_host`、`doctor_check_agents`。
 
-代码：`src-tauri/src/features/vault/doctor/`（聚合入口）、`src-tauri/src/features/markdown/wiki/doctor.rs`（双链修复）、`src-tauri/src/features/pdf/marks/doctor.rs`（视觉批注修复）、`src/lib/doctor/`、`src/components/settings/panes/doctor-pane.tsx`。
+代码：`src-tauri/src/features/vault/doctor/`（聚合入口）、`src-tauri/src/features/markdown/wiki/doctor.rs`（双链修复）、`src-tauri/src/features/pdf/marks/doctor.rs`（视觉批注修复）、`src-tauri/src/features/agent/doctor.rs`（主机运行环境）、`src-tauri/src/features/agent/doctor_agents.rs`（Agent ACP 诊断）、`src/lib/doctor/`、`src/components/settings/panes/doctor-pane.tsx`。
