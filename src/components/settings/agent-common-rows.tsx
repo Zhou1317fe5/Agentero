@@ -18,7 +18,7 @@ import { SettingsRow } from "./settings-layout";
 
 type Patch = (p: Partial<AppSettings>) => void;
 
-/** Shared network proxy URL input + enable switch. */
+/** Shared network proxy / mirror URL input + enable switch. */
 export function NetworkProxyRow({
 	htmlFor,
 	label,
@@ -28,6 +28,7 @@ export function NetworkProxyRow({
 	onProxyUrlChange,
 	onCommitProxyUrl,
 	onToggleProxy,
+	placeholder = "http://127.0.0.1:7890",
 }: {
 	htmlFor: string;
 	label: string;
@@ -37,6 +38,7 @@ export function NetworkProxyRow({
 	onProxyUrlChange: (url: string) => void;
 	onCommitProxyUrl: () => void;
 	onToggleProxy: (enabled: boolean) => void;
+	placeholder?: string;
 }) {
 	return (
 		<SettingsRow label={label} description={description} htmlFor={htmlFor}>
@@ -50,7 +52,7 @@ export function NetworkProxyRow({
 							e.currentTarget.blur();
 						}
 					}}
-					placeholder="http://127.0.0.1:7890"
+					placeholder={placeholder}
 					spellCheck={false}
 					autoComplete="off"
 					disabled={!proxyEnabled || !isTauri()}

@@ -1223,6 +1223,14 @@ export type AppSettings_Deserialize = {
 	easyScholarKey?: string,
 	networkProxyEnabled?: boolean,
 	networkProxyUrl?: string,
+	/**
+	 *  URL-prefix GitHub mirror for Skill import fallback when GitHub is unreachable.
+	 */
+	githubMirrorEnabled?: boolean,
+	/**
+	 *  e.g. `https://gh.llkk.cc` — requests become `{base}/https://codeload.github.com/...`.
+	 */
+	githubMirrorBaseUrl?: string,
 	paperTreeLabelMode?: string,
 	paperTreeSortMode?: string,
 	/**
@@ -1297,6 +1305,14 @@ export type AppSettings_Serialize = {
 	easyScholarKey: string,
 	networkProxyEnabled: boolean,
 	networkProxyUrl: string,
+	/**
+	 *  URL-prefix GitHub mirror for Skill import fallback when GitHub is unreachable.
+	 */
+	githubMirrorEnabled: boolean,
+	/**
+	 *  e.g. `https://gh.llkk.cc` — requests become `{base}/https://codeload.github.com/...`.
+	 */
+	githubMirrorBaseUrl: string,
 	paperTreeLabelMode: string,
 	paperTreeSortMode: string,
 	/**

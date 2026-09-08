@@ -89,6 +89,9 @@ export function GeneralPane({
 }) {
 	const { t } = useTranslation("settings");
 	const [proxyUrlDraft, setProxyUrlDraft] = useState(settings.networkProxyUrl);
+	const [githubMirrorDraft, setGithubMirrorDraft] = useState(
+		settings.githubMirrorBaseUrl,
+	);
 	const [easyScholarKeyDraft, setEasyScholarKeyDraft] = useState(
 		settings.easyScholarKey,
 	);
@@ -123,6 +126,10 @@ export function GeneralPane({
 	useEffect(() => {
 		setProxyUrlDraft(settings.networkProxyUrl);
 	}, [settings.networkProxyUrl]);
+
+	useEffect(() => {
+		setGithubMirrorDraft(settings.githubMirrorBaseUrl);
+	}, [settings.githubMirrorBaseUrl]);
 
 	useEffect(() => {
 		setEasyScholarKeyDraft(settings.easyScholarKey);
@@ -313,6 +320,22 @@ export function GeneralPane({
 					}
 					onToggleProxy={(networkProxyEnabled) =>
 						patch({ networkProxyEnabled })
+					}
+				/>
+				<NetworkProxyRow
+					htmlFor="github-mirror-enabled"
+					label={t("general.githubMirror.label")}
+					proxyUrl={githubMirrorDraft}
+					proxyEnabled={settings.githubMirrorEnabled}
+					placeholder="https://gh.llkk.cc"
+					onProxyUrlChange={setGithubMirrorDraft}
+					onCommitProxyUrl={() =>
+						patch({
+							githubMirrorBaseUrl: githubMirrorDraft.trim().replace(/\/+$/, ""),
+						})
+					}
+					onToggleProxy={(githubMirrorEnabled) =>
+						patch({ githubMirrorEnabled })
 					}
 				/>
 			</SettingsGroup>

@@ -99,6 +99,9 @@
 			"label": "Network proxy",
 			"systemDetected": "System proxy detected ({{url}}) — used automatically while this switch is off."
 		},
+		"githubMirror": {
+			"label": "GitHub mirror"
+		},
 		"easyScholar": {
 			"section": "EasyScholar",
 			"keyLabel": "Key",

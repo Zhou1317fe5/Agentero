@@ -99,6 +99,9 @@
 			"label": "网络代理",
 			"systemDetected": "检测到系统代理（{{url}}）——开关关闭时将自动使用。"
 		},
+		"githubMirror": {
+			"label": "GitHub 镜像"
+		},
 		"easyScholar": {
 			"section": "EasyScholar",
 			"keyLabel": "Key",

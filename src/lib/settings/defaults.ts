@@ -50,6 +50,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
 	easyScholarKey: "",
 	networkProxyEnabled: false,
 	networkProxyUrl: DEFAULT_NETWORK_PROXY_URL,
+	githubMirrorEnabled: false,
+	githubMirrorBaseUrl: "",
 	paperTreeLabelMode: "title-author",
 	paperTreeSortMode: "folder",
 	autoUpdateInternalLinks: "ask",

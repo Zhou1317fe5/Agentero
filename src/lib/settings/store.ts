@@ -326,6 +326,16 @@ function normalizePartial(
 	} else {
 		merged.networkProxyUrl = parsed.networkProxyUrl.trim();
 	}
+	if (typeof parsed.githubMirrorEnabled !== "boolean") {
+		merged.githubMirrorEnabled = DEFAULT_SETTINGS.githubMirrorEnabled;
+	}
+	if (typeof parsed.githubMirrorBaseUrl !== "string") {
+		merged.githubMirrorBaseUrl = DEFAULT_SETTINGS.githubMirrorBaseUrl;
+	} else {
+		merged.githubMirrorBaseUrl = parsed.githubMirrorBaseUrl
+			.trim()
+			.replace(/\/+$/, "");
+	}
 	if (!isPaperTreeLabelMode(merged.paperTreeLabelMode)) {
 		merged.paperTreeLabelMode = DEFAULT_SETTINGS.paperTreeLabelMode;
 	}

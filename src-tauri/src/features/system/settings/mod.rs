@@ -57,6 +57,12 @@ pub struct AppSettings {
     pub network_proxy_enabled: bool,
     #[serde(default = "default_network_proxy_url")]
     pub network_proxy_url: String,
+    /// URL-prefix GitHub mirror for Skill import fallback when GitHub is unreachable.
+    #[serde(default)]
+    pub github_mirror_enabled: bool,
+    /// e.g. `https://gh.llkk.cc` — requests become `{base}/https://codeload.github.com/...`.
+    #[serde(default)]
+    pub github_mirror_base_url: String,
     #[serde(default = "default_paper_tree_label_mode")]
     pub paper_tree_label_mode: String,
     #[serde(default = "default_paper_tree_sort_mode")]
@@ -286,6 +292,8 @@ impl Default for AppSettings {
             easy_scholar_key: String::new(),
             network_proxy_enabled: false,
             network_proxy_url: default_network_proxy_url(),
+            github_mirror_enabled: false,
+            github_mirror_base_url: String::new(),
             paper_tree_label_mode: default_paper_tree_label_mode(),
             paper_tree_sort_mode: default_paper_tree_sort_mode(),
             paper_note_mode: default_paper_note_mode(),
@@ -826,6 +834,11 @@ fn normalize(s: &mut AppSettings) {
     if s.network_proxy_url.is_empty() {
         s.network_proxy_url = default_network_proxy_url();
     }
+    s.github_mirror_base_url = s
+        .github_mirror_base_url
+        .trim()
+        .trim_end_matches('/')
+        .to_string();
 
     const LABEL_MODES: &[&str] = &["title-author", "title", "author-year-title", "folder"];
     if !LABEL_MODES.contains(&s.paper_tree_label_mode.as_str()) {
