@@ -7,6 +7,7 @@ import {
 	RemoteVaultDialog,
 } from "@/components/dialogs/remote-vault-dialog";
 import { Button } from "@/components/ui/button";
+import { displayPath } from "@/lib/core/path";
 import { cn } from "@/lib/core/utils";
 import { vaultDisplayName } from "@/lib/vault";
 import {
@@ -214,7 +215,7 @@ export function VaultWelcome({
 										key={path}
 										disabled={busy}
 										title={name}
-										subtitle={path}
+										subtitle={displayPath(path)}
 										onOpen={() => onOpenRecent(path)}
 										onRemove={() => onRemoveRecent(path)}
 										removeAria={t("vault.removeRecent", { name })}

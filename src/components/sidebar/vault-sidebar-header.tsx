@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useImeGuard } from "@/hooks/use-ime-guard";
 import { errorText } from "@/lib/core/error";
+import { displayPath } from "@/lib/core/path";
 import { formatShortcutById } from "@/lib/shell/shortcuts";
 import { vaultDisplayName } from "@/lib/vault";
 import {
@@ -580,7 +581,7 @@ export const VaultSidebarHeader = memo(function VaultSidebarHeader({
 											{vaultDisplayName(p)}
 										</span>
 										<span className="block truncate text-muted-foreground text-xs">
-											{p}
+											{displayPath(p)}
 										</span>
 									</span>
 									<button

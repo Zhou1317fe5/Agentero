@@ -19,6 +19,7 @@
 - **功能单例窗**：`feature_window_open` → `?window=feature&view=…`（`FeatureWindowRoot`）。
 - **文档弹出窗**：文档 tab 右键「移动至新窗口」→ `doc_window_open` → `?window=doc&path=…`（`DocWindowRoot`）；同 path 再开则聚焦。
 - 当前窗口 Vault：`sessionStorage`；MRU / 上次路径：`localStorage`。
+- Vault 切换菜单与欢迎页的最近路径使用 `displayPath` 展示普通 Windows 盘符 / UNC 路径；兼容历史记录中的 `\\?\` 前缀，不改写持久化路径或 Vault 身份。
 - 桌面窗口在 Webview 页面加载完成后显示；React 首次提交前由 `index.html` 的零依赖启动壳占位，避免冷启动和 dev 模块加载期间出现空白窗口。
 
 ## 全局 Toast
