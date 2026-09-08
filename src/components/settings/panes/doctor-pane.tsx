@@ -10,7 +10,6 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { errorText } from "@/lib/core/error";
-import { notifyError } from "@/lib/core/notify";
 import {
 	type AgentAcpDiagnostic,
 	type DoctorReport,
@@ -42,6 +41,9 @@ export function DoctorPane({
 	const [agentReport, setAgentReport] = useState<AgentAcpDiagnostic[] | null>(
 		null,
 	);
+	const [hostError, setHostError] = useState<string | null>(null);
+	const [agentError, setAgentError] = useState<string | null>(null);
+	const [vaultError, setVaultError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [agentsLoading, setAgentsLoading] = useState(false);
 	const [wikiPlanning, setWikiPlanning] = useState(false);
@@ -49,15 +51,19 @@ export function DoctorPane({
 	const refresh = useCallback(async () => {
 		if (hostContext.kind === "remote") return;
 		setLoading(true);
+		setHostError(null);
+		setVaultError(null);
 		try {
-			const requests: Promise<void>[] = [doctorCheckHost().then(setHostReport)];
-			if (vaultPath) {
-				requests.push(doctorCheck(vaultPath).then(setReport));
+			try {
+				setHostReport(await doctorCheckHost());
+			} catch (error) {
+				setHostError(errorText(error));
 			}
-			const results = await Promise.allSettled(requests);
-			for (const result of results) {
-				if (result.status === "rejected") {
-					notifyError(errorText(result.reason));
+			if (vaultPath) {
+				try {
+					setReport(await doctorCheck(vaultPath));
+				} catch (error) {
+					setVaultError(errorText(error));
 				}
 			}
 		} finally {
@@ -70,10 +76,11 @@ export function DoctorPane({
 	const refreshAgents = useCallback(async () => {
 		if (hostContext.kind === "remote") return;
 		setAgentsLoading(true);
+		setAgentError(null);
 		try {
 			setAgentReport(await doctorCheckAgents());
 		} catch (error) {
-			notifyError(errorText(error));
+			setAgentError(errorText(error));
 		} finally {
 			setAgentsLoading(false);
 		}
@@ -125,45 +132,55 @@ export function DoctorPane({
 				}
 			/>
 
-			<DoctorHostRuntimeSection report={hostReport} />
+			<DoctorHostRuntimeSection report={hostReport} error={hostError} />
 
-			<DoctorAgentSection report={agentReport} loading={agentsLoading} />
+			<DoctorAgentSection
+				report={agentReport}
+				loading={agentsLoading}
+				error={agentError}
+			/>
 
 			{vaultPath ? (
-				<>
-					<DoctorVaultSection
-						ok={report?.vault.ok ?? true}
-						issues={report?.vault.issues ?? []}
-					/>
+				vaultError ? (
+					<p className="rounded-xl border bg-card px-3.5 py-2.5 text-amber-700 text-xs">
+						{vaultError}
+					</p>
+				) : (
+					<>
+						<DoctorVaultSection
+							ok={report?.vault.ok ?? true}
+							issues={report?.vault.issues ?? []}
+						/>
 
-					<DoctorCatalogSection
-						vaultPath={vaultPath}
-						ok={report?.catalog.ok ?? true}
-						issues={catalogIssues}
-						hasDuplicates={hasCatalogDuplicates}
-						onRefresh={refresh}
-					/>
+						<DoctorCatalogSection
+							vaultPath={vaultPath}
+							ok={report?.catalog.ok ?? true}
+							issues={catalogIssues}
+							hasDuplicates={hasCatalogDuplicates}
+							onRefresh={refresh}
+						/>
 
-					<DoctorWikilinkSection
-						vaultPath={vaultPath}
-						wikilinks={report?.wikilinks}
-						planning={wikiPlanning}
-						onPlanningChange={setWikiPlanning}
-						onRefresh={refresh}
-					/>
+						<DoctorWikilinkSection
+							vaultPath={vaultPath}
+							wikilinks={report?.wikilinks}
+							planning={wikiPlanning}
+							onPlanningChange={setWikiPlanning}
+							onRefresh={refresh}
+						/>
 
-					<DoctorAliasSection
-						vaultPath={vaultPath}
-						aliases={report?.aliases}
-						onRefresh={refresh}
-					/>
+						<DoctorAliasSection
+							vaultPath={vaultPath}
+							aliases={report?.aliases}
+							onRefresh={refresh}
+						/>
 
-					<DoctorVisualMarksSection
-						vaultPath={vaultPath}
-						visualMarks={report?.visualMarks}
-						onRefresh={refresh}
-					/>
-				</>
+						<DoctorVisualMarksSection
+							vaultPath={vaultPath}
+							visualMarks={report?.visualMarks}
+							onRefresh={refresh}
+						/>
+					</>
+				)
 			) : (
 				<p className="rounded-xl border bg-muted/30 px-4 py-3 text-muted-foreground text-sm">
 					{t("doctor.openVault")}

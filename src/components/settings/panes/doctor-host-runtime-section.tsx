@@ -40,7 +40,9 @@ function ToolRow({ label, tool }: { label: string; tool: HostToolDiagnostic }) {
 					</p>
 				) : null}
 				{tool.detail ? (
-					<p className="text-muted-foreground text-xs">{tool.detail}</p>
+					<p className="whitespace-pre-wrap break-words text-muted-foreground text-xs">
+						{tool.detail}
+					</p>
 				) : null}
 			</div>
 		</div>
@@ -49,14 +51,18 @@ function ToolRow({ label, tool }: { label: string; tool: HostToolDiagnostic }) {
 
 export function DoctorHostRuntimeSection({
 	report,
+	error,
 }: {
 	report: HostDoctorReport | null;
+	error?: string | null;
 }) {
 	const { t } = useTranslation("settings");
-	const issues = report
-		? Number(report.node.status !== "available") +
-			Number(report.npm.status !== "available")
-		: 0;
+	const issues = error
+		? 1
+		: report
+			? Number(report.node.status !== "available") +
+				Number(report.npm.status !== "available")
+			: 0;
 	return (
 		<DoctorSection
 			title={t("doctor.sections.host")}
@@ -64,7 +70,17 @@ export function DoctorHostRuntimeSection({
 			ok={issues === 0}
 			issueCount={issues}
 		>
-			{report ? (
+			{error ? (
+				<div className="flex items-start gap-2.5 px-3.5 py-2.5">
+					<TriangleAlert
+						className="mt-0.5 size-3.5 shrink-0 text-amber-600"
+						aria-hidden
+					/>
+					<p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-xs">
+						{error}
+					</p>
+				</div>
+			) : report ? (
 				<>
 					<ToolRow label="Node.js" tool={report.node} />
 					<ToolRow label="npm" tool={report.npm} />

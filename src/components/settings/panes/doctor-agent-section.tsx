@@ -82,7 +82,7 @@ function AgentCard({ agent }: { agent: AgentAcpDiagnostic }) {
 					{!agent.ok ? (
 						<div className="mt-1.5 space-y-0.5">
 							{agent.error ? (
-								<p className="truncate text-xs" title={agent.error}>
+								<p className="whitespace-pre-wrap break-words text-xs">
 									{agent.error}
 								</p>
 							) : null}
@@ -100,12 +100,14 @@ function AgentCard({ agent }: { agent: AgentAcpDiagnostic }) {
 export function DoctorAgentSection({
 	report,
 	loading,
+	error,
 }: {
 	report: AgentAcpDiagnostic[] | null;
 	loading: boolean;
+	error?: string | null;
 }) {
 	const { t } = useTranslation("settings");
-	const failed = report?.filter((agent) => !agent.ok).length ?? 0;
+	const failed = error ? 1 : (report?.filter((agent) => !agent.ok).length ?? 0);
 	return (
 		<DoctorSection
 			title={t("doctor.sections.agents")}
@@ -114,7 +116,7 @@ export function DoctorAgentSection({
 			issueCount={failed}
 			framed={false}
 			action={
-				loading && report ? (
+				loading && (report || error) ? (
 					<Loader2
 						className="size-3.5 animate-spin text-muted-foreground"
 						aria-hidden
@@ -122,7 +124,19 @@ export function DoctorAgentSection({
 				) : undefined
 			}
 		>
-			{loading && !report ? (
+			{error ? (
+				<div className="rounded-xl border bg-card px-3.5 py-2.5">
+					<div className="flex items-start gap-2.5">
+						<TriangleAlert
+							className="mt-0.5 size-3.5 shrink-0 text-amber-600"
+							aria-hidden
+						/>
+						<p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-xs">
+							{error}
+						</p>
+					</div>
+				</div>
+			) : loading && !report ? (
 				<div className="flex items-center gap-2.5 rounded-xl border bg-card px-3.5 py-2.5">
 					<Loader2
 						className="size-3.5 animate-spin text-muted-foreground"
