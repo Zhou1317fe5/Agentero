@@ -414,6 +414,7 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 						selectionMenu={(menuProps) => (
 							<HighlightAnnotationMenu
 								{...menuProps}
+								docId={docId}
 								onEdit={handlers.onEditHighlightAnnotation}
 								onDelete={handlers.onDeleteHighlightAnnotation}
 								onChangeColor={handlers.onChangeHighlightColor}
