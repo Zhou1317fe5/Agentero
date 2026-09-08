@@ -395,6 +395,7 @@ export function buildOptions(
 		}
 	}
 
+	options.sort((a, b) => a.name.localeCompare(b.name));
 	tail.sort((a, b) => a.name.localeCompare(b.name));
 	return [...options, ...tail];
 }
