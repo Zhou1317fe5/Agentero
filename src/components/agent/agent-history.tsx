@@ -1,6 +1,7 @@
 import { History, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { isSessionIdPrefixTitle } from "@/components/agent/hooks/use-agent-history";
 import { Button } from "@/components/ui/button";
 import {
 	Popover,
@@ -43,6 +44,18 @@ export function HistorySessionList({
 					(line): line is Extract<ChatLine, { kind: "user" }> =>
 						line.kind === "user",
 				);
+				// Ignore historical session-id placeholders so user-prompt
+				// fallback / hydration can surface (#484, Kimi `ses_…`).
+				const providerId = item.providerSessionId?.trim() || "";
+				const storedTitle =
+					isSessionIdPrefixTitle(item.title, item.id) ||
+					(providerId !== "" && isSessionIdPrefixTitle(item.title, providerId))
+						? ""
+						: item.title;
+				const label = displayHistoryTitle(
+					storedTitle || firstUserLine?.text || "",
+					item.id.slice(0, 8),
+				);
 				return (
 					<button
 						key={item.id}
@@ -57,14 +70,10 @@ export function HistorySessionList({
 						onClick={() => onOpen(item)}
 					>
 						<span className="text-muted-foreground text-xs leading-none">
-							{item.agentName} · {t(`history.status.${item.status}`)} ·{" "}
-							{item.id.slice(0, 8)}
+							{item.agentName} · {t(`history.status.${item.status}`)}
 						</span>
 						<span className="line-clamp-2 font-medium text-sm leading-snug">
-							{displayHistoryTitle(
-								item.title || firstUserLine?.text || "",
-								item.id.slice(0, 8),
-							)}
+							{label}
 						</span>
 						<span className="text-muted-foreground text-xs leading-none">
 							{item.startedAt}

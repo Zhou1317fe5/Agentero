@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	hydrateSessionTitles,
+	isSessionIdPrefixTitle,
 	mergeImportedSessions,
 	sanitizeChatLines,
 	titleFromLoadedHistory,
@@ -99,6 +100,17 @@ describe("sanitizeChatLines", () => {
 			},
 		];
 		expect(sanitizeChatLines(lines)).toHaveLength(1);
+	});
+});
+
+describe("isSessionIdPrefixTitle", () => {
+	it("matches the historical 8-char slice and leading Kimi-style leftovers", () => {
+		expect(isSessionIdPrefixTitle("ses_3a2a", "ses_3a2abcdef")).toBe(true);
+		expect(isSessionIdPrefixTitle("ses_3a2", "ses_3a2abcdef")).toBe(true);
+		expect(isSessionIdPrefixTitle("ses_3a2abcdef", "ses_3a2abcdef")).toBe(true);
+		expect(
+			isSessionIdPrefixTitle("Summarize this paper", "ses_3a2abcdef"),
+		).toBe(false);
 	});
 });
 

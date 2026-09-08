@@ -88,12 +88,23 @@ export function titleFromSessionLines(
 	return displayHistoryTitle(firstUser.text, "");
 }
 
-/** True when `title` is just the session-id prefix placeholder (#484). */
-function isSessionIdPrefixTitle(title: string, sessionId: string): boolean {
+/**
+ * True when `title` is a session-id placeholder (#484), not a human label.
+ * Matches exact id, the historical 8-char slice, or any leading slice of the
+ * id (Kimi `ses_…` ids often left short leftovers in the store).
+ */
+export function isSessionIdPrefixTitle(
+	title: string,
+	sessionId: string,
+): boolean {
 	const trimmed = title.trim();
-	if (!trimmed) return false;
-	const prefix = sessionId.trim().slice(0, 8);
-	return Boolean(prefix) && trimmed === prefix;
+	const id = sessionId.trim();
+	if (!trimmed || !id) return false;
+	if (trimmed === id) return true;
+	if (trimmed === id.slice(0, 8)) return true;
+	// Prior bad seeds / OCR-short ids: title is a prefix of the real session id.
+	if (trimmed.length >= 6 && id.startsWith(trimmed)) return true;
+	return false;
 }
 
 type HydrateTitleOptions = {
@@ -204,12 +215,13 @@ export function mergeImportedSessions(
 		// non-empty string as a real title.
 		const fromLines = current ? titleFromSessionLines(current.lines) : "";
 		const priorTitle = current?.title?.trim() ?? "";
+		const priorIsIdPlaceholder =
+			Boolean(priorTitle) &&
+			(isSessionIdPrefixTitle(priorTitle, session.sessionId) ||
+				(current != null && isSessionIdPrefixTitle(priorTitle, current.id)));
 		const title = acpTitle
 			? displayHistoryTitle(acpTitle, "")
-			: fromLines ||
-				(priorTitle && !isSessionIdPrefixTitle(priorTitle, session.sessionId)
-					? priorTitle
-					: "");
+			: fromLines || (priorTitle && !priorIsIdPlaceholder ? priorTitle : "");
 
 		if (current) {
 			const record: AgentSessionRecord = {
