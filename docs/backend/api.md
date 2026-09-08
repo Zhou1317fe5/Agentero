@@ -1657,6 +1657,22 @@ Host 作为 ACP Client：按注册表 spawn 用户本机 Agent（`cwd` = 当前 
   - Agent 未装且 `canInstall` → 设置页「安装」
   - dsh 例外：`binaryAvailable` 与 `acpCommandAvailable` 同源——launcher 目录、home npm 根或 PATH 的 `dsh-acp-demo` 入口，`detect_command`（node）不参与判定。
   - 另回传 `userAgent` / `userAgentProviderIds`（见下）
+  - **不**在本命令里做版本/网络探测；「升级」按钮见 `agent_check_catalog_updates`。
+
+#### `agent_check_catalog_updates`（已实现）
+
+在 `agent_scan_catalog` 结果上，对已装且 `canInstall` 的目录 Agent 比较本地版本与可静默升到的目标版本，供设置页决定是否显示「升级」。
+
+- **参数**：无
+- **返回**：`CatalogScanResponse`（同 scan；额外可选字段）
+  - `installedVersion`：本地 host CLI `--version` 规范化结果
+  - `latestVersion`：npm `view <pkg> version`（15 分钟内存缓存）或 dsh pin
+  - `updateAvailable`：仅当目标版本**严格新于**本地时为 `true`；无法判定时省略/`null`（UI 不显示升级）
+- **行为**
+  - 同步 PATH scan 后，在 `spawn_blocking` 中跑 `--version` / `npm view`（尊重代理设置）。
+  - npm 包映射：`opencode-ai` / `openclaw` / `@anthropic-ai/claude-code` / `@openai/codex` / `agy-acp` / `@earendil-works/pi-coding-agent` / `@xai-official/grok` / `@moonshot-ai/kimi-code`；dsh 对比 pin；**hermes 本轮不探测**（无稳定 npm 源）。
+  - 不写入 registry；设置页打开/刷新与 lifecycle 成功后调用。
+- **实现**：`registry/version_check.rs` · `commands::agent_check_catalog_updates`
 
 #### `agent_set_user_agent`（已实现）
 

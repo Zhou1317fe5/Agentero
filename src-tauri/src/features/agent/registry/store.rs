@@ -538,6 +538,9 @@ impl AgentRegistry {
                     acp_agent_name,
                     last_probe_error,
                     last_probed_at,
+                    installed_version: None,
+                    latest_version: None,
+                    update_available: None,
                 });
             }
 

@@ -46,6 +46,12 @@ export const commands = {
 	agentListAgents: () => __TAURI_INVOKE<ApiResult<AgentListResponse_Serialize>>("agent_list_agents"),
 	agentListSkills: (vaultPath: string | null) => typedError<ApiResult<AgentSkill[]>, string>(__TAURI_INVOKE("agent_list_skills", { vaultPath })),
 	agentScanCatalog: () => __TAURI_INVOKE<ApiResult<CatalogScanResponse_Serialize>>("agent_scan_catalog"),
+	/**
+	 *  Scan catalog and compare installed CLI versions against silent-update
+	 *  targets (npm latest / dsh pin). Settings shows Upgrade only when
+	 *  `updateAvailable === true`. Network / `--version` I/O runs on a worker.
+	 */
+	agentCheckCatalogUpdates: () => typedError<ApiResult<CatalogScanResponse_Serialize>, string>(__TAURI_INVOKE("agent_check_catalog_updates")),
 	agentUpsertAgent: (request: UpsertAgentRequest_Deserialize) => __TAURI_INVOKE<ApiResult<AgentOnly_Serialize>>("agent_upsert_agent", { request }),
 	agentEnsureCatalog: (templateId: string, setDefault: boolean) => __TAURI_INVOKE<ApiResult<AgentOnly_Serialize>>("agent_ensure_catalog", { templateId, setDefault }),
 	agentRemoveAgent: (id: string) => __TAURI_INVOKE<ApiResult<Json>>("agent_remove_agent", { id }),
@@ -1660,6 +1666,15 @@ export type CatalogEntry_Deserialize = {
 	acpAgentName?: string | null,
 	lastProbeError?: string | null,
 	lastProbedAt?: string | null,
+	/**  Normalized local host CLI version (`detect_command --version`), when known. */
+	installedVersion?: string | null,
+	/**  Target version the silent updater can reach (npm latest or dsh pin). */
+	latestVersion?: string | null,
+	/**
+	 *  True only when a newer silent-update target is known. Settings shows
+	 *  the Upgrade button solely when this is `Some(true)`.
+	 */
+	updateAvailable?: boolean | null,
 };
 
 export type CatalogEntry_Serialize = {
@@ -1688,6 +1703,15 @@ export type CatalogEntry_Serialize = {
 	acpAgentName?: string | null,
 	lastProbeError?: string | null,
 	lastProbedAt?: string | null,
+	/**  Normalized local host CLI version (`detect_command --version`), when known. */
+	installedVersion?: string | null,
+	/**  Target version the silent updater can reach (npm latest or dsh pin). */
+	latestVersion?: string | null,
+	/**
+	 *  True only when a newer silent-update target is known. Settings shows
+	 *  the Upgrade button solely when this is `Some(true)`.
+	 */
+	updateAvailable?: boolean | null,
 };
 
 export type CatalogScanResponse = CatalogScanResponse_Serialize | CatalogScanResponse_Deserialize;

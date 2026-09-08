@@ -20,6 +20,7 @@ macro_rules! common_commands {
             crate::features::agent::commands::agent_list_agents,
             crate::features::agent::commands::agent_list_skills,
             crate::features::agent::commands::agent_scan_catalog,
+            crate::features::agent::commands::agent_check_catalog_updates,
             crate::features::agent::commands::agent_upsert_agent,
             crate::features::agent::commands::agent_ensure_catalog,
             crate::features::agent::commands::agent_remove_agent,

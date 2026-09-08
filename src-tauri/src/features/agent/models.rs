@@ -252,6 +252,16 @@ pub struct CatalogEntry {
     pub last_probe_error: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_probed_at: Option<String>,
+    /// Normalized local host CLI version (`detect_command --version`), when known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub installed_version: Option<String>,
+    /// Target version the silent updater can reach (npm latest or dsh pin).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub latest_version: Option<String>,
+    /// True only when a newer silent-update target is known. Settings shows
+    /// the Upgrade button solely when this is `Some(true)`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub update_available: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]

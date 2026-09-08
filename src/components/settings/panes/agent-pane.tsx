@@ -51,6 +51,7 @@ export function AgentPane({
 		clearAllProbingKeys,
 		scanOnce,
 		probeInstalled,
+		refreshVersions,
 		rescanAndProbe,
 		patchUserAgent,
 	} = useAgentCatalog({ transport: "local" });
@@ -71,7 +72,11 @@ export function AgentPane({
 	);
 
 	/** Silent install/update/uninstall: Host scopes Agent vs ACP from PATH (no free-form shell). */
-	const lifecycle = useAgentToolLifecycle({ scanOnce, probeInstalled });
+	const lifecycle = useAgentToolLifecycle({
+		scanOnce,
+		probeInstalled,
+		refreshVersions,
+	});
 	const { runToolLifecycle: onToolLifecycle } = lifecycle;
 
 	const {

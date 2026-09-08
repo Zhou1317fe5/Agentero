@@ -52,6 +52,32 @@ pub fn agent_scan_catalog(registry: State<'_, AgentRegistry>) -> ApiResult<Catal
     }
 }
 
+/// Scan catalog and compare installed CLI versions against silent-update
+/// targets (npm latest / dsh pin). Settings shows Upgrade only when
+/// `updateAvailable === true`. Network / `--version` I/O runs on a worker.
+#[tauri::command]
+#[specta::specta]
+pub async fn agent_check_catalog_updates(
+    registry: State<'_, AgentRegistry>,
+) -> Result<ApiResult<CatalogScanResponse>, String> {
+    let mut scan = match service::scan_catalog(registry.inner()) {
+        Ok(s) => s,
+        Err(e) => return Ok(map_err(e)),
+    };
+    let (proxy_enabled, proxy_url) = registry.proxy_settings().unwrap_or_default();
+    let scan = tokio::task::spawn_blocking(move || {
+        crate::features::agent::registry::version_check::enrich_catalog_updates(
+            &mut scan,
+            proxy_enabled,
+            &proxy_url,
+        );
+        scan
+    })
+    .await
+    .map_err(|e| format!("catalog update check join error: {e}"))?;
+    Ok(ApiResult::ok(scan))
+}
+
 #[tauri::command]
 #[specta::specta]
 pub fn agent_upsert_agent(

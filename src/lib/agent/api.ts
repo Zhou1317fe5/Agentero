@@ -370,6 +370,14 @@ export async function scanCatalog(): Promise<CatalogScanResponse> {
 	)) as CatalogScanResponse;
 }
 
+/** PATH scan + version compare for Settings Upgrade visibility. */
+export async function checkCatalogUpdates(): Promise<CatalogScanResponse> {
+	return (await callApiResult(
+		() => commands.agentCheckCatalogUpdates(),
+		AGENT_CALL_OPTS,
+	)) as CatalogScanResponse;
+}
+
 export async function upsertAgent(request: {
 	id?: string;
 	name: string;

@@ -110,9 +110,16 @@ export function showInstallAcp(entry: CatalogEntry): boolean {
 	return Boolean(entry.offerInstall || entry.canInstall);
 }
 
-/** Host CLI already on PATH — silent upgrade via `runToolLifecycle(..., "update")`. */
+/**
+ * Host CLI on PATH and a newer silent-update target is known.
+ * Hidden while versions are unknown / equal / check failed.
+ */
 export function showUpdateAgent(entry: CatalogEntry): boolean {
-	return Boolean(entry.canInstall) && entry.binaryAvailable;
+	return (
+		Boolean(entry.canInstall) &&
+		entry.binaryAvailable &&
+		entry.updateAvailable === true
+	);
 }
 
 /**
