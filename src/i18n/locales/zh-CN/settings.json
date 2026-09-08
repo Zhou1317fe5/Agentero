@@ -597,7 +597,10 @@
 		"logs": {
 			"label": "运行日志",
 			"open": "打开日志文件夹",
-			"openFailed": "无法打开日志文件夹。"
+			"openFailed": "无法打开日志文件夹。",
+			"clear": "清理日志",
+			"clearDone": "已清理日志",
+			"clearFailed": "无法清理日志。"
 		},
 		"update": {
 			"idle": "检查 Agentero 是否有新版本",

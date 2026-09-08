@@ -597,7 +597,10 @@
 		"logs": {
 			"label": "Logs",
 			"open": "Open log folder",
-			"openFailed": "Couldn't open the log folder."
+			"openFailed": "Couldn't open the log folder.",
+			"clear": "Clear logs",
+			"clearDone": "Logs cleared",
+			"clearFailed": "Couldn't clear logs."
 		},
 		"update": {
 			"idle": "Check for the latest Agentero release",

@@ -30,6 +30,7 @@ import {
 	uninstallCliCommand,
 	uninstallFinderService,
 } from "@/lib/cli/api";
+import { clearLogs } from "@/lib/core/logger";
 import { notifyError, notifySuccess } from "@/lib/core/notify";
 import { openExternalUrl } from "@/lib/core/open-external";
 import { isMacOS, isTauri, isWindows } from "@/lib/core/tauri";
@@ -56,6 +57,7 @@ export function AboutPane() {
 	const [cliLoading, setCliLoading] = useState(false);
 	const [finder, setFinder] = useState<FinderServiceStatus | null>(null);
 	const [finderBusy, setFinderBusy] = useState(false);
+	const [logsBusy, setLogsBusy] = useState(false);
 	const isMac = useMemo(() => isMacOS(), []);
 	const isWin = useMemo(() => isWindows(), []);
 
@@ -189,6 +191,17 @@ export function AboutPane() {
 					description: err instanceof Error ? err.message : String(err),
 				});
 			});
+	};
+	const onClearLogs = () => {
+		setLogsBusy(true);
+		void clearLogs()
+			.then(() => notifySuccess(t("about.logs.clearDone")))
+			.catch((err) =>
+				notifyError(t("about.logs.clearFailed"), {
+					description: err instanceof Error ? err.message : String(err),
+				}),
+			)
+			.finally(() => setLogsBusy(false));
 	};
 
 	// Derive the status line from structured fields; the Host `message` is
@@ -462,9 +475,25 @@ export function AboutPane() {
 							</span>
 						}
 					>
-						<Button variant="outline" size="sm" onClick={onOpenLogFolder}>
-							{t("about.logs.open")}
-						</Button>
+						<div className="flex items-center gap-2">
+							<Button variant="outline" size="sm" onClick={onOpenLogFolder}>
+								{t("about.logs.open")}
+							</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={logsBusy}
+								onClick={onClearLogs}
+							>
+								{logsBusy ? (
+									<LoaderCircle
+										data-icon="inline-start"
+										className="animate-spin"
+									/>
+								) : null}
+								{t("about.logs.clear")}
+							</Button>
+						</div>
 					</SettingsRow>
 				</SettingsGroup>
 			) : null}

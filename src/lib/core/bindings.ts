@@ -327,6 +327,7 @@ export const commands = {
 	usageList: (args: UsageListArgs) => __TAURI_INVOKE<ApiResult<UsageEvent_Serialize[]>>("usage_list", { args }),
 	usageSummary: (args: UsageSummaryArgs) => __TAURI_INVOKE<ApiResult<UsageKindCount[]>>("usage_summary", { args }),
 	usageClear: (args: UsageClearArgs) => __TAURI_INVOKE<ApiResult<number>>("usage_clear", { args }),
+	logsClear: () => __TAURI_INVOKE<ApiResult<number>>("logs_clear"),
 	feedsList: () => __TAURI_INVOKE<ApiResult<FeedList>>("feeds_list"),
 	feedsAdd: (args: FeedsAddArgs) => __TAURI_INVOKE<ApiResult<FeedSub>>("feeds_add", { args }),
 	feedsRemove: (args: FeedsIdArgs) => __TAURI_INVOKE<ApiResult<null>>("feeds_remove", { args }),

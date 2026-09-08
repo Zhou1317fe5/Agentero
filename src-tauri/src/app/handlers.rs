@@ -115,6 +115,7 @@ macro_rules! common_commands {
             crate::core::usage::commands::usage_list,
             crate::core::usage::commands::usage_summary,
             crate::core::usage::commands::usage_clear,
+            crate::app::logging::logs_clear,
             crate::features::paper::discovery::feeds::commands::feeds_list,
             crate::features::paper::discovery::feeds::commands::feeds_add,
             crate::features::paper::discovery::feeds::commands::feeds_remove,
