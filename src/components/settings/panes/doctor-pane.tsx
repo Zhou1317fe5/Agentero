@@ -16,11 +16,14 @@ import {
 	doctorCheck,
 	doctorCheckAgents,
 	doctorCheckHost,
+	doctorCheckNetwork,
 	type HostDoctorReport,
+	type NetworkDoctorReport,
 } from "@/lib/doctor/api";
 import { DoctorAgentSection } from "./doctor-agent-section";
 import { DoctorAliasSection } from "./doctor-alias-section";
 import { DoctorHostRuntimeSection } from "./doctor-host-runtime-section";
+import { DoctorNetworkSection } from "./doctor-network-section";
 import {
 	DoctorCatalogSection,
 	DoctorVaultSection,
@@ -38,15 +41,21 @@ export function DoctorPane({
 	const { t } = useTranslation("settings");
 	const [report, setReport] = useState<DoctorReport | null>(null);
 	const [hostReport, setHostReport] = useState<HostDoctorReport | null>(null);
+	const [networkReport, setNetworkReport] =
+		useState<NetworkDoctorReport | null>(null);
 	const [agentReport, setAgentReport] = useState<AgentAcpDiagnostic[] | null>(
 		null,
 	);
 	const [hostError, setHostError] = useState<string | null>(null);
+	const [networkError, setNetworkError] = useState<string | null>(null);
 	const [agentError, setAgentError] = useState<string | null>(null);
 	const [vaultError, setVaultError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
 	// Start true for local so the first paint shows shimmer instead of "none".
 	const [agentsLoading, setAgentsLoading] = useState(
+		() => hostContext.kind !== "remote",
+	);
+	const [networkLoading, setNetworkLoading] = useState(
 		() => hostContext.kind !== "remote",
 	);
 	const [wikiPlanning, setWikiPlanning] = useState(false);
@@ -89,10 +98,26 @@ export function DoctorPane({
 		}
 	}, [hostContext.kind]);
 
+	// Network probes can take up to the timeout per host, so they also load
+	// independently of the fast host/vault checks.
+	const refreshNetwork = useCallback(async () => {
+		if (hostContext.kind === "remote") return;
+		setNetworkLoading(true);
+		setNetworkError(null);
+		try {
+			setNetworkReport(await doctorCheckNetwork());
+		} catch (error) {
+			setNetworkError(errorText(error));
+		} finally {
+			setNetworkLoading(false);
+		}
+	}, [hostContext.kind]);
+
 	useEffect(() => {
 		void refresh();
 		void refreshAgents();
-	}, [refresh, refreshAgents]);
+		void refreshNetwork();
+	}, [refresh, refreshAgents, refreshNetwork]);
 
 	if (hostContext.kind === "remote") {
 		return (
@@ -121,10 +146,13 @@ export function DoctorPane({
 								size="icon-sm"
 								variant="ghost"
 								aria-label={t("doctor.refresh")}
-								disabled={loading || wikiPlanning || agentsLoading}
+								disabled={
+									loading || wikiPlanning || agentsLoading || networkLoading
+								}
 								onClick={() => {
 									void refresh();
 									void refreshAgents();
+									void refreshNetwork();
 								}}
 							>
 								<RefreshCw className={loading ? "animate-spin" : undefined} />
@@ -136,6 +164,12 @@ export function DoctorPane({
 			/>
 
 			<DoctorHostRuntimeSection report={hostReport} error={hostError} />
+
+			<DoctorNetworkSection
+				report={networkReport}
+				loading={networkLoading}
+				error={networkError}
+			/>
 
 			<DoctorAgentSection
 				report={agentReport}

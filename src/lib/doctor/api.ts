@@ -6,6 +6,8 @@ import {
 	type DoctorReport_Serialize,
 	type DoctorVaultState,
 	type DuplicateRepairResult,
+	type NetworkDoctorReport_Serialize,
+	type NetworkEndpointDiagnostic_Serialize,
 	type VisualMarkCandidate,
 	type WikiCheckIssue_Serialize,
 	type WikilinkRepairPlan_Serialize,
@@ -38,6 +40,9 @@ export type WikilinkRepairSuggestion = WikilinkRepairSuggestion_Serialize;
 export type WikilinkRepairResidual = WikilinkRepairResidual_Serialize;
 export type WikilinkRepairPlan = WikilinkRepairPlan_Serialize;
 export type { DoctorVaultState, DuplicateRepairResult };
+export type NetworkEndpointDiagnostic = NetworkEndpointDiagnostic_Serialize;
+export type NetworkDoctorReport = NetworkDoctorReport_Serialize;
+export type { NetworkStatus } from "@/lib/core/bindings";
 
 type AliasRepairChange = {
 	path: string;
@@ -73,6 +78,11 @@ export function doctorCheckHost(): Promise<HostDoctorReport> {
 /** Re-probe every registered Agent over ACP; may take up to ~30s per agent. */
 export function doctorCheckAgents(): Promise<AgentAcpDiagnostic[]> {
 	return callApiResult(() => commands.doctorCheckAgents());
+}
+
+/** Probe network connectivity to paper sources and common hosts. */
+export function doctorCheckNetwork(): Promise<NetworkDoctorReport> {
+	return callApiResult(() => commands.doctorCheckNetwork());
 }
 
 export function doctorApplyAliases(

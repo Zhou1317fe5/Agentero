@@ -526,6 +526,7 @@
 		"sections": {
 			"host": "主机运行环境",
 			"agents": "Agent ACP 连通性",
+			"network": "网络连通性",
 			"vault": "Vault 结构",
 			"catalog": "Catalog 结构",
 			"wikilinks": "双链语义",
@@ -535,6 +536,7 @@
 		"sectionHints": {
 			"host": "提示性检查 ACP Agent 使用的 Node.js 与 npm（路径与版本）。",
 			"agents": "对每个已注册 Agent 重新执行 ACP initialize 探测（不发送 prompt），慢速 Agent 可能需要 30 秒。",
+			"network": "按当前代理设置探测论文源与常用站点的连通性。",
 			"vault": "检查顶层 papers/、notes/、.agentero/ 目录是否齐全。",
 			"catalog": "检查 .agentero/catalog.sqlite 是否存在，以及 schema 是否与当前应用一致。",
 			"wikilinks": "检查笔记中的本地双链是否可解析（缺失、歧义、无效标题锚点）。",
@@ -547,6 +549,29 @@
 				"missing": "未找到",
 				"unusable": "无法运行"
 			}
+		},
+		"network": {
+			"probing": "正在探测…",
+			"none": "未配置探测端点。",
+			"status": {
+				"reachable": "可达",
+				"timeout": "超时",
+				"unreachable": "不可达"
+			},
+			"hints": {
+				"timeout": "请检查代理与网络后重试。",
+				"unreachable": "请检查 DNS、防火墙或代理设置。"
+			},
+			"endpoints": {
+				"baidu": "百度",
+				"google": "谷歌",
+				"google-scholar": "谷歌学术",
+				"github": "GitHub",
+				"arxiv": "arXiv",
+				"semantic-scholar": "Semantic Scholar"
+			},
+			"latency": "{{ms}} ms",
+			"proxy": "代理：{{proxy}}"
 		},
 		"agent": {
 			"probing": "正在探测 Agent…",

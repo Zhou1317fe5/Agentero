@@ -526,6 +526,7 @@
 		"sections": {
 			"host": "Host runtime",
 			"agents": "Agent ACP connectivity",
+			"network": "Network connectivity",
 			"vault": "Vault structure",
 			"catalog": "Catalog schema",
 			"wikilinks": "Wiki links",
@@ -535,6 +536,7 @@
 		"sectionHints": {
 			"host": "Advisory checks for the Node.js and npm used by ACP Agents (path and version).",
 			"agents": "Re-probes each registered Agent via ACP initialize (no prompt is sent). Slow Agents can take up to 30s.",
+			"network": "Probes the paper sources and common hosts through the configured proxy.",
 			"vault": "Checks top-level papers/, notes/, and .agentero/ folders.",
 			"catalog": "Checks that .agentero/catalog.sqlite exists and its schema matches this app.",
 			"wikilinks": "Checks local wiki links for missing, ambiguous, or invalid heading targets.",
@@ -547,6 +549,29 @@
 				"missing": "Not found",
 				"unusable": "Cannot run"
 			}
+		},
+		"network": {
+			"probing": "Probing…",
+			"none": "No endpoints configured.",
+			"status": {
+				"reachable": "Reachable",
+				"timeout": "Timeout",
+				"unreachable": "Unreachable"
+			},
+			"hints": {
+				"timeout": "Check the proxy / network and try again.",
+				"unreachable": "Check DNS, firewall, or proxy settings."
+			},
+			"endpoints": {
+				"baidu": "Baidu",
+				"google": "Google",
+				"google-scholar": "Google Scholar",
+				"github": "GitHub",
+				"arxiv": "arXiv",
+				"semantic-scholar": "Semantic Scholar"
+			},
+			"latency": "{{ms}} ms",
+			"proxy": "Proxy: {{proxy}}"
 		},
 		"agent": {
 			"probing": "Probing agents…",
