@@ -114,6 +114,8 @@
 		"waiting": "Waiting for agent…"
 	},
 	"thinking": "Thinking…",
+	"working": "Working…",
+	"solving": "Solving…",
 	"copy": "Copy",
 	"copied": "Copied",
 	"edit": {

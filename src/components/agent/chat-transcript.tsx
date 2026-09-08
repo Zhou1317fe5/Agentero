@@ -10,6 +10,7 @@ import {
 	useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { AgentThinkingOrb } from "@/components/agent/agent-thinking-orb";
 import {
 	ChatAttachedImages,
 	ChatVisualAnnotations,
@@ -299,7 +300,7 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 		const parts = line.parts;
 		const lastIndex = parts.length - 1;
 		const agentText = agentTextFromParts(parts);
-		const showThinking = Boolean(line.streaming) && parts.length === 0;
+		const isStreaming = Boolean(line.streaming);
 		return (
 			<div className="flex w-full flex-col gap-2">
 				<Message from="assistant">
@@ -434,8 +435,8 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 								</div>
 							);
 						})}
-						{showThinking ? (
-							<Shimmer className="text-sm">{t("thinking")}</Shimmer>
+						{isStreaming ? (
+							<AgentThinkingOrb parts={parts} streaming={isStreaming} />
 						) : null}
 					</MessageContent>
 					{!line.streaming && agentText ? (
