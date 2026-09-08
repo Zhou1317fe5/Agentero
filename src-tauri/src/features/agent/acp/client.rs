@@ -1,4 +1,5 @@
 use crate::core::error::AppError;
+pub(crate) use crate::core::process::windows_shell_path as simplified_agent_cwd;
 use crate::features::agent::models::{AgentDescriptor, AgentResultPayload, AgentTemplate};
 use crate::features::agent::prompt::envelope::extract_sources;
 use crate::features::agent::registry::discovery::{login_shell_env, path_entries, resolve_command};
@@ -78,11 +79,7 @@ pub(crate) fn windows_shell_quote(s: &str) -> String {
 /// True UNC paths stay unchanged; supporting them requires a separate `pushd` flow.
 #[cfg(any(windows, test))]
 pub(crate) fn windows_cmd_cwd(cwd: &Path) -> String {
-    let cwd = cwd.to_string_lossy();
-    cwd.strip_prefix(r"\\?\")
-        .filter(|path| path.as_bytes().get(1) == Some(&b':'))
-        .unwrap_or(cwd.as_ref())
-        .to_string()
+    simplified_agent_cwd(cwd).to_string_lossy().into_owned()
 }
 
 /// Pre-quote the cwd environment value so metacharacters remain literal after
@@ -303,20 +300,6 @@ where
         .await
         .map_err(|_| acp_err(format!("{label} timed out after {}s", budget.as_secs())))?
         .map_err(|error| acp_err(format!("{label}: {error}")))
-}
-
-/// The vault path can arrive as Rust's canonicalized extended-length form
-/// (`\\?\D:\…`). Agents forward it to MSYS2-based shells (Git Bash), which
-/// cannot `cd` into `\\?\` paths and mis-initialize their POSIX cwd when
-/// spawned under one (mktemp/cd fail with ENOENT), so hand agents the plain
-/// drive path. Extended UNC paths stay unchanged until their shell semantics
-/// are handled separately.
-pub(crate) fn simplified_agent_cwd(cwd: &Path) -> PathBuf {
-    let cwd = cwd.to_string_lossy();
-    match cwd.strip_prefix(r"\\?\") {
-        Some(rest) if rest.as_bytes().get(1) == Some(&b':') => PathBuf::from(rest),
-        _ => cwd.as_ref().into(),
-    }
 }
 
 pub(crate) fn cancelled_payload(
