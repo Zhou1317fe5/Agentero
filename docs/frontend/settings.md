@@ -25,8 +25,8 @@
 
 知识库诊断页调用 Host 的只读 Doctor 报告。检查项各自作为小标题（带一行检测说明），标题行右侧显示 icon + 问题数；模块间用非通栏次要分隔线。列表过长时（双链 / 别名 / 视觉批注）`max-h` 内滚动。视觉批注一节可将旧版 `agent-trace` mark 一键升级为 `visual` v2。
 
-- **主机运行环境**（`doctor_check_host`）：提示性检查 Node.js / npm 可用性与 Codex 登录状态；不依赖 Vault，未打开 Vault 时也显示。
-- **Agent ACP 连通性**（`doctor_check_agents`）：对每个已注册 Agent 重新执行 ACP initialize 探测并写回 registry（Agent 目录页同步刷新）；失败按原因分类（命令缺失 / 未登录 / 超时 / 启动失败 / 协议失败 / 其他）并给出对应 hint。探测最长约 30s/Agent，作为独立请求加载，不阻塞其余 section；探测期间刷新按钮禁用。
+- **主机运行环境**（`doctor_check_host`）：提示性检查 Node.js / npm 可用性（路径与版本）；不依赖 Vault，未打开 Vault 时也显示。不再展示 Codex 登录状态。
+- **Agent ACP 连通性**（`doctor_check_agents`）：对每个已注册 Agent 重新执行 ACP initialize 探测并写回 registry（Agent 目录页同步刷新）；每个 Agent 以卡片展示三行：Agent 路径+版本、ACP 路径+版本、登录状态。失败按原因分类（命令缺失 / 未登录 / 超时 / 启动失败 / 协议失败 / 其他）并给出对应 hint。探测最长约 30s/Agent，作为独立请求加载，不阻塞其余 section；探测期间刷新按钮禁用。
 
 - **论文别名**：勾选与编辑标题/短 alias，标题行「修复」→ 确认后批量写入 frontmatter（不改 path）。单行「忽略」或「忽略所选」把路径写入 Vault `.agentero/doctor.json`，下次诊断不再报错；列表底部可恢复。
 - **双链语义**：

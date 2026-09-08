@@ -533,7 +533,7 @@
 			"visualMarks": "Visual annotations"
 		},
 		"sectionHints": {
-			"host": "Advisory checks for the Node.js, npm, and Codex sign-in used by ACP Agents.",
+			"host": "Advisory checks for the Node.js and npm used by ACP Agents (path and version).",
 			"agents": "Re-probes each registered Agent via ACP initialize (no prompt is sent). Slow Agents can take up to 30s.",
 			"vault": "Checks top-level papers/, notes/, and .agentero/ folders.",
 			"catalog": "Checks that .agentero/catalog.sqlite exists and its schema matches this app.",
@@ -547,19 +547,20 @@
 				"missing": "Not found",
 				"unusable": "Cannot run"
 			},
-			"authStatus": {
-				"authenticated": "Signed in",
-				"unauthenticated": "Not signed in",
-				"not-applicable": "ACP not installed",
-				"unknown": "Unknown"
-			},
-			"authMethod": "Auth method: {{method}}",
 			"npmPrefix": "npm global prefix: {{prefix}}"
 		},
 		"agent": {
 			"probing": "Probing agents…",
 			"none": "No Agents registered yet.",
 			"ready": "Ready",
+			"locationMissing": "Not found",
+			"authLabel": "Sign-in",
+			"authStatus": {
+				"authenticated": "Signed in",
+				"unauthenticated": "Not signed in",
+				"not-applicable": "Not applicable",
+				"unknown": "Unknown"
+			},
 			"categories": {
 				"command-missing": "Command missing",
 				"not-logged-in": "Not signed in",

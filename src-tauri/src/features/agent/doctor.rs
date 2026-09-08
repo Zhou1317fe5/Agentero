@@ -58,7 +58,6 @@ pub struct HostDoctorReport {
     pub npm: HostToolDiagnostic,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub npm_prefix: Option<String>,
-    pub codex_auth: CodexAuthDiagnostic,
 }
 
 struct CommandOutput {
@@ -153,7 +152,10 @@ fn first_output_line(output: &CommandOutput) -> Option<String> {
         .map(|line| line.chars().take(160).collect())
 }
 
-async fn diagnose_tool(command: &str, environment: &HashMap<String, String>) -> HostToolDiagnostic {
+pub(crate) async fn diagnose_tool(
+    command: &str,
+    environment: &HashMap<String, String>,
+) -> HostToolDiagnostic {
     let Some(path) = resolve_command_in_agent_env(command, environment) else {
         return HostToolDiagnostic {
             status: HostToolStatus::Missing,
@@ -318,12 +320,10 @@ pub async fn diagnose_host(registry: &AgentRegistry) -> Result<HostDoctorReport,
         append_npm_prefix(&mut environment, prefix);
     }
     let node = diagnose_tool("node", &environment).await;
-    let codex_auth = diagnose_codex_auth_in_env(&descriptor, &environment).await;
     Ok(HostDoctorReport {
         node,
         npm,
         npm_prefix,
-        codex_auth,
     })
 }
 

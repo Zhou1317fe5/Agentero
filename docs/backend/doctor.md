@@ -87,12 +87,19 @@ Doctor 聚合本地 Vault 的只读完整性检查，并为论文别名、双链
 `agent/doctor.rs` `diagnose_host`：在 Agent 实际使用的合并环境（`effective_local_agent_env`，PATH 按 descriptor → 进程 → login shell → 常见 GUI 缺失目录顺序合并）里检查：
 
 - `node` / `npm`：解析路径 + `--version`（5s 超时），状态 `available / missing / unusable`；
-- `npm prefix -g`：追加进环境 PATH 后再查 node（覆盖 npm 全局安装但 GUI PATH 缺失的场景）；
-- Codex 登录：`codex-acp cli login status`，失败再回退 `codex login status`，输出解析为 `authenticated / unauthenticated / not-applicable / unknown`（不回传原始输出，避免泄露账号）。
+- `npm prefix -g`：追加进环境 PATH 后再查 node（覆盖 npm 全局安装但 GUI PATH 缺失的场景）。
+
+Codex 登录状态不再放在主机运行环境；改由 Agent 卡片第三行展示（见下）。
 
 ### Agent ACP 连通性（`doctor_check_agents`）
 
-`agent/doctor_agents.rs` `diagnose_agents`：对 registry 中**每个已注册 Agent**（含 custom）重新执行 ACP initialize 探测（不发 prompt），并分类失败原因：
+`agent/doctor_agents.rs` `diagnose_agents`：对 registry 中**每个已注册 Agent**（含 custom）重新执行 ACP initialize 探测（不发 prompt），并分类失败原因。每个诊断额外收集卡片三行字段：
+
+| 行 | 字段 | 来源 |
+|---|---|---|
+| Agent 位置 · 版本 | `agentPath` / `agentVersion` | 模板 `detect_command` 的路径 + `--version` |
+| ACP 位置 · 版本 | `resolvedPath` / `acpVersion` | ACP `command` 的路径 + `--version`（不是协议版本） |
+| 登录状态 | `authStatus` | Codex 走 `codex(-acp) login status`；其它由探测结果推导（成功→已登录，`not-logged-in`→未登录，命令缺失→不适用，其余→未知） |
 
 - 编排：`snapshot()` 一次（内部已刷新命令可用性）；`buffered(3)` 限流并行探测；`!available` 的 Agent 不 spawn，直接按 `last_error` 合成「命令缺失」结果（镜像 `agent_probe` 快路径）；
 - 写回：每个结果 `apply_probe_result` 持久化到 registry，结束后 `emit_registry_changed`，Agent 目录页同步刷新；成功时清除该 Agent 的 warm-gate 熔断，失败**不**记录新熔断（Doctor 是用户主动重试，应无视 120s 冷却）；

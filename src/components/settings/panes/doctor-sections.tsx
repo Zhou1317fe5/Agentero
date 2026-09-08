@@ -18,6 +18,8 @@ export function DoctorSection({
 	action,
 	/** Cap list height and scroll (wikilinks / aliases with many rows). */
 	scrollable = false,
+	/** Wrap children in a single bordered card (disable for per-item cards). */
+	framed = true,
 	/** Short muted rule under the section (omit on the last block). */
 	showDivider = true,
 	children,
@@ -28,6 +30,7 @@ export function DoctorSection({
 	issueCount: number;
 	action?: ReactNode;
 	scrollable?: boolean;
+	framed?: boolean;
 	showDivider?: boolean;
 	children?: ReactNode;
 }) {
@@ -54,15 +57,19 @@ export function DoctorSection({
 				</p>
 			) : null}
 			{hasList ? (
-				<div
-					className={
-						scrollable
-							? "max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border bg-card"
-							: "overflow-hidden rounded-xl border bg-card"
-					}
-				>
-					{children}
-				</div>
+				framed ? (
+					<div
+						className={
+							scrollable
+								? "max-h-60 overflow-y-auto overflow-x-hidden rounded-xl border bg-card"
+								: "overflow-hidden rounded-xl border bg-card"
+						}
+					>
+						{children}
+					</div>
+				) : (
+					children
+				)
 			) : null}
 			{showDivider ? (
 				<div className="mt-6 flex justify-center px-6" aria-hidden>

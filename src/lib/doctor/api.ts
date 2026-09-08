@@ -23,21 +23,10 @@ export type HostToolDiagnostic = {
 	version?: string | null;
 	detail?: string | null;
 };
-export type CodexAuthStatus =
-	| "authenticated"
-	| "unauthenticated"
-	| "not-applicable"
-	| "unknown";
-export type CodexAuthDiagnostic = {
-	status: CodexAuthStatus;
-	method?: string | null;
-	detail?: string | null;
-};
 export type HostDoctorReport = {
 	node: HostToolDiagnostic;
 	npm: HostToolDiagnostic;
 	npmPrefix?: string | null;
-	codexAuth: CodexAuthDiagnostic;
 };
 
 /** Read models come straight from the generated wire contract. */

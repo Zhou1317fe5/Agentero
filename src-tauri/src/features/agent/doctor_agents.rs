@@ -6,8 +6,12 @@ use crate::features::agent::acp::client::{
     effective_local_agent_env, resolve_command_in_agent_env,
 };
 use crate::features::agent::acp::probe_agent;
+use crate::features::agent::doctor::{
+    diagnose_codex_auth, diagnose_tool, CodexAuthStatus, HostToolStatus,
+};
 use crate::features::agent::models::{AgentDescriptor, AgentTemplate, ProbeResult};
 use crate::features::agent::registry::store::chrono_like_now;
+use crate::features::agent::registry::template_info;
 use crate::features::agent::service::emit_registry_changed;
 use crate::features::agent::{AgentRegistry, AgentWarmGate};
 use futures_util::stream::{self, StreamExt};
@@ -29,6 +33,16 @@ pub enum AcpFailureCategory {
     Unknown,
 }
 
+/// Login / auth state shown on each Agent Doctor card.
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq, specta::Type)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentAuthStatus {
+    Authenticated,
+    Unauthenticated,
+    NotApplicable,
+    Unknown,
+}
+
 #[derive(Debug, Clone, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct AgentAcpDiagnostic {
@@ -36,13 +50,25 @@ pub struct AgentAcpDiagnostic {
     pub name: String,
     pub template: AgentTemplate,
     pub command: String,
+    /// Agent host CLI (`detect_command`), when distinct from the ACP entrypoint.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_command: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent_version: Option<String>,
+    /// ACP entrypoint resolved path (`command`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub resolved_path: Option<String>,
+    /// ACP entrypoint `--version` output (not the ACP protocol version).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub acp_version: Option<String>,
     pub ok: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub failure_category: Option<AcpFailureCategory>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    pub auth_status: AgentAuthStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -123,10 +149,89 @@ async fn probe_one(registry: &AgentRegistry, desc: &AgentDescriptor) -> ProbeRes
     result
 }
 
-fn diagnostic(desc: &AgentDescriptor, result: &ProbeResult) -> AgentAcpDiagnostic {
+fn detect_command_for(desc: &AgentDescriptor) -> Option<String> {
+    template_info(desc.template.as_str())
+        .and_then(|info| info.detect_command)
+        .filter(|cmd| !cmd.is_empty())
+}
+
+fn auth_status_from_probe(
+    result: &ProbeResult,
+    failure_category: Option<AcpFailureCategory>,
+) -> AgentAuthStatus {
+    if result.available {
+        return AgentAuthStatus::Authenticated;
+    }
+    match failure_category {
+        Some(AcpFailureCategory::NotLoggedIn) => AgentAuthStatus::Unauthenticated,
+        Some(AcpFailureCategory::CommandMissing) => AgentAuthStatus::NotApplicable,
+        _ => AgentAuthStatus::Unknown,
+    }
+}
+
+fn auth_from_codex(status: CodexAuthStatus) -> AgentAuthStatus {
+    match status {
+        CodexAuthStatus::Authenticated => AgentAuthStatus::Authenticated,
+        CodexAuthStatus::Unauthenticated => AgentAuthStatus::Unauthenticated,
+        CodexAuthStatus::NotApplicable => AgentAuthStatus::NotApplicable,
+        CodexAuthStatus::Unknown => AgentAuthStatus::Unknown,
+    }
+}
+
+async fn diagnostic(desc: &AgentDescriptor, result: &ProbeResult) -> AgentAcpDiagnostic {
     let environment = effective_local_agent_env(desc);
-    let resolved_path = resolve_command_in_agent_env(&desc.command, &environment)
-        .map(|path| path.display().to_string());
+    // Fall back to the ACP entrypoint when the template has no distinct detect binary
+    // (custom agents, or native-ACP CLIs where command == detect).
+    let agent_command = detect_command_for(desc)
+        .or_else(|| (!desc.command.is_empty()).then(|| desc.command.clone()));
+    let same_binary = agent_command
+        .as_ref()
+        .is_some_and(|cmd| cmd == &desc.command);
+    let acp_tool = diagnose_tool(&desc.command, &environment).await;
+    let agent_tool = if same_binary {
+        None
+    } else if let Some(ref cmd) = agent_command {
+        Some(diagnose_tool(cmd, &environment).await)
+    } else {
+        None
+    };
+    // Prefer diagnose_tool paths; fall back to which() when --version failed.
+    let (agent_path, agent_version) = if same_binary {
+        (
+            acp_tool.resolved_path.clone().or_else(|| {
+                resolve_command_in_agent_env(&desc.command, &environment)
+                    .map(|path| path.display().to_string())
+            }),
+            (acp_tool.status == HostToolStatus::Available)
+                .then(|| acp_tool.version.clone())
+                .flatten(),
+        )
+    } else {
+        (
+            agent_tool
+                .as_ref()
+                .and_then(|tool| tool.resolved_path.clone())
+                .or_else(|| {
+                    agent_command
+                        .as_ref()
+                        .and_then(|cmd| resolve_command_in_agent_env(cmd, &environment))
+                        .map(|path| path.display().to_string())
+                }),
+            agent_tool.as_ref().and_then(|tool| {
+                (tool.status == HostToolStatus::Available)
+                    .then(|| tool.version.clone())
+                    .flatten()
+            }),
+        )
+    };
+    let resolved_path = acp_tool.resolved_path.clone().or_else(|| {
+        resolve_command_in_agent_env(&desc.command, &environment)
+            .map(|path| path.display().to_string())
+    });
+    let acp_version = (acp_tool.status == HostToolStatus::Available)
+        .then(|| acp_tool.version.clone())
+        .flatten();
+
     let error = if result.available {
         None
     } else {
@@ -142,15 +247,34 @@ fn diagnostic(desc: &AgentDescriptor, result: &ProbeResult) -> AgentAcpDiagnosti
                 Some(AcpFailureCategory::Unknown)
             }
         });
+
+    let auth_status = if desc.template == AgentTemplate::CodexAcp {
+        // Probe already fails Codex when `login status` is unauthenticated; reuse that
+        // signal and only re-query when the failure reason is ambiguous.
+        match failure_category {
+            Some(AcpFailureCategory::NotLoggedIn) => AgentAuthStatus::Unauthenticated,
+            Some(AcpFailureCategory::CommandMissing) => AgentAuthStatus::NotApplicable,
+            _ if result.available => AgentAuthStatus::Authenticated,
+            _ => auth_from_codex(diagnose_codex_auth(desc).await.status),
+        }
+    } else {
+        auth_status_from_probe(result, failure_category)
+    };
+
     AgentAcpDiagnostic {
         agent_id: desc.id.clone(),
         name: desc.name.clone(),
         template: desc.template.clone(),
         command: desc.command.clone(),
+        agent_command,
+        agent_path,
+        agent_version,
         resolved_path,
+        acp_version,
         ok: result.available,
         failure_category,
         error,
+        auth_status,
         agent_name: result.agent_name.clone(),
         protocol_version: result.protocol_version.clone(),
         probed_at: Some(chrono_like_now()),
@@ -178,7 +302,7 @@ pub async fn diagnose_agents(
         if result.available {
             warm_gate.clear(&desc.id);
         }
-        diagnostic(&desc, &result)
+        diagnostic(&desc, &result).await
     }))
     .buffered(PROBE_CONCURRENCY)
     .collect::<Vec<_>>()

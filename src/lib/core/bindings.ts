@@ -717,10 +717,18 @@ export type AgentAcpDiagnostic_Deserialize = {
 	name: string,
 	template: AgentTemplate,
 	command: string,
+	/**  Agent host CLI (`detect_command`), when distinct from the ACP entrypoint. */
+	agentCommand: string | null,
+	agentPath: string | null,
+	agentVersion: string | null,
+	/**  ACP entrypoint resolved path (`command`). */
 	resolvedPath: string | null,
+	/**  ACP entrypoint `--version` output (not the ACP protocol version). */
+	acpVersion: string | null,
 	ok: boolean,
 	failureCategory: AcpFailureCategory | null,
 	error: string | null,
+	authStatus: AgentAuthStatus,
 	agentName: string | null,
 	protocolVersion: string | null,
 	probedAt: string | null,
@@ -731,14 +739,25 @@ export type AgentAcpDiagnostic_Serialize = {
 	name: string,
 	template: AgentTemplate,
 	command: string,
+	/**  Agent host CLI (`detect_command`), when distinct from the ACP entrypoint. */
+	agentCommand?: string | null,
+	agentPath?: string | null,
+	agentVersion?: string | null,
+	/**  ACP entrypoint resolved path (`command`). */
 	resolvedPath?: string | null,
+	/**  ACP entrypoint `--version` output (not the ACP protocol version). */
+	acpVersion?: string | null,
 	ok: boolean,
 	failureCategory?: AcpFailureCategory | null,
 	error?: string | null,
+	authStatus: AgentAuthStatus,
 	agentName?: string | null,
 	protocolVersion?: string | null,
 	probedAt?: string | null,
 };
+
+/**  Login / auth state shown on each Agent Doctor card. */
+export type AgentAuthStatus = "authenticated" | "unauthenticated" | "not-applicable" | "unknown";
 
 /**  Collaboration mode selector (Codex `collaboration_mode`: Default / Plan). */
 export type AgentCollaborationEvent = AgentCollaborationEvent_Serialize | AgentCollaborationEvent_Deserialize;
@@ -1912,22 +1931,6 @@ export type CliInstallStatus = {
 	message: string | null,
 };
 
-export type CodexAuthDiagnostic = CodexAuthDiagnostic_Serialize | CodexAuthDiagnostic_Deserialize;
-
-export type CodexAuthDiagnostic_Deserialize = {
-	status: CodexAuthStatus,
-	method: string | null,
-	detail: string | null,
-};
-
-export type CodexAuthDiagnostic_Serialize = {
-	status: CodexAuthStatus,
-	method?: string | null,
-	detail?: string | null,
-};
-
-export type CodexAuthStatus = "authenticated" | "unauthenticated" | "not-applicable" | "unknown";
-
 export type CommitStatus = 
 /**  New paper folder + catalog row were written. */
 "created" | 
@@ -2435,14 +2438,12 @@ export type HostDoctorReport_Deserialize = {
 	node: HostToolDiagnostic_Deserialize,
 	npm: HostToolDiagnostic_Deserialize,
 	npmPrefix: string | null,
-	codexAuth: CodexAuthDiagnostic_Deserialize,
 };
 
 export type HostDoctorReport_Serialize = {
 	node: HostToolDiagnostic_Serialize,
 	npm: HostToolDiagnostic_Serialize,
 	npmPrefix?: string | null,
-	codexAuth: CodexAuthDiagnostic_Serialize,
 };
 
 export type HostToolDiagnostic = HostToolDiagnostic_Serialize | HostToolDiagnostic_Deserialize;

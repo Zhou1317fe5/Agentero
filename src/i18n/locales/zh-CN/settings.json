@@ -533,7 +533,7 @@
 			"visualMarks": "视觉批注"
 		},
 		"sectionHints": {
-			"host": "提示性检查 ACP Agent 使用的 Node.js、npm 和 Codex 登录状态。",
+			"host": "提示性检查 ACP Agent 使用的 Node.js 与 npm（路径与版本）。",
 			"agents": "对每个已注册 Agent 重新执行 ACP initialize 探测（不发送 prompt），慢速 Agent 可能需要 30 秒。",
 			"vault": "检查顶层 papers/、notes/、.agentero/ 目录是否齐全。",
 			"catalog": "检查 .agentero/catalog.sqlite 是否存在，以及 schema 是否与当前应用一致。",
@@ -547,19 +547,20 @@
 				"missing": "未找到",
 				"unusable": "无法运行"
 			},
-			"authStatus": {
-				"authenticated": "已登录",
-				"unauthenticated": "未登录",
-				"not-applicable": "未安装 ACP",
-				"unknown": "未知"
-			},
-			"authMethod": "认证方式：{{method}}",
 			"npmPrefix": "npm 全局目录：{{prefix}}"
 		},
 		"agent": {
 			"probing": "正在探测 Agent…",
 			"none": "尚未注册 Agent。",
 			"ready": "可用",
+			"locationMissing": "未找到",
+			"authLabel": "登录",
+			"authStatus": {
+				"authenticated": "已登录",
+				"unauthenticated": "未登录",
+				"not-applicable": "不适用",
+				"unknown": "未知"
+			},
 			"categories": {
 				"command-missing": "命令缺失",
 				"not-logged-in": "未登录",
