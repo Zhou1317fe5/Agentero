@@ -20,12 +20,13 @@
 | Agent | 目录两层检测（Agent CLI / ACP）、未装「安装」/ 缺 ACP「安装 ACP」/ **有可静默升到的新版本时**「升级」（本地 `--version` 对比 npm latest 或 dsh pin；探测中/失败/hermes 等无法判定时不显示）、已安装或已注册行「卸载」（Trash 按钮 → 确认对话框展示 logo 与清理项：npm 全局包、受管目录，或仅注册项）、安装 / 升级进行中行内显示阶段进度条与取消（X）按钮（点击静默中止安装子进程，不弹错误）、默认 Agent、权限模式、自动精读、可选 **User-Agent**（Codex 中转亲和）、个人提示词、划词提问 Agent |
 | 翻译 | 默认服务选择、商用 API 配置、语言与 Agent 座 |
 | 同步 | S3 兼容云同步配置、顶部常见服务商 logo 打开官方配置指南、自动同步、同步范围逐类开关；标题旁色点显示未连接 / 已连接 / 同步中 / 错误，标题右侧放置连接 / 保存 / 立即同步主操作，底部仅保留解绑 |
-| 知识库诊断 | 主机运行环境 / Agent ACP 连通性 / Vault / Catalog / 双链 / 论文 aliases / 视觉批注格式；本地 Vault 可确认批量修复 |
+| 知识库诊断 | 主机运行环境 / 网络连通性 / Agent ACP 连通性 / Vault / Catalog / 双链 / 论文 aliases / 视觉批注格式；本地 Vault 可确认批量修复 |
 | 关于 | 版本信息与应用更新、CLI 安装/卸载（状态行由结构化字段推导并全部走 i18n，不直接展示后端英文 message；安装/卸载失败 Toast 带真实错误原因；安装成功后展示可复制的验证命令 `agentero(-cli) --version`，Windows 额外说明已自动加入用户 PATH、开新终端即可、无需重启；应用更新重启后 main window 启动时自动把已安装 CLI 同步到新版本，成功静默、失败 Toast，见 [docs/backend/cli.md](../backend/cli.md)）、「打开日志文件夹」与「清理日志」（`appLogDir()` / Host `logs_clear`，见 [backend/logging.md](../backend/logging.md)）；标题右侧「Star us on GitHub」打开仓库 |
 
 知识库诊断页调用 Host 的只读 Doctor 报告。检查项各自作为小标题（带一行检测说明），标题行右侧显示 icon + 问题数；模块间用非通栏次要分隔线。列表过长时（双链 / 别名 / 视觉批注）`max-h` 内滚动。视觉批注一节可将旧版 `agent-trace` mark 一键升级为 `visual` v2。
 
 - **主机运行环境**（`doctor_check_host`）：提示性检查 Node.js / npm 可用性（路径与版本）；不依赖 Vault，未打开 Vault 时也显示。不再展示 Codex 登录状态。检查失败时错误写在该分区卡片内，不弹 Toast。
+- **网络连通性**（`doctor_check_network`）：按当前全局代理设置并行探测 Baidu / Google / Google Scholar / GitHub / arXiv / Semantic Scholar；一行一个端点，左侧状态点，右侧显示耗时或失败原因；失败时在行内展示原始错误与修复提示。不依赖 Vault，未打开 Vault 时也显示。独立加载，探测期间刷新按钮禁用。
 - **Agent ACP 连通性**（`doctor_check_agents`）：探测前先 `scan_catalog` 自动注册 PATH 上已装的目录 Agent（不必先打开设置 → Agent）；再对每个已注册 Agent 执行 ACP initialize 并写回 registry（Agent 目录页同步刷新）。每个 Agent 以卡片展示：版本在上、路径在下（Agent / ACP / 登录）；失败按原因分类并给出 hint；错误写在卡片内不弹 Toast。探测中显示 shimmer。最长约 30s/Agent，独立加载；探测期间刷新按钮禁用。
 
 - **论文别名**：勾选与编辑标题/短 alias，标题行「修复」→ 确认后批量写入 frontmatter（不改 path）。单行「忽略」或「忽略所选」把路径写入 Vault `.agentero/doctor.json`，下次诊断不再报错；列表底部可恢复。
@@ -37,7 +38,7 @@
 
 主窗口把未保存的 Markdown 路径同步到 Host，因此独立设置 Webview 发起修复时仍能在任何写入前拒绝脏文件。远程 Vault 首版只显示不可用。
 
-相关代码：`src/lib/doctor/`、`src/lib/agent/composer-seed.ts`。诊断页外壳 `src/components/settings/panes/doctor-pane.tsx` 只做报告拉取与分区编排，各检查项在同目录拆分：`doctor-host-runtime-section.tsx`、`doctor-agent-section.tsx`、`doctor-vault-catalog-sections.tsx`、`doctor-wikilink-section.tsx`、`doctor-alias-section.tsx`、`doctor-visual-marks-section.tsx`；共用展示件（小标题、问题行、git 风格 diff）在 `doctor-sections.tsx`，整行 diff 的文本测量与窗口化在 `doctor-line-fit.ts`（单测 `test/doctor-line-fit.test.ts`）。
+相关代码：`src/lib/doctor/`、`src/lib/agent/composer-seed.ts`。诊断页外壳 `src/components/settings/panes/doctor-pane.tsx` 只做报告拉取与分区编排，各检查项在同目录拆分：`doctor-host-runtime-section.tsx`、`doctor-network-section.tsx`、`doctor-agent-section.tsx`、`doctor-vault-catalog-sections.tsx`、`doctor-wikilink-section.tsx`、`doctor-alias-section.tsx`、`doctor-visual-marks-section.tsx`；共用展示件（小标题、问题行、git 风格 diff）在 `doctor-sections.tsx`，整行 diff 的文本测量与窗口化在 `doctor-line-fit.ts`（单测 `test/doctor-line-fit.test.ts`）。
 
 ## 应用更新
 

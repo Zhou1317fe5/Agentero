@@ -80,7 +80,7 @@ Doctor 聚合本地 Vault 的只读完整性检查，并为论文别名、双链
 
 ## Host / Agent 诊断
 
-除 Vault Doctor 外，设置页诊断还有两个 **host 级**检查（不依赖 Vault，代码在 `src-tauri/src/features/agent/`）：
+除 Vault Doctor 外，设置页诊断还有三个 **host 级**检查（不依赖 Vault）：
 
 ### 主机运行环境（`doctor_check_host`）
 
@@ -116,10 +116,28 @@ Codex 登录状态不再放在主机运行环境；改由 Agent 卡片第三行�
 
 hint 文案不在 wire 类型里，前端按分类映射 `doctor.agent.hints.*` i18n key。探测不随设置窗关闭而取消，由 30s initialize 超时兜底。
 
+### 网络连通性（`doctor_check_network`）
+
+`system/network/mod.rs` `diagnose_network`：按当前应用的全局代理设置（`effective_proxy_url`），并行探测六个常用站点/论文源：
+
+| 端点 | 探测 URL |
+|---|---|
+| Baidu | `https://www.baidu.com/` |
+| Google | `https://www.google.com/generate_204` |
+| Google Scholar | `https://scholar.google.com/` |
+| GitHub | `https://api.github.com/` |
+| arXiv | `https://export.arxiv.org/api/query?id_list=1706.03762&max_results=1` |
+| Semantic Scholar | `https://api.semanticscholar.org/graph/v1/paper/ARXIV:1706.03762?fields=title` |
+
+- 8s 超时，`buffered(6)` 并行探测，按固定顺序返回；
+- 使用 `BROWSER_USER_AGENT` 与 `DEFAULT_REDIRECT_LIMIT`，与导入/下载流程的 HTTP 客户端行为一致；
+- 任何 HTTP 响应（1xx–5xx）都算 `reachable`，仅 transport 失败（DNS、连接、TLS、代理错误、超时）标记为 `timeout` / `unreachable`；
+- 返回每个端点的状态码、耗时与当前生效代理，方便判断代理是否生效。
+
 ## 入口
 
 - 桌面：设置 → 知识库诊断；远程 Vault 当前显示不可用。
 - CLI：`agentero doctor`、`agentero doctor fix aliases`、`agentero doctor fix visual-marks`、`agentero doctor fix catalog-duplicates`、`agentero -y doctor fix …`（CLI 诊断同样尊重 `.agentero/doctor.json` 忽略列表）。
-- Host：`doctor_check`、`doctor_apply_aliases`、`doctor_ignore_aliases`、`doctor_set_dirty_paths`、`doctor_plan_wikilinks`、`doctor_apply_wikilinks`、`doctor_apply_visual_marks`、`doctor_fix_catalog_duplicates`；host 级：`doctor_check_host`、`doctor_check_agents`。
+- Host：`doctor_check`、`doctor_apply_aliases`、`doctor_ignore_aliases`、`doctor_set_dirty_paths`、`doctor_plan_wikilinks`、`doctor_apply_wikilinks`、`doctor_apply_visual_marks`、`doctor_fix_catalog_duplicates`；host 级：`doctor_check_host`、`doctor_check_agents`、`doctor_check_network`。
 
-代码：`src-tauri/src/features/vault/doctor/`（聚合入口）、`src-tauri/src/features/markdown/wiki/doctor.rs`（双链修复）、`src-tauri/src/features/pdf/marks/doctor.rs`（视觉批注修复）、`src-tauri/src/features/agent/doctor.rs`（主机运行环境）、`src-tauri/src/features/agent/doctor_agents.rs`（Agent ACP 诊断）、`src/lib/doctor/`、`src/components/settings/panes/doctor-pane.tsx`。
+代码：`src-tauri/src/features/vault/doctor/`（聚合入口）、`src-tauri/src/features/markdown/wiki/doctor.rs`（双链修复）、`src-tauri/src/features/pdf/marks/doctor.rs`（视觉批注修复）、`src-tauri/src/features/agent/doctor.rs`（主机运行环境）、`src-tauri/src/features/agent/doctor_agents.rs`（Agent ACP 诊断）、`src-tauri/src/features/system/network/`（网络连通性）、`src/lib/doctor/`、`src/components/settings/panes/doctor-pane.tsx`。
