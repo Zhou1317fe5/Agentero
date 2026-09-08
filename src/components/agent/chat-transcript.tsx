@@ -482,6 +482,7 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 					>
 						<ToolHeader
 							className={insideProcess ? "px-2 py-1.5" : undefined}
+							swapIconOnHover={insideProcess}
 							title={tool.title || t("tool.defaultTitle")}
 							type={`tool-${tool.kind}`}
 							state={state}

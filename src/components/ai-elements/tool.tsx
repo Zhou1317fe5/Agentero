@@ -39,6 +39,7 @@ export type ToolPart = ToolUIPart | DynamicToolUIPart;
 export type ToolHeaderProps = {
 	title?: string;
 	className?: string;
+	swapIconOnHover?: boolean;
 } & (
 	| { type: ToolUIPart["type"]; state: ToolUIPart["state"]; toolName?: never }
 	| {
@@ -86,6 +87,7 @@ export const ToolHeader = ({
 	type,
 	state,
 	toolName,
+	swapIconOnHover = false,
 	...props
 }: ToolHeaderProps) => {
 	const { t } = useTranslation("aiElements");
@@ -101,8 +103,28 @@ export const ToolHeader = ({
 			)}
 			{...props}
 		>
-			<ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform -rotate-90 group-data-[state=open]:rotate-0" />
-			<WrenchIcon className="size-3.5 shrink-0 text-muted-foreground" />
+			{swapIconOnHover ? (
+				<span className="relative flex size-3.5 shrink-0 items-center justify-center">
+					<ChevronDownIcon
+						className={cn(
+							"absolute size-3.5 text-muted-foreground opacity-0 transition-all",
+							"group-hover:opacity-100",
+							"-rotate-90 group-data-[state=open]:rotate-0",
+						)}
+					/>
+					<WrenchIcon
+						className={cn(
+							"absolute size-3.5 text-muted-foreground transition-opacity",
+							"group-hover:opacity-0",
+						)}
+					/>
+				</span>
+			) : (
+				<>
+					<ChevronDownIcon className="size-3.5 shrink-0 text-muted-foreground transition-transform -rotate-90 group-data-[state=open]:rotate-0" />
+					<WrenchIcon className="size-3.5 shrink-0 text-muted-foreground" />
+				</>
+			)}
 			<span className="min-w-0 truncate font-medium text-xs">
 				{title ?? derivedName}
 			</span>
