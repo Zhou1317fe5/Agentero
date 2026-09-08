@@ -67,6 +67,7 @@ export const commands = {
 	 *  Can take up to ~30s per slow agent (probes run with limited concurrency).
 	 */
 	doctorCheckAgents: () => typedError<ApiResult<AgentAcpDiagnostic_Serialize[]>, string>(__TAURI_INVOKE("doctor_check_agents")),
+	doctorCheckNetwork: () => typedError<ApiResult<NetworkDoctorReport_Serialize>, string>(__TAURI_INVOKE("doctor_check_network")),
 	/**  Request cooperative cancellation for a currently streaming ACP session. */
 	agentCancelRun: (sessionId: string) => __TAURI_INVOKE<ApiResult<boolean>>("agent_cancel_run", { sessionId }),
 	jobParseRefsEnqueue: (args: JobEnqueueArgs) => typedError<ApiResult<JobSnapshot>, string>(__TAURI_INVOKE("job_parse_refs_enqueue", { args })),
@@ -2304,6 +2305,8 @@ export type EnabledResponse = {
 	enabled: boolean,
 };
 
+export type EndpointId = "baidu" | "google" | "google-scholar" | "github" | "arxiv" | "semantic-scholar";
+
 export type ErrorBody = {
 	code: string,
 	message: string,
@@ -3103,6 +3106,40 @@ export type MigrateProgress = {
 	total: number,
 	phase: string,
 };
+
+export type NetworkDoctorReport = NetworkDoctorReport_Serialize | NetworkDoctorReport_Deserialize;
+
+export type NetworkDoctorReport_Deserialize = {
+	endpoints: NetworkEndpointDiagnostic_Deserialize[],
+	proxy: string | null,
+};
+
+export type NetworkDoctorReport_Serialize = {
+	endpoints: NetworkEndpointDiagnostic_Serialize[],
+	proxy?: string | null,
+};
+
+export type NetworkEndpointDiagnostic = NetworkEndpointDiagnostic_Serialize | NetworkEndpointDiagnostic_Deserialize;
+
+export type NetworkEndpointDiagnostic_Deserialize = {
+	id: EndpointId,
+	url: string,
+	status: NetworkStatus,
+	statusCode: number | null,
+	latencyMs: number | null,
+	detail: string | null,
+};
+
+export type NetworkEndpointDiagnostic_Serialize = {
+	id: EndpointId,
+	url: string,
+	status: NetworkStatus,
+	statusCode?: number | null,
+	latencyMs?: number | null,
+	detail?: string | null,
+};
+
+export type NetworkStatus = "reachable" | "timeout" | "unreachable";
 
 export type NotesTemplateSeedResult = {
 	created: boolean,
