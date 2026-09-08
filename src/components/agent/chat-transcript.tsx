@@ -1,10 +1,4 @@
-import {
-	Check,
-	ChevronDownIcon,
-	CopyIcon,
-	Pencil,
-	Sparkles,
-} from "lucide-react";
+import { Check, ChevronDownIcon, CopyIcon, Pencil } from "lucide-react";
 import type { RefObject } from "react";
 import {
 	Fragment,
@@ -116,7 +110,6 @@ function isNonTextPart(part: AgentPart): boolean {
 
 type AgentProcessCollapsibleProps = {
 	rowKey: string;
-	parts: AgentPart[];
 	partOpenState: Record<string, boolean>;
 	onPartOpenChange: (key: string, open: boolean) => void;
 	children: ReactNode;
@@ -125,7 +118,6 @@ type AgentProcessCollapsibleProps = {
 /** Fold reasoning/plan/tool parts into one "Chain of Thought" block once the turn is done. */
 function AgentProcessCollapsible({
 	rowKey,
-	parts,
 	partOpenState,
 	onPartOpenChange,
 	children,
@@ -141,11 +133,7 @@ function AgentProcessCollapsible({
 			className="not-prose w-full rounded-lg border bg-muted/20"
 		>
 			<CollapsibleTrigger className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground">
-				<Sparkles className="size-4 shrink-0" />
 				<span className="font-medium">{t("chainOfThought.title")}</span>
-				<span className="ml-auto text-xs tabular-nums text-muted-foreground">
-					{parts.length}
-				</span>
 				<ChevronDownIcon
 					className={cn(
 						"size-4 shrink-0 transition-transform",
@@ -157,6 +145,52 @@ function AgentProcessCollapsible({
 				<div className="flex flex-col gap-1">{children}</div>
 			</CollapsibleContent>
 		</Collapsible>
+	);
+}
+
+/** Compact activity line shown while assistant is streaming reasoning/tool calls. */
+function StreamingActivityRow({
+	parts,
+	streaming,
+}: {
+	parts: AgentPart[];
+	streaming: boolean;
+}) {
+	const { t } = useTranslation("agent");
+	const [elapsed, setElapsed] = useState(0);
+
+	useEffect(() => {
+		if (!streaming) return;
+		const start = Date.now();
+		setElapsed(0);
+		const timer = setInterval(() => {
+			setElapsed(Math.floor((Date.now() - start) / 1000));
+		}, 1000);
+		return () => clearInterval(timer);
+	}, [streaming]);
+
+	if (!streaming) return null;
+
+	const lastNonText = [...parts].reverse().find((p) => p.type !== "text");
+	let label: string;
+	if (lastNonText?.type === "tool") {
+		label = lastNonText.tool.title || lastNonText.tool.kind;
+	} else if (lastNonText?.type === "reasoning") {
+		label = lastNonText.text.trim() || t("streaming.reasoning");
+	} else if (lastNonText?.type === "plan") {
+		label = t("streaming.plan");
+	} else {
+		label = t("streaming.thinking");
+	}
+
+	return (
+		<div className="flex w-full items-center gap-2 text-muted-foreground text-sm">
+			<AgentThinkingOrb parts={parts} streaming={streaming} showLabel={false} />
+			<span className="min-w-0 flex-1 truncate">{label}</span>
+			<span className="text-xs tabular-nums">
+				{t("streaming.elapsed", { count: elapsed })}
+			</span>
+		</div>
 	);
 }
 
@@ -530,7 +564,6 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 							<>
 								<AgentProcessCollapsible
 									rowKey={rowKey}
-									parts={nonTextParts}
 									partOpenState={partOpenState}
 									onPartOpenChange={onPartOpenChange}
 								>
@@ -542,12 +575,16 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 									renderAgentPart(part, index, false),
 								)}
 							</>
+						) : isStreaming && nonTextParts.length > 0 ? (
+							<>
+								<StreamingActivityRow parts={parts} streaming={isStreaming} />
+								{textParts.map((part, index) =>
+									renderAgentPart(part, index, false),
+								)}
+							</>
 						) : (
 							parts.map((part, index) => renderAgentPart(part, index, false))
 						)}
-						{isStreaming ? (
-							<AgentThinkingOrb parts={parts} streaming={isStreaming} />
-						) : null}
 					</MessageContent>
 					{!line.streaming && agentText ? (
 						<MessageActions className="-mt-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">

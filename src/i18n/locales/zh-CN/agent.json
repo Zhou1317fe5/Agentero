@@ -116,6 +116,12 @@
 	"thinking": "思考中……",
 	"working": "执行中……",
 	"solving": "求解中……",
+	"streaming": {
+		"thinking": "思考中",
+		"reasoning": "思考过程",
+		"plan": "规划中",
+		"elapsed": "{{count}}秒"
+	},
 	"copy": "复制",
 	"copied": "已复制",
 	"edit": {
@@ -172,6 +178,7 @@
 		"cancelled": "已停止当前运行。",
 		"desktopOnly": "请打开桌面应用以运行 Agent。",
 		"noAgent": "没有可用的 Agent。请在 设置 → Agent 中配置。",
-		"sessionUnavailable": "无法恢复该 Agent 会话。若有本地回答快照会一并展示。"
+		"sessionUnavailable": "无法恢复该 Agent 会话。若有本地回答快照会一并展示。",
+		"sessionEmpty": "该会话没有可回放的消息。"
 	}
 }

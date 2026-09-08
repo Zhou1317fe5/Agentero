@@ -50,9 +50,11 @@ function resolveActivity(parts: AgentPart[]): AgentActivity {
 export function AgentThinkingOrb({
 	parts,
 	streaming,
+	showLabel = true,
 }: {
 	parts: AgentPart[];
 	streaming: boolean;
+	showLabel?: boolean;
 }) {
 	const { t } = useTranslation("agent");
 	if (!streaming) return null;
@@ -61,14 +63,22 @@ export function AgentThinkingOrb({
 	const config = activityToOrbState[activity];
 	const label = t(config.i18nKey);
 
+	const orb = (
+		<ThinkingOrb
+			state={config.state}
+			size={20}
+			theme="auto"
+			aria-label={label}
+		/>
+	);
+
+	if (!showLabel) {
+		return orb;
+	}
+
 	return (
 		<div className="inline-flex items-center gap-2 text-muted-foreground text-sm">
-			<ThinkingOrb
-				state={config.state}
-				size={20}
-				theme="auto"
-				aria-label={label}
-			/>
+			{orb}
 			<span>{label}</span>
 		</div>
 	);

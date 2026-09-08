@@ -116,6 +116,12 @@
 	"thinking": "Thinking…",
 	"working": "Working…",
 	"solving": "Solving…",
+	"streaming": {
+		"thinking": "Thinking",
+		"reasoning": "Reasoning",
+		"plan": "Planning",
+		"elapsed": "{{count}}s"
+	},
 	"copy": "Copy",
 	"copied": "Copied",
 	"edit": {
@@ -172,6 +178,7 @@
 		"cancelled": "Stopped the current run.",
 		"desktopOnly": "Open the desktop app to run agents.",
 		"noAgent": "No available agent. Open Settings → Agent to configure one.",
-		"sessionUnavailable": "Could not restore this Agent session. Showing the saved answer snapshot when available."
+		"sessionUnavailable": "Could not restore this Agent session. Showing the saved answer snapshot when available.",
+		"sessionEmpty": "This session has no replayable messages."
 	}
 }
