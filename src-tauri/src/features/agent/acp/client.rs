@@ -2,7 +2,7 @@ use crate::core::error::AppError;
 pub(crate) use crate::core::process::windows_shell_path as simplified_agent_cwd;
 use crate::features::agent::models::{AgentDescriptor, AgentResultPayload, AgentTemplate};
 use crate::features::agent::prompt::envelope::extract_sources;
-use crate::features::agent::registry::discovery::{login_shell_env, path_entries, resolve_command};
+use crate::features::agent::registry::discovery::{login_shell_env, path_entries};
 use agent_client_protocol::schema::v1::{
     ClientCapabilities, ElicitationCapabilities, ElicitationFormCapabilities, EnvVariable,
     InitializeRequest, McpServer, McpServerStdio,
@@ -156,23 +156,30 @@ fn acp_agent_with_debug(agent: AcpAgent, name: &str) -> AcpAgent {
     )
 }
 
+fn append_path_entries(entries: &mut Vec<PathBuf>, value: Option<&String>) {
+    let Some(value) = value else {
+        return;
+    };
+    for entry in std::env::split_paths(value) {
+        if !entry.as_os_str().is_empty() && !entries.iter().any(|existing| existing == &entry) {
+            entries.push(entry);
+        }
+    }
+}
+
 /// Build the environment for an ACP child process.
 ///
-/// Priority (low → high):
-/// 1. `process_env` (current process)
-/// 2. `shell_env` (login-shell exports like `.zshrc` / `.bashrc`)
-/// 3. `desc_env` (user-configured values)
-///
-/// `shell_env` only fills missing keys so the current process values are not
-/// unexpectedly overwritten; callers that need shell overrides can pass them
-/// explicitly via `desc_env`.
-fn build_child_env(
+/// Non-PATH priority (low → high): process, missing login-shell values, descriptor.
+/// PATH is merged in executable-resolution order: descriptor, process, login shell,
+/// then common GUI-missing locations.
+pub(crate) fn build_child_env(
     process_env: impl Iterator<Item = (String, String)>,
     shell_env: Option<&HashMap<String, String>>,
     desc_env: &HashMap<String, String>,
     template: AgentTemplate,
 ) -> HashMap<String, String> {
-    let mut child_env: HashMap<String, String> = process_env.collect();
+    let process_env: HashMap<String, String> = process_env.collect();
+    let mut child_env = process_env.clone();
     if let Some(shell_env) = shell_env {
         for (key, value) in shell_env {
             child_env.entry(key.clone()).or_insert(value.clone());
@@ -182,11 +189,22 @@ fn build_child_env(
         child_env.insert(key.clone(), value.clone());
     }
 
-    if !child_env.contains_key("PATH") {
-        if let Ok(path) = std::env::join_paths(path_entries()) {
-            child_env.insert("PATH".to_string(), path.to_string_lossy().to_string());
+    let mut merged_path = Vec::new();
+    append_path_entries(&mut merged_path, desc_env.get("PATH"));
+    append_path_entries(&mut merged_path, process_env.get("PATH"));
+    append_path_entries(
+        &mut merged_path,
+        shell_env.and_then(|environment| environment.get("PATH")),
+    );
+    for entry in path_entries() {
+        if !merged_path.iter().any(|existing| existing == &entry) {
+            merged_path.push(entry);
         }
     }
+    if let Ok(path) = std::env::join_paths(&merged_path) {
+        child_env.insert("PATH".to_string(), path.to_string_lossy().to_string());
+    }
+
     // Antigravity (formerly Gemini) launches a browser OAuth flow from
     // `new_session` when it has no cached credentials; our 15s ACP timeout kills
     // the child before login can finish, so the browser would pop up on every
@@ -197,17 +215,33 @@ fn build_child_env(
     child_env
 }
 
-pub(crate) fn to_acp_agent_local(
-    desc: &AgentDescriptor,
-    cwd: Option<&Path>,
-) -> Result<AcpAgent, AppError> {
-    let command = resolve_command(&desc.command).unwrap_or_else(|| PathBuf::from(&desc.command));
-    let mut child_env = build_child_env(
+pub(crate) fn effective_local_agent_env(desc: &AgentDescriptor) -> HashMap<String, String> {
+    build_child_env(
         std::env::vars(),
         login_shell_env(),
         &desc.env,
         desc.template.clone(),
-    );
+    )
+}
+
+pub(crate) fn resolve_command_in_agent_env(
+    command: &str,
+    environment: &HashMap<String, String>,
+) -> Option<PathBuf> {
+    let paths = environment
+        .get("PATH")
+        .map(|value| std::env::split_paths(value).collect::<Vec<_>>())
+        .unwrap_or_default();
+    crate::core::process::resolve_command_in_paths(command, &paths)
+}
+
+pub(crate) fn to_acp_agent_local(
+    desc: &AgentDescriptor,
+    cwd: Option<&Path>,
+) -> Result<AcpAgent, AppError> {
+    let mut child_env = effective_local_agent_env(desc);
+    let command = resolve_command_in_agent_env(&desc.command, &child_env)
+        .unwrap_or_else(|| PathBuf::from(&desc.command));
 
     let (command, args) =
         if let Some(cwd) = cwd.filter(|_| desc.template.needs_local_cwd_shell_wrap()) {
@@ -473,6 +507,48 @@ mod cwd_shell_wrap_tests {
             Some(&"https://shell/v1".to_string())
         );
         assert_eq!(env.get("SHARED"), Some(&"process".to_string()));
+    }
+
+    #[test]
+    fn build_child_env_merges_path_in_resolution_order() {
+        let process_path = std::env::join_paths(["/process/bin", "/shared/bin"]).unwrap();
+        let shell_path = std::env::join_paths(["/shell/bin", "/shared/bin"]).unwrap();
+        let descriptor_path = std::env::join_paths(["/descriptor/bin"]).unwrap();
+        let process_env = vec![(
+            "PATH".to_string(),
+            process_path.to_string_lossy().into_owned(),
+        )]
+        .into_iter();
+        let mut shell_env = HashMap::new();
+        shell_env.insert(
+            "PATH".to_string(),
+            shell_path.to_string_lossy().into_owned(),
+        );
+        let mut desc_env = HashMap::new();
+        desc_env.insert(
+            "PATH".to_string(),
+            descriptor_path.to_string_lossy().into_owned(),
+        );
+
+        let env = build_child_env(
+            process_env,
+            Some(&shell_env),
+            &desc_env,
+            AgentTemplate::CodexAcp,
+        );
+        let entries = std::env::split_paths(env.get("PATH").unwrap()).collect::<Vec<_>>();
+
+        assert_eq!(entries[0], PathBuf::from("/descriptor/bin"));
+        assert_eq!(entries[1], PathBuf::from("/process/bin"));
+        assert_eq!(entries[2], PathBuf::from("/shared/bin"));
+        assert_eq!(entries[3], PathBuf::from("/shell/bin"));
+        assert_eq!(
+            entries
+                .iter()
+                .filter(|entry| entry.as_path() == Path::new("/shared/bin"))
+                .count(),
+            1
+        );
     }
 
     #[test]
