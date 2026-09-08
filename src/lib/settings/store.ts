@@ -26,6 +26,7 @@ import {
 	DEFAULT_PDF_ASK_SETTINGS,
 	DEFAULT_SETTINGS,
 	DEFAULT_TRANSLATOR_BASE_URL,
+	GITHUB_MIRROR_PRESETS,
 	snapUiScale,
 } from "@/lib/settings/defaults";
 import { normalizeFontFamilyValue } from "@/lib/settings/fonts";
@@ -332,9 +333,12 @@ function normalizePartial(
 	if (typeof parsed.githubMirrorBaseUrl !== "string") {
 		merged.githubMirrorBaseUrl = DEFAULT_SETTINGS.githubMirrorBaseUrl;
 	} else {
-		merged.githubMirrorBaseUrl = parsed.githubMirrorBaseUrl
-			.trim()
-			.replace(/\/+$/, "");
+		const trimmed = parsed.githubMirrorBaseUrl.trim().replace(/\/+$/, "");
+		merged.githubMirrorBaseUrl = (
+			GITHUB_MIRROR_PRESETS as readonly string[]
+		).includes(trimmed)
+			? trimmed
+			: GITHUB_MIRROR_PRESETS[0];
 	}
 	if (!isPaperTreeLabelMode(merged.paperTreeLabelMode)) {
 		merged.paperTreeLabelMode = DEFAULT_SETTINGS.paperTreeLabelMode;

@@ -100,7 +100,8 @@
 			"systemDetected": "检测到系统代理（{{url}}）——开关关闭时将自动使用。"
 		},
 		"githubMirror": {
-			"label": "GitHub 镜像"
+			"label": "GitHub 镜像",
+			"description": "从内置公开镜像中选择一个，用于 Skill 导入时回退 GitHub 直连。"
 		},
 		"easyScholar": {
 			"section": "EasyScholar",

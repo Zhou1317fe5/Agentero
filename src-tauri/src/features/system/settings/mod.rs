@@ -20,6 +20,14 @@ use std::sync::{Arc, Mutex};
 
 pub const DEFAULT_TRANSLATOR_BASE_URL: &str = "https://translator.philfan.cn";
 pub const DEFAULT_NETWORK_PROXY_URL: &str = "http://127.0.0.1:7890";
+/// Built-in URL-prefix GitHub mirrors. The user picks from this list instead of
+/// typing a custom URL. All entries must support `{base}/{canonical_github_url}`.
+pub const GITHUB_MIRROR_PRESETS: &[&str] = &[
+    "https://gh.llkk.cc",
+    "https://mirror.ghproxy.com",
+    "https://ghproxy.net",
+    "https://github.moeyy.xyz",
+];
 /// Default Zotero Connector port (must match the official extension default).
 /// Owned here because the persisted `connectorPort` default must exist at
 /// deserialize time; `features::connector` re-exports it.
@@ -293,7 +301,7 @@ impl Default for AppSettings {
             network_proxy_enabled: false,
             network_proxy_url: default_network_proxy_url(),
             github_mirror_enabled: false,
-            github_mirror_base_url: String::new(),
+            github_mirror_base_url: GITHUB_MIRROR_PRESETS[0].to_string(),
             paper_tree_label_mode: default_paper_tree_label_mode(),
             paper_tree_sort_mode: default_paper_tree_sort_mode(),
             paper_note_mode: default_paper_note_mode(),
@@ -834,11 +842,12 @@ fn normalize(s: &mut AppSettings) {
     if s.network_proxy_url.is_empty() {
         s.network_proxy_url = default_network_proxy_url();
     }
-    s.github_mirror_base_url = s
-        .github_mirror_base_url
-        .trim()
-        .trim_end_matches('/')
-        .to_string();
+    let mirror = s.github_mirror_base_url.trim().trim_end_matches('/');
+    s.github_mirror_base_url = if GITHUB_MIRROR_PRESETS.contains(&mirror) {
+        mirror.to_string()
+    } else {
+        GITHUB_MIRROR_PRESETS[0].to_string()
+    };
 
     const LABEL_MODES: &[&str] = &["title-author", "title", "author-year-title", "folder"];
     if !LABEL_MODES.contains(&s.paper_tree_label_mode.as_str()) {

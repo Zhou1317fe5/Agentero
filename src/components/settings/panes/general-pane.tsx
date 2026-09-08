@@ -1,7 +1,10 @@
 import { Copy, ExternalLink, LoaderCircle, Power } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { NetworkProxyRow } from "@/components/settings/agent-common-rows";
+import {
+	GitHubMirrorRow,
+	NetworkProxyRow,
+} from "@/components/settings/agent-common-rows";
 import {
 	PageTitle,
 	SettingsGroup,
@@ -89,9 +92,6 @@ export function GeneralPane({
 }) {
 	const { t } = useTranslation("settings");
 	const [proxyUrlDraft, setProxyUrlDraft] = useState(settings.networkProxyUrl);
-	const [githubMirrorDraft, setGithubMirrorDraft] = useState(
-		settings.githubMirrorBaseUrl,
-	);
 	const [easyScholarKeyDraft, setEasyScholarKeyDraft] = useState(
 		settings.easyScholarKey,
 	);
@@ -126,10 +126,6 @@ export function GeneralPane({
 	useEffect(() => {
 		setProxyUrlDraft(settings.networkProxyUrl);
 	}, [settings.networkProxyUrl]);
-
-	useEffect(() => {
-		setGithubMirrorDraft(settings.githubMirrorBaseUrl);
-	}, [settings.githubMirrorBaseUrl]);
 
 	useEffect(() => {
 		setEasyScholarKeyDraft(settings.easyScholarKey);
@@ -322,21 +318,16 @@ export function GeneralPane({
 						patch({ networkProxyEnabled })
 					}
 				/>
-				<NetworkProxyRow
+				<GitHubMirrorRow
 					htmlFor="github-mirror-enabled"
 					label={t("general.githubMirror.label")}
-					proxyUrl={githubMirrorDraft}
-					proxyEnabled={settings.githubMirrorEnabled}
-					placeholder="https://gh.llkk.cc"
-					onProxyUrlChange={setGithubMirrorDraft}
-					onCommitProxyUrl={() =>
-						patch({
-							githubMirrorBaseUrl: githubMirrorDraft.trim().replace(/\/+$/, ""),
-						})
+					description={t("general.githubMirror.description")}
+					value={settings.githubMirrorBaseUrl}
+					enabled={settings.githubMirrorEnabled}
+					onValueChange={(githubMirrorBaseUrl) =>
+						patch({ githubMirrorBaseUrl })
 					}
-					onToggleProxy={(githubMirrorEnabled) =>
-						patch({ githubMirrorEnabled })
-					}
+					onToggle={(githubMirrorEnabled) => patch({ githubMirrorEnabled })}
 				/>
 			</SettingsGroup>
 			<EasyScholarSettingsBlock
