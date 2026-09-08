@@ -526,6 +526,7 @@ export function useAgentPanel({
 		hydrateAndActivateSession,
 		activateComposerSession,
 		setHistoryOpen,
+		historyOpen,
 		clearMessageQueue,
 	});
 

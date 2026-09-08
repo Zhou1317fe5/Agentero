@@ -38,6 +38,11 @@ import {
 	providerSessionIdForHistoryLoad,
 } from "@/lib/agent/chat-state";
 import {
+	applyCachedHistoryTitles,
+	getCachedHistoryTitle,
+	setCachedHistoryTitle,
+} from "@/lib/agent/history-title-cache";
+import {
 	displayHistoryTitle,
 	stripPromptEnvelopeForDisplay,
 } from "@/lib/agent/prompt-display";
@@ -119,6 +124,9 @@ type HydrateTitleOptions = {
 	) => void;
 };
 
+/** Concurrent `session/load` calls while preloading history titles. */
+const TITLE_HYDRATION_CONCURRENCY = 5;
+
 /** Background-hydrate titles for ACP sessions that arrived without one. */
 export async function hydrateSessionTitles(
 	items: AgentSessionRecord[],
@@ -132,16 +140,25 @@ export async function hydrateSessionTitles(
 		setSessionHistory,
 	} = opts;
 	if (generation !== historyGenRef.current) return;
+	if (items.length === 0) return;
 
-	const started = Date.now();
-	const BUDGET_MS = 5000;
-
-	await mapLimit(items, 3, async (item) => {
+	await mapLimit(items, TITLE_HYDRATION_CONCURRENCY, async (item) => {
 		if (generation !== historyGenRef.current) return;
-		if (Date.now() - started > BUDGET_MS) return;
 
 		try {
 			const providerSessionId = providerSessionIdForHistoryLoad(item);
+			const cached = getCachedHistoryTitle(selectedAgentId, providerSessionId);
+			if (cached) {
+				setSessionHistory((prev) =>
+					prev.map((s) =>
+						s.id === item.id && s.agentId === item.agentId
+							? { ...s, title: cached }
+							: s,
+					),
+				);
+				return;
+			}
+
 			const history = await loadSession({
 				agentId: selectedAgentId,
 				sessionId: providerSessionId,
@@ -161,6 +178,7 @@ export async function hydrateSessionTitles(
 			}
 			if (!title) return;
 
+			setCachedHistoryTitle(selectedAgentId, providerSessionId, title);
 			setSessionHistory((prev) =>
 				prev.map((s) =>
 					s.id === item.id && s.agentId === item.agentId ? { ...s, title } : s,
@@ -169,6 +187,26 @@ export async function hydrateSessionTitles(
 		} catch {
 			// Title is supplementary; a failed load must not block the drawer.
 		}
+	});
+}
+
+/** Sessions that still need a human title (empty or id-prefix leftover). */
+export function sessionsNeedingTitleHydration(
+	sessions: AgentSessionRecord[],
+	agentId: string,
+): AgentSessionRecord[] {
+	return sessions.filter((session) => {
+		if (session.agentId !== agentId) return false;
+		if (session.lines.length > 0 && titleFromSessionLines(session.lines)) {
+			return false;
+		}
+		const title = session.title.trim();
+		if (!title) return true;
+		const providerId = providerSessionIdForHistoryLoad(session);
+		return (
+			isSessionIdPrefixTitle(title, session.id) ||
+			isSessionIdPrefixTitle(title, providerId)
+		);
 	});
 }
 
@@ -306,6 +344,8 @@ export type UseAgentHistoryOptions = {
 	) => void;
 	activateComposerSession: (sessionId: string) => void;
 	setHistoryOpen: Dispatch<SetStateAction<boolean>>;
+	/** When true, finish hydrating any still-untitled rows in the open drawer. */
+	historyOpen: boolean;
 	clearMessageQueue: () => void;
 };
 
@@ -335,11 +375,26 @@ export function useAgentHistory({
 	hydrateAndActivateSession,
 	activateComposerSession,
 	setHistoryOpen,
+	historyOpen,
 	clearMessageQueue,
 }: UseAgentHistoryOptions): AgentHistory {
 	const [supportsResume, setSupportsResume] = useState(false);
 
 	const [historyLoaded, setHistoryLoaded] = useState(false);
+
+	const runTitleHydration = useCallback(
+		(items: AgentSessionRecord[], generation: number) => {
+			if (!selectedAgentId || items.length === 0) return;
+			void hydrateSessionTitles(items, {
+				generation,
+				historyGenRef,
+				selectedAgentId,
+				vaultPath,
+				setSessionHistory,
+			});
+		},
+		[historyGenRef, selectedAgentId, setSessionHistory, vaultPath],
+	);
 
 	const loadAgentHistory = useCallback(async () => {
 		if (!isTauri() || !selectedAgentId) {
@@ -359,7 +414,7 @@ export function useAgentHistory({
 			const chatSessions = result.sessions.filter(
 				(s) => !isBackgroundWorkflowHistoryTitle(s.title ?? ""),
 			);
-			const { sessions: nextSessions, hydrationCandidates } =
+			const { sessions: mergedSessions, hydrationCandidates } =
 				mergeImportedSessions(
 					agentSessionStore.getState().sessions,
 					chatSessions,
@@ -367,19 +422,21 @@ export function useAgentHistory({
 					selected?.name ?? "Agent",
 					i18nLanguage,
 				);
+			// Instant titles from prior session/load results (localStorage).
+			const nextSessions = applyCachedHistoryTitles(
+				selectedAgentId,
+				mergedSessions,
+			) as AgentSessionRecord[];
 			setSessionHistory(nextSessions);
 
-			if (
-				hydrationCandidates.length > 0 &&
-				generation === historyGenRef.current
-			) {
-				void hydrateSessionTitles(hydrationCandidates, {
-					generation,
-					historyGenRef,
-					selectedAgentId,
-					vaultPath,
-					setSessionHistory,
-				});
+			const needHydration = sessionsNeedingTitleHydration(
+				nextSessions,
+				selectedAgentId,
+			);
+			const candidates =
+				needHydration.length > 0 ? needHydration : hydrationCandidates;
+			if (candidates.length > 0 && generation === historyGenRef.current) {
+				runTitleHydration(candidates, generation);
 			}
 		} catch {
 			// History is supplementary: a failed scan must not block the Composer.
@@ -395,6 +452,7 @@ export function useAgentHistory({
 		vaultPath,
 		setSessionHistory,
 		historyGenRef,
+		runTitleHydration,
 	]);
 
 	useEffect(() => {
@@ -403,6 +461,25 @@ export function useAgentHistory({
 			historyGenRef.current += 1;
 		};
 	}, [loadAgentHistory, historyGenRef]);
+
+	// Opening the drawer: finish any titles still missing so the user does not
+	// have to click into a row just to learn what it was about (#484).
+	useEffect(() => {
+		if (!historyOpen || !selectedAgentId || !historyLoaded) return;
+		const pending = sessionsNeedingTitleHydration(
+			sessionHistoryRef.current,
+			selectedAgentId,
+		);
+		if (pending.length === 0) return;
+		runTitleHydration(pending, historyGenRef.current);
+	}, [
+		historyOpen,
+		historyLoaded,
+		selectedAgentId,
+		runTitleHydration,
+		historyGenRef,
+		sessionHistoryRef,
+	]);
 
 	const agentSessionOpenRequest = useUiStore((s) => s.agentSessionOpenRequest);
 
