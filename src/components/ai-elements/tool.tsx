@@ -98,7 +98,7 @@ export const ToolHeader = ({
 		<CollapsibleTrigger
 			className={cn(
 				// Left-aligned compact header (not space-between)
-				"flex w-full items-center justify-start gap-2 px-2 py-1 text-left",
+				"flex w-full items-center justify-start gap-2 px-2 py-1 text-left text-muted-foreground transition-colors hover:text-foreground",
 				swapIconOnHover && "group/tool-header",
 				className,
 			)}
