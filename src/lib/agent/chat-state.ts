@@ -344,6 +344,7 @@ export function buildOptions(
 	catalog: CatalogScanResponse | null,
 ): AgentOption[] {
 	const options: AgentOption[] = [];
+	const tail: AgentOption[] = [];
 	const seenIds = new Set<string>();
 
 	if (catalog) {
@@ -365,7 +366,7 @@ export function buildOptions(
 			if (!registryAgentUsable(a)) continue;
 			if (seenIds.has(a.id)) continue;
 			seenIds.add(a.id);
-			options.push({
+			tail.push({
 				key: `reg:${a.id}`,
 				id: a.id,
 				templateId: null,
@@ -382,7 +383,7 @@ export function buildOptions(
 			if (!registryAgentUsable(a)) continue;
 			if (seenIds.has(a.id)) continue;
 			seenIds.add(a.id);
-			options.push({
+			tail.push({
 				key: `reg:${a.id}`,
 				id: a.id,
 				templateId: null,
@@ -394,7 +395,8 @@ export function buildOptions(
 		}
 	}
 
-	return options;
+	tail.sort((a, b) => a.name.localeCompare(b.name));
+	return [...options, ...tail];
 }
 
 export function resolveSelected(
