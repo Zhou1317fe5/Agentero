@@ -290,6 +290,11 @@ pub async fn diagnose_agents(
     warm_gate: &AgentWarmGate,
     app: &AppHandle,
 ) -> Result<Vec<AgentAcpDiagnostic>, AppError> {
+    // Auto-register catalog agents that are on PATH but not yet persisted —
+    // same path as Settings → Agent / chat switcher. Without this, Doctor
+    // would only see an empty registry until the user visited Agent settings.
+    let _ = registry.scan_catalog()?;
+
     // Snapshot once: it already refreshes command availability, and repeated
     // snapshots would re-run `which` for every agent each time.
     let agents = registry.snapshot()?.agents;

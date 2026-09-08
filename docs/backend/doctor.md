@@ -101,7 +101,7 @@ Codex 登录状态不再放在主机运行环境；改由 Agent 卡片第三行�
 | ACP 位置 · 版本 | `resolvedPath` / `acpVersion` | ACP `command` 的路径 + `--version`（不是协议版本） |
 | 登录状态 | `authStatus` | Codex 走 `codex(-acp) login status`；其它由探测结果推导（成功→已登录，`not-logged-in`→未登录，命令缺失→不适用，其余→未知） |
 
-- 编排：`snapshot()` 一次（内部已刷新命令可用性）；`buffered(3)` 限流并行探测；`!available` 的 Agent 不 spawn，直接按 `last_error` 合成「命令缺失」结果（镜像 `agent_probe` 快路径）；
+- 编排：先 `scan_catalog()`（把 PATH 上已装但未落盘的目录 Agent 自动注册，避免必须先打开设置 → Agent）；再 `snapshot()` 一次（内部已刷新命令可用性）；`buffered(3)` 限流并行探测；`!available` 的 Agent 不 spawn，直接按 `last_error` 合成「命令缺失」结果（镜像 `agent_probe` 快路径）；
 - 写回：每个结果 `apply_probe_result` 持久化到 registry，结束后 `emit_registry_changed`，Agent 目录页同步刷新；成功时清除该 Agent 的 warm-gate 熔断，失败**不**记录新熔断（Doctor 是用户主动重试，应无视 120s 冷却）；
 - 分类（`classify_acp_error`，按序匹配原始错误文本）：
 
