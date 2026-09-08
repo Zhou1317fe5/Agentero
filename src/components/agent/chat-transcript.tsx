@@ -153,8 +153,10 @@ function AgentProcessCollapsible({
 					)}
 				/>
 			</CollapsibleTrigger>
-			<CollapsibleContent className="space-y-2 px-3 pb-3">
-				{children}
+			<CollapsibleContent className="p-2">
+				<div className="flex flex-col divide-y divide-border/60">
+					{children}
+				</div>
 			</CollapsibleContent>
 		</Collapsible>
 	);
@@ -394,8 +396,14 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 						open={partOpenState[partKey] ?? false}
 						onOpenChange={(open) => onPartOpenChange(partKey, open)}
 					>
-						<ReasoningTrigger />
-						<ReasoningContent>{part.text}</ReasoningContent>
+						<ReasoningTrigger
+							className={insideProcess ? "px-2 py-1.5 text-xs" : undefined}
+						/>
+						<ReasoningContent
+							className={insideProcess ? "mt-2 px-2 pb-2" : undefined}
+						>
+							{part.text}
+						</ReasoningContent>
 					</Reasoning>
 				);
 			}
@@ -407,12 +415,17 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 				return (
 					<Plan
 						key={partKey}
-						className={insideProcess ? "mb-0" : "mb-2"}
+						className={cn(
+							"shadow-none",
+							insideProcess
+								? "mb-0 rounded-none border-0 bg-transparent"
+								: "mb-2",
+						)}
 						isStreaming={planStreaming}
 						open={partOpenState[partKey] ?? true}
 						onOpenChange={(open) => onPartOpenChange(partKey, open)}
 					>
-						<PlanHeader>
+						<PlanHeader className={insideProcess ? "px-2 py-2" : undefined}>
 							<div className="min-w-0 flex-1 space-y-1">
 								<PlanTitle>{t("plan.title")}</PlanTitle>
 								<PlanDescription>
@@ -427,7 +440,7 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 								<PlanTrigger />
 							</PlanAction>
 						</PlanHeader>
-						<PlanContent className="pt-0">
+						<PlanContent className={insideProcess ? "px-2 pb-2 pt-0" : "pt-0"}>
 							<ol className="space-y-2">
 								{plan.map((entry) => (
 									<PlanStep
@@ -459,11 +472,16 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 				return (
 					<Tool
 						key={partKey}
-						className={insideProcess ? "mb-0" : undefined}
+						className={
+							insideProcess
+								? "mb-0 rounded-none border-0 bg-transparent shadow-none"
+								: undefined
+						}
 						open={partOpenState[partKey] ?? askPending}
 						onOpenChange={(open) => onPartOpenChange(partKey, open)}
 					>
 						<ToolHeader
+							className={insideProcess ? "px-2 py-1.5" : undefined}
 							title={tool.title || t("tool.defaultTitle")}
 							type={`tool-${tool.kind}`}
 							state={state}
@@ -471,7 +489,9 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 						{askPending ? (
 							<AskUserToolPendingNote />
 						) : askUserQuestion ? null : (
-							<ToolContent>
+							<ToolContent
+								className={insideProcess ? "border-t-0 px-2 py-2" : undefined}
+							>
 								{tool.input !== undefined ? (
 									<ToolInput input={tool.input} />
 								) : null}
