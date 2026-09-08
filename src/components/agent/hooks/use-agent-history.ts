@@ -122,6 +122,15 @@ export async function hydrateSessionTitles(
 			if (generation !== historyGenRef.current) return;
 
 			const title = titleFromLoadedHistory(history);
+			const hasContent = history.lines.length > 0;
+			if (!title && !hasContent) {
+				// Drop ACP sessions that have neither a title nor any replayable
+				// content so the history drawer doesn't list empty rows.
+				setSessionHistory((prev) =>
+					prev.filter((s) => !(s.id === item.id && s.agentId === item.agentId)),
+				);
+				return;
+			}
 			if (!title) return;
 
 			setSessionHistory((prev) =>
@@ -472,6 +481,13 @@ export function useAgentHistory({
 						};
 					}),
 				);
+				if (nextLines.length === 0) {
+					nextLines.push({
+						id: nextLineId("sys"),
+						kind: "system",
+						text: t("messages.sessionEmpty"),
+					});
+				}
 				const firstUser = nextLines.find((l) => l.kind === "user");
 				const titleFromBody =
 					firstUser?.kind === "user"
