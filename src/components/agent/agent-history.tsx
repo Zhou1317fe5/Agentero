@@ -10,7 +10,7 @@ import {
 	PopoverTitle,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import type { ChatSessionHistoryItem } from "@/lib/agent/chat-state";
+import type { ChatLine, ChatSessionHistoryItem } from "@/lib/agent/chat-state";
 import { displayHistoryTitle } from "@/lib/agent/prompt-display";
 import { cn } from "@/lib/core/utils";
 
@@ -39,6 +39,10 @@ export function HistorySessionList({
 		<div className="max-h-72 overflow-y-auto p-1.5">
 			{sessionHistory.map((item) => {
 				const isActive = item.id === activeTabId;
+				const firstUserLine = item.lines.find(
+					(line): line is Extract<ChatLine, { kind: "user" }> =>
+						line.kind === "user",
+				);
 				return (
 					<button
 						key={item.id}
@@ -57,7 +61,12 @@ export function HistorySessionList({
 							{item.id.slice(0, 8)}
 						</span>
 						<span className="line-clamp-2 font-medium text-sm leading-snug">
-							{displayHistoryTitle(item.title, item.id.slice(0, 8))}
+							{displayHistoryTitle(
+								item.title,
+								firstUserLine
+									? displayHistoryTitle(firstUserLine.text, item.id.slice(0, 8))
+									: item.id.slice(0, 8),
+							)}
 						</span>
 						<span className="text-muted-foreground text-xs leading-none">
 							{item.startedAt}
