@@ -1,8 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
 import {
 	type AgentAcpDiagnostic_Serialize,
 	type AliasRepairCandidate_Serialize,
-	type ApiResult,
 	commands,
 	type DoctorIssue_Serialize,
 	type DoctorReport_Serialize,
@@ -14,7 +12,7 @@ import {
 	type WikilinkRepairResidual_Serialize,
 	type WikilinkRepairSuggestion_Serialize,
 } from "@/lib/core/bindings";
-import { callApi, callApiResult, type TypedResult } from "@/lib/core/ipc";
+import { callApi, callApiResult } from "@/lib/core/ipc";
 
 export type HostToolStatus = "available" | "missing" | "unusable";
 export type HostToolDiagnostic = {
@@ -66,9 +64,10 @@ export function doctorCheck(vaultPath: string): Promise<DoctorReport> {
 }
 
 export function doctorCheckHost(): Promise<HostDoctorReport> {
-	return callApiResult(() =>
-		invoke<TypedResult<ApiResult<HostDoctorReport>>>("doctor_check_host"),
-	);
+	// Must go through specta `typedError` (same as doctorCheckAgents). Raw
+	// `invoke` returns bare `ApiResult`, which `callApiResult` misreads as a
+	// failed TypedResult and surfaces the "Host command failed" fallback.
+	return callApiResult(() => commands.doctorCheckHost());
 }
 
 /** Re-probe every registered Agent over ACP; may take up to ~30s per agent. */
