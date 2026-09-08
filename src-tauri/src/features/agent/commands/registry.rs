@@ -286,6 +286,73 @@ pub async fn agent_run_tool_lifecycle(
     }
 }
 
+/// Silently uninstall only the host CLI, only the ACP adapter, or both for a
+/// catalog template. Like `agent_run_tool_lifecycle`, the Host scopes the work
+/// from PATH/state — the UI only passes a known template id and scope.
+#[tauri::command]
+#[specta::specta]
+pub async fn agent_run_partial_uninstall(
+    app: AppHandle,
+    registry: State<'_, AgentRegistry>,
+    template_id: String,
+    scope: String,
+    task_id: Option<String>,
+) -> Result<ApiResult<crate::core::json::JsonValue>, String> {
+    use crate::features::agent::registry::lifecycle::{
+        run_partial_template_uninstall, UninstallScope,
+    };
+
+    let scope_label = scope.clone();
+    let scope = match UninstallScope::parse(&scope) {
+        Ok(s) => s,
+        Err(e) => return Ok(map_err(AppError::message(e))),
+    };
+    let (proxy_enabled, proxy_url) = registry.proxy_settings().unwrap_or_default();
+    let template_id_for_log = template_id.clone();
+    let task_id_for_worker = task_id.clone();
+    let app_for_emit = app.clone();
+    let result = tokio::task::spawn_blocking(move || {
+        run_partial_template_uninstall(
+            &template_id,
+            scope,
+            Some(&app),
+            task_id_for_worker.as_deref(),
+            proxy_enabled,
+            &proxy_url,
+        )
+    })
+    .await
+    .map_err(|e| format!("partial uninstall task join error: {e}"))?;
+    if let Some(task_id) = task_id.as_deref() {
+        crate::features::agent::registry::lifecycle::clear_lifecycle_cancel(task_id);
+    }
+
+    match result {
+        Ok(()) => {
+            // Removing the host binary or everything means the registry entry is
+            // stale; drop it. Removing only the ACP adapter keeps the host usable.
+            if matches!(scope, UninstallScope::Agent | UninstallScope::All) {
+                if let Err(e) = registry.remove_catalog_template(&template_id_for_log) {
+                    return Ok(map_err(e));
+                }
+            }
+            log::info!(
+                target: "agentero::agent",
+                "partial_uninstall ok template={template_id_for_log} scope={scope_label}"
+            );
+            emit_registry_changed(&app_for_emit);
+            Ok(ApiResult::ok(crate::core::json::JsonValue::null()))
+        }
+        Err(e) => {
+            log::warn!(
+                target: "agentero::agent",
+                "partial_uninstall failed template={template_id_for_log} scope={scope_label}: {e}"
+            );
+            Ok(map_err(AppError::message(e)))
+        }
+    }
+}
+
 /// What a silent uninstall of this template would remove (npm commands and
 /// managed dirs); null when the template has no managed uninstall.
 #[tauri::command]

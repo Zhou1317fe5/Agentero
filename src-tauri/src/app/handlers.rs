@@ -151,6 +151,7 @@ pub fn attach_handlers(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<ta
             crate::integration::bridge::commands::bridge_devices,
             crate::integration::bridge::commands::bridge_revoke_device,
             crate::features::agent::commands::agent_run_tool_lifecycle,
+            crate::features::agent::commands::agent_run_partial_uninstall,
             crate::features::agent::commands::agent_lifecycle_cancel,
             crate::features::agent::commands::agent_tool_uninstall_info,
             crate::features::agent::commands::agent_run_once,
