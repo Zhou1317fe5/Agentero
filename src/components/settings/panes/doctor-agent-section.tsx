@@ -5,38 +5,79 @@ import { cn } from "@/lib/core/utils";
 import type { AgentAcpDiagnostic } from "@/lib/doctor/api";
 import { DoctorSection } from "./doctor-sections";
 
-function formatLocationVersion(
-	path?: string | null,
-	version?: string | null,
-): string | null {
-	const parts = [path?.trim() || null, version?.trim() || null].filter(Boolean);
-	return parts.length > 0 ? parts.join(" · ") : null;
-}
-
 function AgentCardShimmer() {
 	return (
 		<div className="rounded-xl border bg-card px-3.5 py-2.5" aria-hidden>
 			<div className="flex items-start gap-2.5">
 				<Skeleton className="library-shimmer mt-0.5 size-3.5 shrink-0 rounded-full" />
-				<div className="min-w-0 flex-1 space-y-2">
-					<div className="flex items-center justify-between gap-3">
-						<Skeleton className="library-shimmer h-3.5 w-28" />
+				<div className="min-w-0 flex-1 space-y-2.5">
+					<Skeleton className="library-shimmer h-3.5 w-28" />
+					<div className="grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2 gap-y-2">
+						<Skeleton className="library-shimmer h-3 w-10" />
+						<div className="space-y-1">
+							<Skeleton className="library-shimmer h-3 w-16" />
+							<Skeleton className="library-shimmer h-3 w-full" />
+						</div>
+						<Skeleton className="library-shimmer h-3 w-8" />
+						<div className="space-y-1">
+							<Skeleton className="library-shimmer h-3 w-14" />
+							<Skeleton className="library-shimmer h-3 w-5/6" />
+						</div>
+						<Skeleton className="library-shimmer h-3 w-8" />
 						<Skeleton className="library-shimmer h-3 w-12" />
 					</div>
-					<Skeleton className="library-shimmer h-3 w-4/5" />
-					<Skeleton className="library-shimmer h-3 w-3/4" />
-					<Skeleton className="library-shimmer h-3 w-1/3" />
 				</div>
 			</div>
 		</div>
 	);
 }
 
+function MetaRow({
+	label,
+	version,
+	path,
+	missingLabel,
+}: {
+	label: string;
+	version?: string | null;
+	path?: string | null;
+	missingLabel: string;
+}) {
+	const hasVersion = Boolean(version?.trim());
+	const hasPath = Boolean(path?.trim());
+	if (!hasVersion && !hasPath) {
+		return (
+			<>
+				<span className="text-foreground/70">{label}</span>
+				<span className="text-muted-foreground">{missingLabel}</span>
+			</>
+		);
+	}
+	return (
+		<>
+			<span className="pt-px text-foreground/70">{label}</span>
+			<div className="min-w-0">
+				{hasVersion ? (
+					<p className="truncate font-medium text-foreground text-xs tabular-nums">
+						{version}
+					</p>
+				) : null}
+				{hasPath ? (
+					<p
+						className="truncate text-muted-foreground"
+						title={path ?? undefined}
+					>
+						{path}
+					</p>
+				) : null}
+			</div>
+		</>
+	);
+}
+
 function AgentCard({ agent }: { agent: AgentAcpDiagnostic }) {
 	const { t } = useTranslation("settings");
 	const category = agent.failureCategory ?? "unknown";
-	const agentLine = formatLocationVersion(agent.agentPath, agent.agentVersion);
-	const acpLine = formatLocationVersion(agent.resolvedPath, agent.acpVersion);
 	const authStatus = agent.authStatus ?? "unknown";
 	return (
 		<div className="rounded-xl border bg-card px-3.5 py-2.5">
@@ -62,45 +103,42 @@ function AgentCard({ agent }: { agent: AgentAcpDiagnostic }) {
 								</span>
 							) : null}
 						</p>
-						<p
+						{!agent.ok ? (
+							<p className="shrink-0 text-amber-700 text-xs">
+								{t(`doctor.agent.categories.${category}`)}
+							</p>
+						) : null}
+					</div>
+					<div className="mt-2 grid grid-cols-[3rem_minmax(0,1fr)] gap-x-2 gap-y-1.5 text-xs leading-snug">
+						<MetaRow
+							label="Agent"
+							version={agent.agentVersion}
+							path={agent.agentPath}
+							missingLabel={t("doctor.agent.locationMissing")}
+						/>
+						<MetaRow
+							label="ACP"
+							version={agent.acpVersion}
+							path={agent.resolvedPath}
+							missingLabel={t("doctor.agent.locationMissing")}
+						/>
+						<span className="text-foreground/70">
+							{t("doctor.agent.authLabel")}
+						</span>
+						<span
 							className={cn(
-								"shrink-0 text-xs",
-								agent.ok ? "text-emerald-700" : "text-amber-700",
+								authStatus === "authenticated" && "text-emerald-700",
+								authStatus === "unauthenticated" && "text-amber-700",
+								authStatus !== "authenticated" &&
+									authStatus !== "unauthenticated" &&
+									"text-muted-foreground",
 							)}
 						>
-							{agent.ok
-								? t("doctor.agent.ready")
-								: t(`doctor.agent.categories.${category}`)}
-						</p>
-					</div>
-					<div className="mt-1.5 space-y-0.5 text-muted-foreground text-xs">
-						<p className="truncate" title={agentLine ?? undefined}>
-							<span className="text-foreground/70">Agent</span>
-							<span className="mx-1.5 text-border">·</span>
-							{agentLine ?? t("doctor.agent.locationMissing")}
-						</p>
-						<p className="truncate" title={acpLine ?? undefined}>
-							<span className="text-foreground/70">ACP</span>
-							<span className="mx-1.5 text-border">·</span>
-							{acpLine ?? t("doctor.agent.locationMissing")}
-						</p>
-						<p>
-							<span className="text-foreground/70">
-								{t("doctor.agent.authLabel")}
-							</span>
-							<span className="mx-1.5 text-border">·</span>
-							<span
-								className={cn(
-									authStatus === "authenticated" && "text-emerald-700",
-									authStatus === "unauthenticated" && "text-amber-700",
-								)}
-							>
-								{t(`doctor.agent.authStatus.${authStatus}`)}
-							</span>
-						</p>
+							{t(`doctor.agent.authStatus.${authStatus}`)}
+						</span>
 					</div>
 					{!agent.ok ? (
-						<div className="mt-1.5 space-y-0.5">
+						<div className="mt-2 space-y-0.5 border-border/50 border-t pt-2">
 							{agent.error ? (
 								<p className="whitespace-pre-wrap break-words text-xs">
 									{agent.error}
