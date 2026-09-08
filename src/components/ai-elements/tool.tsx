@@ -129,9 +129,11 @@ export const ToolHeader = ({
 			<span className="min-w-0 truncate font-medium text-xs">
 				{title ?? derivedName}
 			</span>
-			{state === "output-denied" || state === "output-error"
-				? getStatusBadge(state, t(statusLabelKeys[state]))
-				: null}
+			{state === "output-denied" || state === "output-error" ? (
+				<span className="ml-auto">
+					{getStatusBadge(state, t(statusLabelKeys[state]))}
+				</span>
+			) : null}
 		</CollapsibleTrigger>
 	);
 };
