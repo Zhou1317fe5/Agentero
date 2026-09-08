@@ -349,10 +349,13 @@
 		},
 		"uninstallDialog": {
 			"title": "Uninstall {{name}}?",
-			"lead": "Agentero will run the following uninstall steps:",
+			"lead": "Choose what to remove:",
+			"removeAgent": "Remove Agent CLI",
+			"removeAcp": "Remove ACP adapter",
 			"dirsLabel": "Directories to delete",
 			"copyAria": "Copy to clipboard",
 			"registryOnly": "Only the Agentero registry entry will be removed; installed files stay on disk.",
+			"customConfirm": "Remove this custom agent from Agentero?",
 			"confirm": "Uninstall"
 		},
 		"remote": {

@@ -229,7 +229,7 @@ export function AgentPane({
 				}
 				info={uninstallTarget?.kind === "catalog" ? uninstallTarget.info : null}
 				busy={uninstallBusy}
-				onConfirm={() => void onUninstallConfirm()}
+				onConfirm={(scope) => void onUninstallConfirm(scope)}
 				onCancel={() => setUninstallTarget(null)}
 			/>
 		</>

@@ -394,6 +394,12 @@ export const commands = {
 	 */
 	agentRunToolLifecycle: (templateId: string, action: string, taskId: string | null) => typedError<ApiResult<Json>, string>(__TAURI_INVOKE("agent_run_tool_lifecycle", { templateId, action, taskId })),
 	/**
+	 *  Silently uninstall only the host CLI, only the ACP adapter, or both for a
+	 *  catalog template. Like `agent_run_tool_lifecycle`, the Host scopes the work
+	 *  from PATH/state — the UI only passes a known template id and scope.
+	 */
+	agentRunPartialUninstall: (templateId: string, scope: string, taskId: string | null) => typedError<ApiResult<Json>, string>(__TAURI_INVOKE("agent_run_partial_uninstall", { templateId, scope, taskId })),
+	/**
 	 *  Request cooperative cancellation of an in-flight tool lifecycle run; the
 	 *  Host supervision loop kills the installer child process.
 	 */
@@ -4390,12 +4396,17 @@ export type TrashVaultArgs = {
 /**
  *  What a silent uninstall would remove for a catalog template.
  * 
- *  `npm_commands` are complete `npm uninstall` invocations (including the
- *  `--prefix` mirroring install); `dirs` are Agentero-managed directories.
+ *  `agent` covers the host CLI / main binary; `acp` covers the ACP adapter.
  *  `None` means the template has no managed uninstall (e.g. hermes installs
  *  via an official script we cannot reverse).
  */
 export type UninstallInfo = {
+	agent: UninstallScopeInfo,
+	acp: UninstallScopeInfo,
+};
+
+/**  Per-scope uninstall payload (host CLI vs ACP adapter). */
+export type UninstallScopeInfo = {
 	npmCommands: string[],
 	dirs: string[],
 };
