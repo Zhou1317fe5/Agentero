@@ -504,10 +504,7 @@ mod tests {
             ]
         );
         // Non-GitHub hosts are never mirrored.
-        assert_eq!(
-            github_url_candidates("https://example.com/x").len(),
-            1
-        );
+        assert_eq!(github_url_candidates("https://example.com/x").len(), 1);
         configure_github_mirror(false, "").unwrap();
     }
 
@@ -519,7 +516,9 @@ mod tests {
         assert!(should_fallback_github_status(
             reqwest::StatusCode::BAD_GATEWAY
         ));
-        assert!(!should_fallback_github_status(reqwest::StatusCode::NOT_FOUND));
+        assert!(!should_fallback_github_status(
+            reqwest::StatusCode::NOT_FOUND
+        ));
         assert!(!should_fallback_github_status(
             reqwest::StatusCode::FORBIDDEN
         ));

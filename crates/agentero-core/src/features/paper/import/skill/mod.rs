@@ -73,12 +73,9 @@ pub async fn discover_skill_source(
         urlencoding::encode(&reference)
     );
     let aggregator = AssetProgressAggregator::single(app, task_id, "skill");
-    let archive = fetch_archive_with_mirror_fallback(
-        &archive_url,
-        Duration::from_secs(120),
-        aggregator,
-    )
-    .await?;
+    let archive =
+        fetch_archive_with_mirror_fallback(&archive_url, Duration::from_secs(120), aggregator)
+            .await?;
     if archive.len() > MAX_ARCHIVE_BYTES {
         return Err(AppError::message("skill archive is too large"));
     }
@@ -116,8 +113,8 @@ async fn default_branch(owner: &str, repo: &str) -> Result<String, AppError> {
         match default_branch_once(url).await {
             Ok(branch) => return Ok(branch),
             Err(err) => {
-                let retry = index + 1 < candidates.len()
-                    && crate::http::should_fallback_github_error(&err);
+                let retry =
+                    index + 1 < candidates.len() && crate::http::should_fallback_github_error(&err);
                 if retry {
                     log::warn!(
                         target: "agentero::skill",
@@ -173,8 +170,8 @@ async fn fetch_archive_with_mirror_fallback(
         match http_get_bytes_with_progress(url, timeout, None, aggregator.stream(0)).await {
             Ok(bytes) => return Ok(bytes),
             Err(err) => {
-                let retry = index + 1 < candidates.len()
-                    && crate::http::should_fallback_github_error(&err);
+                let retry =
+                    index + 1 < candidates.len() && crate::http::should_fallback_github_error(&err);
                 if retry {
                     log::warn!(
                         target: "agentero::skill",
