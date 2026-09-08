@@ -45,7 +45,10 @@ export function DoctorPane({
 	const [agentError, setAgentError] = useState<string | null>(null);
 	const [vaultError, setVaultError] = useState<string | null>(null);
 	const [loading, setLoading] = useState(false);
-	const [agentsLoading, setAgentsLoading] = useState(false);
+	// Start true for local so the first paint shows shimmer instead of "none".
+	const [agentsLoading, setAgentsLoading] = useState(
+		() => hostContext.kind !== "remote",
+	);
 	const [wikiPlanning, setWikiPlanning] = useState(false);
 
 	const refresh = useCallback(async () => {

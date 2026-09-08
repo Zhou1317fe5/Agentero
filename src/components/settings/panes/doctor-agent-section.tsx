@@ -1,5 +1,6 @@
 import { CheckCircle2, Loader2, TriangleAlert } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/core/utils";
 import type { AgentAcpDiagnostic } from "@/lib/doctor/api";
 import { DoctorSection } from "./doctor-sections";
@@ -10,6 +11,25 @@ function formatLocationVersion(
 ): string | null {
 	const parts = [path?.trim() || null, version?.trim() || null].filter(Boolean);
 	return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function AgentCardShimmer() {
+	return (
+		<div className="rounded-xl border bg-card px-3.5 py-2.5" aria-hidden>
+			<div className="flex items-start gap-2.5">
+				<Skeleton className="library-shimmer mt-0.5 size-3.5 shrink-0 rounded-full" />
+				<div className="min-w-0 flex-1 space-y-2">
+					<div className="flex items-center justify-between gap-3">
+						<Skeleton className="library-shimmer h-3.5 w-28" />
+						<Skeleton className="library-shimmer h-3 w-12" />
+					</div>
+					<Skeleton className="library-shimmer h-3 w-4/5" />
+					<Skeleton className="library-shimmer h-3 w-3/4" />
+					<Skeleton className="library-shimmer h-3 w-1/3" />
+				</div>
+			</div>
+		</div>
+	);
 }
 
 function AgentCard({ agent }: { agent: AgentAcpDiagnostic }) {
@@ -108,6 +128,9 @@ export function DoctorAgentSection({
 }) {
 	const { t } = useTranslation("settings");
 	const failed = error ? 1 : (report?.filter((agent) => !agent.ok).length ?? 0);
+	const hasAgents = Boolean(report && report.length > 0);
+	// While probing with nothing useful to show, prefer shimmer over "none".
+	const showShimmer = loading && !error && !hasAgents;
 	return (
 		<DoctorSection
 			title={t("doctor.sections.agents")}
@@ -116,7 +139,7 @@ export function DoctorAgentSection({
 			issueCount={failed}
 			framed={false}
 			action={
-				loading && (report || error) ? (
+				loading && hasAgents ? (
 					<Loader2
 						className="size-3.5 animate-spin text-muted-foreground"
 						aria-hidden
@@ -136,19 +159,19 @@ export function DoctorAgentSection({
 						</p>
 					</div>
 				</div>
-			) : loading && !report ? (
-				<div className="flex items-center gap-2.5 rounded-xl border bg-card px-3.5 py-2.5">
-					<Loader2
-						className="size-3.5 animate-spin text-muted-foreground"
-						aria-hidden
-					/>
-					<p className="text-muted-foreground text-xs">
-						{t("doctor.agent.probing")}
-					</p>
+			) : showShimmer ? (
+				<div
+					className="flex flex-col gap-2"
+					role="status"
+					aria-busy="true"
+					aria-label={t("doctor.agent.probing")}
+				>
+					<AgentCardShimmer />
+					<AgentCardShimmer />
 				</div>
-			) : report && report.length > 0 ? (
+			) : hasAgents ? (
 				<div className="flex flex-col gap-2">
-					{report.map((agent) => (
+					{report?.map((agent) => (
 						<AgentCard key={agent.agentId} agent={agent} />
 					))}
 				</div>
