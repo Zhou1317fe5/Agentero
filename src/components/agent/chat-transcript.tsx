@@ -154,9 +154,7 @@ function AgentProcessCollapsible({
 				/>
 			</CollapsibleTrigger>
 			<CollapsibleContent className="p-2">
-				<div className="flex flex-col divide-y divide-border/60">
-					{children}
-				</div>
+				<div className="flex flex-col gap-1">{children}</div>
 			</CollapsibleContent>
 		</Collapsible>
 	);
@@ -398,6 +396,7 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 					>
 						<ReasoningTrigger
 							className={insideProcess ? "px-2 py-1.5 text-xs" : undefined}
+							swapIconOnHover={insideProcess}
 						/>
 						<ReasoningContent
 							className={insideProcess ? "mt-2 px-2 pb-2" : undefined}

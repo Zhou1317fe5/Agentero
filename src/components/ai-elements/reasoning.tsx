@@ -138,6 +138,7 @@ export type ReasoningTriggerProps = ComponentProps<
 	typeof CollapsibleTrigger
 > & {
 	getThinkingMessage?: (isStreaming: boolean) => ReactNode;
+	swapIconOnHover?: boolean;
 };
 
 export const ReasoningTrigger = memo(
@@ -145,6 +146,7 @@ export const ReasoningTrigger = memo(
 		className,
 		children,
 		getThinkingMessage,
+		swapIconOnHover = false,
 		...props
 	}: ReasoningTriggerProps) => {
 		const { t } = useTranslation("aiElements");
@@ -166,22 +168,43 @@ export const ReasoningTrigger = memo(
 			<CollapsibleTrigger
 				className={cn(
 					"flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+					swapIconOnHover && "group/reasoning-trigger",
 					className,
 				)}
 				{...props}
 			>
-				{children ?? (
-					<>
-						<BrainIcon className="size-4" />
-						{renderThinkingMessage(isStreaming)}
-						<ChevronDownIcon
-							className={cn(
-								"size-4 transition-transform",
-								isOpen ? "rotate-180" : "rotate-0",
-							)}
-						/>
-					</>
-				)}
+				{children ??
+					(swapIconOnHover ? (
+						<>
+							<span className="relative flex size-4 shrink-0 items-center justify-center">
+								<ChevronDownIcon
+									className={cn(
+										"absolute size-4 text-muted-foreground opacity-0 transition-all",
+										"group-hover/reasoning-trigger:opacity-100",
+										"-rotate-90 group-data-[state=open]/reasoning-trigger:rotate-0",
+									)}
+								/>
+								<BrainIcon
+									className={cn(
+										"absolute size-4 text-muted-foreground transition-opacity",
+										"group-hover/reasoning-trigger:opacity-0",
+									)}
+								/>
+							</span>
+							{renderThinkingMessage(isStreaming)}
+						</>
+					) : (
+						<>
+							<BrainIcon className="size-4" />
+							{renderThinkingMessage(isStreaming)}
+							<ChevronDownIcon
+								className={cn(
+									"size-4 transition-transform",
+									isOpen ? "rotate-180" : "rotate-0",
+								)}
+							/>
+						</>
+					))}
 			</CollapsibleTrigger>
 		);
 	},
