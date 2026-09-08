@@ -146,7 +146,8 @@ describe("mergeImportedSessions", () => {
 		);
 
 		expect(sessions).toHaveLength(1);
-		expect(sessions[0].title).toBe("s1");
+		// Empty until hydration / open — never seed with the session-id prefix (#484).
+		expect(sessions[0].title).toBe("");
 		expect(hydrationCandidates).toHaveLength(1);
 		expect(hydrationCandidates[0].id).toBe("s1");
 	});
@@ -169,7 +170,7 @@ describe("mergeImportedSessions", () => {
 		expect(hydrationCandidates).toHaveLength(0);
 	});
 
-	it("keeps existing local title when session has lines", () => {
+	it("derives title from first local user turn when ACP title is empty", () => {
 		const prev = [
 			makeRecord({
 				id: "s1",
@@ -195,16 +196,43 @@ describe("mergeImportedSessions", () => {
 			"zh-CN",
 		);
 
-		expect(sessions[0].title).toBe("Local title");
+		expect(sessions[0].title).toBe("local question");
 		expect(hydrationCandidates).toHaveLength(0);
 	});
 
-	it("flags existing local sessions without lines when ACP title is empty", () => {
+	it("drops session-id placeholder titles and flags for hydration", () => {
+		const prev = [
+			makeRecord({
+				id: "s1abcdef",
+				source: "local",
+				title: "s1abcdef".slice(0, 8),
+				lines: [],
+				providerSessionId: "s1abcdef",
+			}),
+		];
+		const chatSessions = [
+			makeAcpSession({ sessionId: "s1abcdef", title: null }),
+		];
+
+		const { sessions, hydrationCandidates } = mergeImportedSessions(
+			prev,
+			chatSessions,
+			"agent-1",
+			"Agent",
+			"zh-CN",
+		);
+
+		expect(sessions[0].title).toBe("");
+		expect(hydrationCandidates).toHaveLength(1);
+		expect(hydrationCandidates[0].id).toBe("s1abcdef");
+	});
+
+	it("keeps a prior human title when there are no lines and ACP title is empty", () => {
 		const prev = [
 			makeRecord({
 				id: "s1",
-				source: "local",
-				title: "s1",
+				source: "external",
+				title: "Earlier hydrated title",
 				lines: [],
 				providerSessionId: "s1",
 			}),
@@ -219,9 +247,8 @@ describe("mergeImportedSessions", () => {
 			"zh-CN",
 		);
 
-		expect(sessions[0].title).toBe("s1");
-		expect(hydrationCandidates).toHaveLength(1);
-		expect(hydrationCandidates[0].id).toBe("s1");
+		expect(sessions[0].title).toBe("Earlier hydrated title");
+		expect(hydrationCandidates).toHaveLength(0);
 	});
 });
 

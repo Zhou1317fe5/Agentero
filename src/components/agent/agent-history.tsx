@@ -62,10 +62,8 @@ export function HistorySessionList({
 						</span>
 						<span className="line-clamp-2 font-medium text-sm leading-snug">
 							{displayHistoryTitle(
-								item.title,
-								firstUserLine
-									? displayHistoryTitle(firstUserLine.text, item.id.slice(0, 8))
-									: item.id.slice(0, 8),
+								item.title || firstUserLine?.text || "",
+								item.id.slice(0, 8),
 							)}
 						</span>
 						<span className="text-muted-foreground text-xs leading-none">

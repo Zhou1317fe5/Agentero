@@ -79,6 +79,23 @@ export function titleFromLoadedHistory(history: AcpLoadSessionResult): string {
 	return displayHistoryTitle(history.title ?? "");
 }
 
+/** First user-turn label from already-hydrated local lines (empty if none). */
+export function titleFromSessionLines(
+	lines: AgentSessionRecord["lines"],
+): string {
+	const firstUser = lines.find((line) => line.kind === "user");
+	if (!firstUser) return "";
+	return displayHistoryTitle(firstUser.text, "");
+}
+
+/** True when `title` is just the session-id prefix placeholder (#484). */
+function isSessionIdPrefixTitle(title: string, sessionId: string): boolean {
+	const trimmed = title.trim();
+	if (!trimmed) return false;
+	const prefix = sessionId.trim().slice(0, 8);
+	return Boolean(prefix) && trimmed === prefix;
+}
+
 type HydrateTitleOptions = {
 	generation: number;
 	historyGenRef: { current: number };
@@ -180,11 +197,19 @@ export function mergeImportedSessions(
 		const startedAt = session.updatedAt
 			? new Date(session.updatedAt).toLocaleString(i18nLanguage)
 			: "";
-		const acpTitle = session.title ?? "";
-		const titleFallback = session.sessionId.slice(0, 8);
+		const acpTitle = session.title?.trim() ?? "";
+		// Prefer ACP title → first local user turn → keep a prior human title.
+		// Never seed with the session-id prefix: that blocks HistorySessionList's
+		// user-prompt fallback (#484) because displayHistoryTitle treats any
+		// non-empty string as a real title.
+		const fromLines = current ? titleFromSessionLines(current.lines) : "";
+		const priorTitle = current?.title?.trim() ?? "";
 		const title = acpTitle
-			? displayHistoryTitle(acpTitle, titleFallback)
-			: titleFallback;
+			? displayHistoryTitle(acpTitle, "")
+			: fromLines ||
+				(priorTitle && !isSessionIdPrefixTitle(priorTitle, session.sessionId)
+					? priorTitle
+					: "");
 
 		if (current) {
 			const record: AgentSessionRecord = {
@@ -194,11 +219,11 @@ export function mergeImportedSessions(
 						? ("local" as const)
 						: ("external" as const),
 				agentName,
-				title: current.lines.length > 0 ? current.title : title,
+				title,
 				startedAt: current.startedAt || startedAt,
 				providerSessionId: session.sessionId,
 			};
-			if (!acpTitle && current.lines.length === 0) {
+			if (!acpTitle && !title && current.lines.length === 0) {
 				hydrationCandidates.push(record);
 			}
 			return record;
