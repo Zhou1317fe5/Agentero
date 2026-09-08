@@ -30,6 +30,7 @@ import { cn } from "@/lib/core/utils";
 import { normalizeMarkdownMath } from "@/lib/markdown/math-normalize";
 
 import { ExternalLink } from "./external-link";
+import { PlainTable } from "./plain-table";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
 	from: UIMessage["role"];
@@ -353,7 +354,7 @@ export const MessageResponse = memo(
 					"w-full min-w-0 select-text text-base leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
 					className,
 				)}
-				components={{ a: ExternalLink }}
+				components={{ a: ExternalLink, table: PlainTable }}
 				linkSafety={{ enabled: false }}
 				plugins={streamdownPlugins}
 				{...props}

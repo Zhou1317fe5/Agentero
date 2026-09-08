@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/core/utils";
 
 import { ExternalLink } from "./external-link";
+import { PlainTable } from "./plain-table";
 import { Shimmer } from "./shimmer";
 
 interface ReasoningContextValue {
@@ -234,7 +235,7 @@ export const ReasoningContent = memo(
 			{...props}
 		>
 			<Streamdown
-				components={{ a: ExternalLink }}
+				components={{ a: ExternalLink, table: PlainTable }}
 				linkSafety={{ enabled: false }}
 				plugins={streamdownPlugins}
 			>
