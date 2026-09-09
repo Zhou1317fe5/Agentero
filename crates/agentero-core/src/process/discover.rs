@@ -174,6 +174,9 @@ pub fn probe_command(command: &str) -> Result<PathBuf, String> {
 static LOGIN_SHELL_ENV: OnceLock<Option<HashMap<String, String>>> = OnceLock::new();
 
 /// Parse `env -0` output (null-separated `key=value` entries).
+// Only the unix `login_shell_env` calls this; Windows keeps it compiled for
+// the cross-platform unit tests.
+#[cfg_attr(windows, allow(dead_code))]
 fn parse_env_zero(output: &[u8]) -> HashMap<String, String> {
     let mut map = HashMap::new();
     for chunk in output.split(|&b| b == 0) {
