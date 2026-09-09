@@ -409,6 +409,14 @@ export const commands = {
 	 *  managed dirs); null when the template has no managed uninstall.
 	 */
 	agentToolUninstallInfo: (templateId: string) => __TAURI_INVOKE<ApiResult<UninstallInfo | null>>("agent_tool_uninstall_info", { templateId }),
+	/**
+	 *  Open the system terminal at the agent's interactive terminal login
+	 *  (Antigravity / agy-acp: `<command> <args...> --login`). Used when a run
+	 *  fails with the ACP auth-required error: the login TUI closes itself once
+	 *  `agy models` succeeds, then the user retries the prompt in chat. The
+	 *  terminal uses the usual Enter-to-confirm UX (nothing runs silently).
+	 */
+	agentLoginTerminal: (id: string) => __TAURI_INVOKE<ApiResult<boolean>>("agent_login_terminal", { id }),
 	agentRunOnce: (request: RunOnceRequest_Deserialize) => typedError<ApiResult<RunOnceAccepted>, string>(__TAURI_INVOKE("agent_run_once", { request })),
 	/**  List ACP sessions for an agent via `session/list`. */
 	agentListSessions: (agentId: string | null, vaultPath: string | null, cursor: string | null) => typedError<ApiResult<AcpListSessionsResult_Serialize>, string>(__TAURI_INVOKE("agent_list_sessions", { agentId, vaultPath, cursor })),

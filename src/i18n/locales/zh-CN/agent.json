@@ -173,6 +173,12 @@
 		"emptyNoneCustom": "暂无模型。可在上方输入模型 id 以使用第三方模型。",
 		"emptyNoMatch": "无匹配项。输入完整模型 id 可作为自定义模型使用。"
 	},
+	"agentAuth": {
+		"required": "需要登录 Antigravity",
+		"hint": "在弹出的终端窗口完成登录（成功后窗口自动关闭），然后重新发送消息。",
+		"login": "去登录",
+		"opened": "已打开登录终端"
+	},
 	"messages": {
 		"cancelled": "已停止当前运行。",
 		"desktopOnly": "请打开桌面应用以运行 Agent。",

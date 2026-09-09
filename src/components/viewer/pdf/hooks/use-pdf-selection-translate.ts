@@ -37,6 +37,7 @@ import type { PdfViewerProps } from "@/components/viewer/pdf/types";
 import {
 	attachAgentRun,
 	cancelAgentRun,
+	displayAgentError,
 	disposeAgentRun,
 	listAgents,
 	runOnce,
@@ -319,7 +320,9 @@ export function usePdfSelectionTranslate({
 							},
 							onFailed: (ev) => {
 								evictAgentTranslateSessionId(paperKey, agentId, modelId);
-								const msg = ev.error || t("pdfAsk.agentFailed");
+								const msg = ev.error
+									? displayAgentError(ev.error)
+									: t("pdfAsk.agentFailed");
 								notifyError(msg);
 								markTranslateFailure(rec.id, msg);
 							},

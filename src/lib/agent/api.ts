@@ -489,6 +489,30 @@ export async function toolUninstallInfo(
 	);
 }
 
+/** Host prefixes ACP auth-required failures with this marker + `agent=<id>`. */
+const AGENT_AUTH_REQUIRED_MARKER = "AGENT_AUTH_REQUIRED";
+
+/** Parse the Host auth-required marker; null for ordinary failures. */
+export function parseAgentAuthRequired(
+	error: string,
+): { agentId: string | null } | null {
+	if (!error.startsWith(AGENT_AUTH_REQUIRED_MARKER)) return null;
+	const m = /^AGENT_AUTH_REQUIRED agent=(\S*)/.exec(error);
+	return { agentId: m?.[1] || null };
+}
+
+/** User-facing text for agent failures (i18n for auth-required, raw else). */
+export function displayAgentError(error: string): string {
+	return parseAgentAuthRequired(error)
+		? i18n.t("agent:agentAuth.required")
+		: error;
+}
+
+/** Open the system terminal for the agent's interactive sign-in (Antigravity). */
+export async function agentLoginTerminal(agentId: string): Promise<boolean> {
+	return callApi(() => commands.agentLoginTerminal(agentId), AGENT_CALL_OPTS);
+}
+
 /**
  * Silently uninstall a catalog Agent CLI, its ACP adapter, or both. Host only
  * allows known templates — no free-form shell from the UI.
