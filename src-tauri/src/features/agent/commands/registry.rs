@@ -398,7 +398,15 @@ pub fn agent_login_terminal(registry: State<'_, AgentRegistry>, id: String) -> A
         ));
     }
     let mut parts: Vec<String> = Vec::with_capacity(desc.args.len() + 2);
-    parts.push(desc.command.clone());
+    // Resolve against the agent env (merged login-shell PATH) so the terminal
+    // line works even when a fresh terminal's PATH lacks the npm shim dir
+    // (e.g. portable node installs on another drive).
+    let env = crate::features::agent::acp::client::effective_local_agent_env(&desc);
+    let command =
+        crate::features::agent::acp::client::resolve_command_in_agent_env(&desc.command, &env)
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|| desc.command.clone());
+    parts.push(command);
     parts.extend(desc.args.iter().cloned());
     parts.push("--login".to_string());
     let line = parts

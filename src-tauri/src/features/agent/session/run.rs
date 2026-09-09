@@ -124,7 +124,9 @@ fn emit_run_failed(
     error: &impl std::fmt::Display,
 ) {
     let raw = error.to_string();
-    let text = if is_auth_required_error(&raw) {
+    let text = if raw.starts_with(AUTH_REQUIRED_PREFIX) {
+        raw
+    } else if is_auth_required_error(&raw) {
         format!(
             "{AUTH_REQUIRED_PREFIX} agent={} {raw}",
             agent_id.unwrap_or_default()
@@ -905,7 +907,14 @@ pub async fn run_once(params: RunOnceParams) -> Result<AgentResultPayload, AppEr
     match run_result {
         Ok(payload) => Ok(payload),
         Err(e) => {
-            let msg = e.to_string();
+            let raw = e.to_string();
+            // Mark command-level rejections too: some frontend paths surface
+            // the invoke error directly instead of the `agent:failed` event.
+            let msg = if is_auth_required_error(&raw) {
+                format!("{AUTH_REQUIRED_PREFIX} agent={} {raw}", state.agent_id)
+            } else {
+                raw
+            };
             state.coalescer.flush();
             emit_run_failed(&state.app, &state.session_id, Some(&state.agent_id), &msg);
             Err(AppError::domain("acp", format!("acp: {msg}")))

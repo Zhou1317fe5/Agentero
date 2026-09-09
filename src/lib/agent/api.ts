@@ -489,16 +489,14 @@ export async function toolUninstallInfo(
 	);
 }
 
-/** Host prefixes ACP auth-required failures with this marker + `agent=<id>`. */
-const AGENT_AUTH_REQUIRED_MARKER = "AGENT_AUTH_REQUIRED";
-
 /** Parse the Host auth-required marker; null for ordinary failures. */
 export function parseAgentAuthRequired(
 	error: string,
 ): { agentId: string | null } | null {
-	if (!error.startsWith(AGENT_AUTH_REQUIRED_MARKER)) return null;
-	const m = /^AGENT_AUTH_REQUIRED agent=(\S*)/.exec(error);
-	return { agentId: m?.[1] || null };
+	// Unanchored: the marker also appears inside command-level error strings
+	// prefixed with `acp: `.
+	const m = /AGENT_AUTH_REQUIRED agent=(\S*)/.exec(error);
+	return m ? { agentId: m[1] || null } : null;
 }
 
 /** User-facing text for agent failures (i18n for auth-required, raw else). */
