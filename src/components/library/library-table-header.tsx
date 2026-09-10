@@ -125,6 +125,10 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 	}, [compact]);
 
 	const showActions = !compact;
+	/** Fade chrome in place (keeps h-9); hide quick, restore a touch slower. */
+	const chromeFadeClass = showActions
+		? "opacity-100 duration-300"
+		: "pointer-events-none opacity-0 duration-150";
 	const canFetchRanks = Boolean(vaultPath) && !rankBusy && papers.length > 0;
 
 	const fetchAllRanks = async () => {
@@ -229,7 +233,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 										setDragOverKey(null);
 									}}
 								>
-									{/* Fixed h-9 so compact (hide search/actions) never changes header height. */}
+									{/* Fixed h-9 so compact fade never changes header height. */}
 									<div className="flex h-9 min-w-0 items-center gap-1 px-3">
 										<button
 											type="button"
@@ -245,12 +249,25 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 											})}
 										>
 											<span className="truncate">{t(meta.labelKey)}</span>
-											{showActions || active ? (
+											<span
+												className={cn(
+													"inline-flex transition-opacity ease-out",
+													showActions || active
+														? "opacity-100 duration-300"
+														: "opacity-0 duration-150",
+												)}
+												aria-hidden={!showActions && !active}
+											>
 												<SortIcon active={active} dir={sortDir} />
-											) : null}
-											{!showActions && isTags && tagFilterActive ? (
+											</span>
+											{isTags ? (
 												<span
-													className="size-1.5 shrink-0 rounded-full bg-primary"
+													className={cn(
+														"size-1.5 shrink-0 rounded-full bg-primary transition-opacity ease-out",
+														!showActions && tagFilterActive
+															? "opacity-100 duration-300"
+															: "opacity-0 duration-150",
+													)}
 													aria-hidden
 												/>
 											) : null}
@@ -258,9 +275,8 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 										{isTitle && searchEnabled ? (
 											<div
 												className={cn(
-													"relative ml-1 min-w-0 flex-1",
-													!showActions &&
-														"invisible max-w-0 flex-none overflow-hidden pointer-events-none",
+													"relative ml-1 min-w-0 flex-1 transition-opacity ease-out",
+													chromeFadeClass,
 												)}
 												aria-hidden={!showActions}
 											>
@@ -289,12 +305,11 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 														data-library-header-action
 														tabIndex={showActions ? undefined : -1}
 														className={cn(
-															"flex shrink-0 items-center justify-center rounded-sm",
+															"ml-1 flex size-6 shrink-0 items-center justify-center rounded-sm",
 															"hover:bg-muted/60 hover:text-foreground",
 															"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-															showActions
-																? "ml-1 size-6"
-																: "invisible size-0 overflow-hidden pointer-events-none",
+															"transition-opacity ease-out",
+															chromeFadeClass,
 														)}
 														aria-hidden={!showActions}
 														aria-label={t("papersLibrary.refreshMetadata")}
@@ -319,16 +334,16 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 														<button
 															type="button"
 															data-library-header-action
-															disabled={!canFetchRanks || !showActions}
+															disabled={!canFetchRanks}
 															tabIndex={showActions ? undefined : -1}
 															className={cn(
-																"flex shrink-0 items-center justify-center rounded-sm",
+																"ml-1 flex size-6 shrink-0 items-center justify-center rounded-sm",
 																"hover:bg-muted/60 hover:text-foreground",
 																"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-																"disabled:pointer-events-none disabled:opacity-50",
-																showActions
-																	? "ml-1 size-6"
-																	: "invisible size-0 overflow-hidden pointer-events-none",
+																"disabled:pointer-events-none",
+																showActions && "disabled:opacity-50",
+																"transition-opacity ease-out",
+																chromeFadeClass,
 															)}
 															aria-hidden={!showActions}
 															aria-label={t(
@@ -363,14 +378,13 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 																	data-library-header-action
 																	tabIndex={showActions ? undefined : -1}
 																	className={cn(
-																		"flex shrink-0 items-center justify-center rounded-sm",
+																		"ml-auto flex size-6 shrink-0 items-center justify-center rounded-sm",
 																		"hover:bg-muted/60 hover:text-foreground",
 																		"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-																		showActions
-																			? "ml-auto size-6"
-																			: "invisible size-0 overflow-hidden pointer-events-none",
-																		showActions &&
-																			tagFilterActive &&
+																		"transition-opacity ease-out",
+																		chromeFadeClass,
+																		tagFilterActive &&
+																			showActions &&
 																			"bg-muted/60 text-foreground",
 																	)}
 																	aria-hidden={!showActions}
