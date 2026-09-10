@@ -32,6 +32,8 @@
 | `custom_agent_count` | 已注册的自定义 Agent 数量（不含名称/命令） |
 | `$session_id` | 本次运行生成的 UUID（PostHog 保留属性，Sessions 口径依赖它） |
 
+> Windows 的 `device_model` 走 `reg query`，该子进程必须带 `CREATE_NO_WINDOW`。发布版是 GUI 子系统二进制，缺这个 flag 时 Windows 会为它分配可见控制台窗口，表现为每次启动都在首帧前闪一下黑窗（`app started` 在 setup 后 `spawn_blocking` 发送，与窗口首帧时间上重叠）。
+
 Person 属性：`$set` → `app_version` / `os_name` / `os_version` / `arch` / `device_model` / `installed_agents` / `custom_agent_count`；`$set_once` → `first_app_version`。`installed_agents` 随每次启动更新，可直接在 PostHog 按 Agent 过滤 / 分群。
 
 ### `app exited`（`RunEvent::Exit` 回调中发送并 flush）
