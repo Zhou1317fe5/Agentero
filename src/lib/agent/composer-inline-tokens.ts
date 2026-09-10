@@ -1,12 +1,13 @@
 /**
- * Inline @mention / $skill tokens embedded in composer draft text.
- * Contenteditable renders markers as chips; send path strips them from the
- * user-visible body and reads paths / skill ids from the markers.
+ * Inline @mention / $skill / /command tokens embedded in composer draft text.
+ * Contenteditable renders markers as chips; send path strips mention/skill
+ * markers and expands command markers to `/name` for ACP.
  */
 
 const MENTION_RE = /\{\{m:([^}]+)\}\}/g;
 const SKILL_RE = /\{\{s:([^}]+)\}\}/g;
-const ANY_TOKEN_RE = /\{\{(?:m|s):[^}]+\}\}/g;
+const COMMAND_RE = /\{\{c:([^}]+)\}\}/g;
+const ANY_TOKEN_RE = /\{\{(?:m|s|c):[^}]+\}\}/g;
 
 export function encodeMentionToken(path: string): string {
 	return `{{m:${encodeURIComponent(path)}}}`;
@@ -16,7 +17,11 @@ export function encodeSkillToken(skillId: string): string {
 	return `{{s:${encodeURIComponent(skillId)}}}`;
 }
 
-export function decodeMentionTokenPayload(payload: string): string {
+export function encodeCommandToken(commandName: string): string {
+	return `{{c:${encodeURIComponent(commandName)}}}`;
+}
+
+function decodePayload(payload: string): string {
 	try {
 		return decodeURIComponent(payload);
 	} catch {
@@ -24,12 +29,16 @@ export function decodeMentionTokenPayload(payload: string): string {
 	}
 }
 
+export function decodeMentionTokenPayload(payload: string): string {
+	return decodePayload(payload);
+}
+
 export function decodeSkillTokenPayload(payload: string): string {
-	try {
-		return decodeURIComponent(payload);
-	} catch {
-		return payload;
-	}
+	return decodePayload(payload);
+}
+
+export function decodeCommandTokenPayload(payload: string): string {
+	return decodePayload(payload);
 }
 
 /** Paths in document order (duplicates kept once, first wins). */
@@ -58,10 +67,18 @@ export function extractSkillIds(text: string): string[] {
 	return out;
 }
 
-/** User-visible / ACP body text — markers removed, collapse leftover spaces lightly. */
+/**
+ * Draft → send/display body:
+ * - mention / skill markers removed (paths & skillIds travel separately)
+ * - command markers become `/name` (ACP slash text)
+ */
 export function stripInlineTokens(text: string): string {
 	return text
-		.replace(ANY_TOKEN_RE, "")
+		.replace(COMMAND_RE, (_m, payload: string) => {
+			const name = decodeCommandTokenPayload(payload).trim();
+			return name ? `/${name}` : "";
+		})
+		.replace(/\{\{(?:m|s):[^}]+\}\}/g, "")
 		.replace(/[ \t]+\n/g, "\n")
 		.replace(/\n[ \t]+/g, "\n")
 		.replace(/[ \t]{2,}/g, " ")
@@ -76,13 +93,18 @@ export function plainTriggerSuffix(text: string): string {
 	return text.replace(ANY_TOKEN_RE, "\uFFFC");
 }
 
-/** Replace a trailing `@query` / `$query` trigger with an inline token + space. */
+/** Replace a trailing `@` / `$` / `/` trigger with an inline token + space. */
 export function replaceTrailingTriggerWithToken(
 	text: string,
-	kind: "mention" | "skill",
+	kind: "mention" | "skill" | "command",
 	token: string,
 ): string {
-	const pattern = kind === "mention" ? /(^|\s)@[^\s]*$/ : /(^|\s)\$[^\s]*$/;
+	const pattern =
+		kind === "mention"
+			? /(^|\s)@[^\s]*$/
+			: kind === "skill"
+				? /(^|\s)\$[^\s]*$/
+				: /(^|\s)\/[^\s]*$/;
 	if (!pattern.test(text)) {
 		const needsSpace = text.length > 0 && !/\s$/.test(text);
 		return `${text}${needsSpace ? " " : ""}${token} `;
@@ -118,12 +140,13 @@ export function appendMissingInlineTokens(
 export type InlineTokenPart =
 	| { type: "text"; value: string }
 	| { type: "mention"; path: string }
-	| { type: "skill"; skillId: string };
+	| { type: "skill"; skillId: string }
+	| { type: "command"; name: string };
 
 /** Split draft text into renderable parts (text + chips). */
 export function parseInlineTokenParts(text: string): InlineTokenPart[] {
 	const parts: InlineTokenPart[] = [];
-	const re = /\{\{(m|s):([^}]+)\}\}/g;
+	const re = /\{\{(m|s|c):([^}]+)\}\}/g;
 	let last = 0;
 	for (const match of text.matchAll(re)) {
 		const index = match.index ?? 0;
@@ -141,6 +164,11 @@ export function parseInlineTokenParts(text: string): InlineTokenPart[] {
 			parts.push({
 				type: "skill",
 				skillId: decodeSkillTokenPayload(payload),
+			});
+		} else if (kind === "c") {
+			parts.push({
+				type: "command",
+				name: decodeCommandTokenPayload(payload),
 			});
 		}
 		last = index + match[0].length;

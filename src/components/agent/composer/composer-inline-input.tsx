@@ -1,6 +1,6 @@
 /**
- * Contenteditable composer field: @mention / $skill markers render as compact
- * inline chips at the insertion point (line-height matched, short width).
+ * Contenteditable composer field: @mention / $skill / /command markers render
+ * as compact inline chips at the insertion point (same look for all three).
  */
 import {
 	type ClipboardEvent,
@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useImeGuard } from "@/hooks/use-ime-guard";
 import { AGENT_COMPOSER_INPUT_ATTR } from "@/lib/agent/composer-focus";
 import {
+	encodeCommandToken,
 	encodeMentionToken,
 	encodeSkillToken,
 	parseInlineTokenParts,
@@ -26,6 +27,9 @@ import { basenameOf } from "@/lib/core/path";
 import { cn } from "@/lib/core/utils";
 
 const CHIP_ATTR = "data-composer-chip";
+
+const INLINE_CHIP_CLASS =
+	"composer-inline-chip mx-0.5 inline-flex max-w-[7rem] shrink-0 items-center gap-0.5 rounded-md border border-border/80 bg-muted/40 px-1 align-baseline text-[0.8125em] leading-[1.25] text-foreground hover:bg-muted";
 
 function serializeEditor(root: HTMLElement): string {
 	let out = "";
@@ -47,6 +51,11 @@ function serializeEditor(root: HTMLElement): string {
 			if (skillId) out += encodeSkillToken(skillId);
 			return;
 		}
+		if (chip === "command") {
+			const name = el.dataset.commandName ?? "";
+			if (name) out += encodeCommandToken(name);
+			return;
+		}
 		if (el.tagName === "BR") {
 			out += "\n";
 			return;
@@ -63,6 +72,22 @@ function serializeEditor(root: HTMLElement): string {
 	};
 	for (const child of root.childNodes) walk(child);
 	return out;
+}
+
+function appendPrefixLabel(
+	chip: HTMLElement,
+	prefix: string,
+	labelText: string,
+	title?: string,
+) {
+	const prefixEl = document.createElement("span");
+	prefixEl.className = "font-mono text-muted-foreground";
+	prefixEl.textContent = prefix;
+	const label = document.createElement("span");
+	label.className = "min-w-0 truncate";
+	label.textContent = labelText;
+	if (title) label.title = title;
+	chip.append(prefixEl, label);
 }
 
 function placeCaretAtEnd(el: HTMLElement) {
@@ -154,40 +179,28 @@ export function ComposerInlineInput({
 				const chip = document.createElement("span");
 				chip.setAttribute(CHIP_ATTR, part.type);
 				chip.contentEditable = "false";
-				chip.className = cn(
-					"composer-inline-chip mx-0.5 inline-flex max-w-[7rem] shrink-0 items-center gap-0.5 rounded-md border border-border/80 bg-muted/40 px-1 align-baseline text-[0.8125em] leading-[1.25] text-foreground",
-					"hover:bg-muted",
-				);
+				chip.className = INLINE_CHIP_CLASS;
 				if (part.type === "mention") {
 					chip.dataset.path = part.path;
-					const prefix = document.createElement("span");
-					prefix.className = "font-mono text-muted-foreground";
-					prefix.textContent = "@";
-					const label = document.createElement("span");
-					label.className = "min-w-0 truncate";
 					const short =
 						basenameOf(part.path) || labelForPath(part.path) || part.path;
-					label.textContent = short;
-					label.title = part.path;
-					chip.append(prefix, label);
+					appendPrefixLabel(chip, "@", short, part.path);
 					chip.setAttribute(
 						"aria-label",
 						t("composer.removeContext", { path: part.path }),
 					);
-				} else {
+				} else if (part.type === "skill") {
 					chip.dataset.skillId = part.skillId;
-					const prefix = document.createElement("span");
-					prefix.className = "font-mono text-muted-foreground";
-					prefix.textContent = "$";
-					const label = document.createElement("span");
-					label.className = "min-w-0 truncate";
-					label.textContent = skillLabel(part.skillId);
-					label.title = part.skillId;
-					chip.append(prefix, label);
+					const name = skillLabel(part.skillId);
+					appendPrefixLabel(chip, "$", name, part.skillId);
 					chip.setAttribute(
 						"aria-label",
-						t("composer.removeSkill", { skill: skillLabel(part.skillId) }),
+						t("composer.removeSkill", { skill: name }),
 					);
+				} else {
+					chip.dataset.commandName = part.name;
+					appendPrefixLabel(chip, "/", part.name);
+					chip.setAttribute("aria-label", `/${part.name}`);
 				}
 				root.appendChild(chip);
 			}

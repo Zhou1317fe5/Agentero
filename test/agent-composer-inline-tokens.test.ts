@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	appendMissingInlineTokens,
+	encodeCommandToken,
 	encodeMentionToken,
 	encodeSkillToken,
 	extractMentionPaths,
@@ -19,6 +20,11 @@ describe("composer inline tokens", () => {
 		expect(extractMentionPaths(text)).toEqual([path]);
 		expect(extractSkillIds(text)).toEqual([skill]);
 		expect(stripInlineTokens(text)).toBe("see and please");
+	});
+
+	it("expands command markers to /name on send", () => {
+		const text = `run ${encodeCommandToken("summarize")} now`;
+		expect(stripInlineTokens(text)).toBe("run /summarize now");
 	});
 
 	it("encodes odd path characters", () => {
@@ -46,6 +52,16 @@ describe("composer inline tokens", () => {
 		expect(next).toBe(`run ${encodeSkillToken("paper-reader")} `);
 	});
 
+	it("replaces a trailing / trigger with a command token", () => {
+		const next = replaceTrailingTriggerWithToken(
+			"do /sum",
+			"command",
+			encodeCommandToken("summarize"),
+		);
+		expect(next).toBe(`do ${encodeCommandToken("summarize")} `);
+		expect(stripInlineTokens(next)).toBe("do /summarize");
+	});
+
 	it("appends missing tokens for legacy drafts", () => {
 		const next = appendMissingInlineTokens(
 			"hello",
@@ -71,13 +87,15 @@ describe("composer inline tokens", () => {
 
 	it("parses parts for rendering", () => {
 		const parts = parseInlineTokenParts(
-			`A ${encodeMentionToken("p.md")} B ${encodeSkillToken("s1")}`,
+			`A ${encodeMentionToken("p.md")} B ${encodeSkillToken("s1")} C ${encodeCommandToken("cmd")}`,
 		);
 		expect(parts).toEqual([
 			{ type: "text", value: "A " },
 			{ type: "mention", path: "p.md" },
 			{ type: "text", value: " B " },
 			{ type: "skill", skillId: "s1" },
+			{ type: "text", value: " C " },
+			{ type: "command", name: "cmd" },
 		]);
 	});
 });

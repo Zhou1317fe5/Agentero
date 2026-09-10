@@ -23,6 +23,7 @@ import type { AgentSkill } from "@/lib/agent";
 import type { ChatLine } from "@/lib/agent/chat-state";
 import {
 	appendMissingInlineTokens,
+	encodeCommandToken,
 	encodeMentionToken,
 	encodeSkillToken,
 	extractMentionPaths,
@@ -565,12 +566,16 @@ export function useAgentComposer({
 	const attachSlashCommand = useCallback(
 		(command: AcpCommand) => {
 			setComposerMenuDismissed(true);
-			setComposerText((prev) =>
-				prev.replace(
-					/(^|\s)\/[^\s]*$/,
-					(_match, prefix: string) => `${prefix}/${command.name} `,
-				),
-			);
+			setComposerText((prev) => {
+				const token = encodeCommandToken(command.name);
+				if (prev.includes(token)) {
+					return prev.replace(
+						/(^|\s)\/[^\s]*$/,
+						(_m, prefix: string) => `${prefix}`,
+					);
+				}
+				return replaceTrailingTriggerWithToken(prev, "command", token);
+			});
 		},
 		[setComposerText],
 	);
