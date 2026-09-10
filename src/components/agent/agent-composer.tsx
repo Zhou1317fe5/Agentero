@@ -123,6 +123,7 @@ export function AgentComposer(props: AgentComposerProps) {
 	// Attachments live inside PromptInput; base gate ignores them (see ComposerSubmitControl).
 	const canSubmitBase = hasComposerText || hasVisualDrafts;
 	const composerMenuOpen = showMentionMenu || showSkillMenu || showSlashMenu;
+	const hasQueuedMessages = props.messageQueue.length > 0;
 	const {
 		shellRef,
 		isFileDragOver,
@@ -135,20 +136,23 @@ export function AgentComposer(props: AgentComposerProps) {
 	return (
 		<div
 			className={cn(
-				// Only the prompt shell is height-bound (resize handle is above this in the panel).
-				"flex shrink-0 flex-col overflow-hidden border-t bg-muted/10",
+				// Queue stacks above the height-bound body so compact mode keeps a usable input.
+				"flex shrink-0 flex-col border-t bg-muted/10",
 				compact ? "gap-1.5 px-2 pt-2 pb-3" : "gap-2 p-3",
+				!hasQueuedMessages && "overflow-hidden",
 			)}
-			style={heightPx ? { height: heightPx } : undefined}
+			style={heightPx && !hasQueuedMessages ? { height: heightPx } : undefined}
 		>
 			<ComposerQueue
+				compact={compact}
 				messageQueue={props.messageQueue}
 				onRemoveQueuedMessage={props.onRemoveQueuedMessage}
 			/>
 			<div
 				ref={shellRef}
 				data-composer-drop-shell
-				className="relative flex min-h-0 flex-1 flex-col gap-1.5"
+				className="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden"
+				style={heightPx && hasQueuedMessages ? { height: heightPx } : undefined}
 			>
 				{/* Context / skill chips sit above the bordered prompt shell. */}
 				<div
