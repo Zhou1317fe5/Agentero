@@ -10,7 +10,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { ScreenPoint } from "@/components/viewer/pdf/types";
-import { useSettings } from "@/hooks/use-app-stores";
+import { useSettings, useUiStore } from "@/hooks/use-app-stores";
 import { type AgentTemplate, listAgents } from "@/lib/agent";
 import { cn } from "@/lib/core/utils";
 import {
@@ -68,6 +68,12 @@ export function SelectionMenu({
 	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const pdfAskAgentId = useSettings((s) => s.pdfAsk.agentId);
 	const [askTemplate, setAskTemplate] = useState<AgentTemplate | null>(null);
+	// Add-to-chat only when the Agent surface is already visible (rail or popout).
+	const showAddToChat = useUiStore(
+		(s) =>
+			(s.rightSidebarOpen && s.rightSidebarTab === "agent") ||
+			s.featurePoppedOut.agent === true,
+	);
 
 	useEffect(() => {
 		return () => {
@@ -278,20 +284,22 @@ export function SelectionMenu({
 				</TooltipProvider>
 			</div>
 
-			<button
-				type="button"
-				className={cn(
-					"fixed z-50 inline-flex h-6 max-w-[10rem] items-center truncate rounded-full border border-border/80 bg-background px-2 text-caption font-medium text-foreground shadow-md ring-1 ring-black/5 transition-[colors,opacity] hover:bg-accent hover:text-accent-foreground dark:ring-white/10",
-					"active:scale-[0.97] motion-reduce:active:scale-100",
-					scrolledAway && "opacity-70 hover:opacity-100",
-				)}
-				style={{ left: pillLeft, top: pillTop }}
-				aria-label={t("selection.addToChat")}
-				onMouseDown={(e) => e.stopPropagation()}
-				onClick={onAddToChat}
-			>
-				{t("selection.addToChat")}
-			</button>
+			{showAddToChat ? (
+				<button
+					type="button"
+					className={cn(
+						"fixed z-50 inline-flex h-6 max-w-[10rem] items-center truncate rounded-full border border-border/80 bg-background px-2 text-caption font-medium text-foreground shadow-md ring-1 ring-black/5 transition-[colors,opacity] hover:bg-accent hover:text-accent-foreground dark:ring-white/10",
+						"active:scale-[0.97] motion-reduce:active:scale-100",
+						scrolledAway && "opacity-70 hover:opacity-100",
+					)}
+					style={{ left: pillLeft, top: pillTop }}
+					aria-label={t("selection.addToChat")}
+					onMouseDown={(e) => e.stopPropagation()}
+					onClick={onAddToChat}
+				>
+					{t("selection.addToChat")}
+				</button>
+			) : null}
 		</>
 	);
 }

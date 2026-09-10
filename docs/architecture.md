@@ -65,7 +65,7 @@ BYOA，连接本机 ACP Agent。详见 [frontend/agent.md](frontend/agent.md) / 
 
 - **空态**：建议 chips → `summary` / `qa` / `related_work`。
 - **上下文**：当前论文默认加入（实心 chip，可 X 移除）。`@` 提及与文件树拖入为可移除 context chip。
-- **选区上下文**：Markdown/PDF 选中文字 → 瞬时选区 chip（虚线）；`⌘L` 或 PDF 选区右下角「加入对话」pill 固定为 chip。发送时以引用块消费；PDF 带几何的选区在发送后插入 `kind: ask` 对话卡片页边针（非视觉批注）。
+- **选区上下文**：Markdown/PDF 选中文字 → 瞬时选区 chip（虚线）；`⌘L` 固定为 chip；PDF 仅在 Agent 侧栏打开时于选区右下角显示「加入对话」pill。发送时以引用块消费；PDF 带几何的选区在发送后插入 `kind: ask` 对话卡片页边针（非视觉批注）。
 - **运行中继续输入**：后续消息进 Queue waitlist，当前回复结束后自动发送。
 - **权限**：全局模式 `restricted`（默认）/ `ask` / `auto`。`ask` 时弹权限对话框。
 - **结构化提问**：各 harness 的 ask-user / elicitation / Grok ext 归一为底部问卷（与 free-text composer 互斥）。详见 [frontend/agent.md](frontend/agent.md) / [backend/agent.md](backend/agent.md)。
