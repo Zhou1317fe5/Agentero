@@ -433,6 +433,8 @@ export function PaperInfoPanel({
 	const { t } = useTranslation("sidebar");
 	const [open, setOpen] = useState(Boolean(meta));
 	const [contentHeight, setContentHeight] = useState(loadStoredHeight);
+	/** Disable height transition while the user is dragging the resize handle. */
+	const [isDragging, setIsDragging] = useState(false);
 	const dragRef = useRef<{
 		startY: number;
 		startHeight: number;
@@ -454,6 +456,7 @@ export function PaperInfoPanel({
 			startHeight: contentHeight,
 			collapseOnRelease: false,
 		};
+		setIsDragging(true);
 		e.currentTarget.setPointerCapture(e.pointerId);
 	};
 
@@ -470,11 +473,13 @@ export function PaperInfoPanel({
 		const drag = dragRef.current;
 		if (!drag) return;
 		dragRef.current = null;
+		setIsDragging(false);
 		e.currentTarget.releasePointerCapture(e.pointerId);
 		setContentHeight((h) => {
 			persistHeight(h);
 			return h;
 		});
+		// Collapse after releasing drag so height can ease closed.
 		if (drag.collapseOnRelease) setOpen(false);
 	};
 
@@ -530,7 +535,10 @@ export function PaperInfoPanel({
 	return (
 		<div
 			className={cn(
-				"relative flex min-h-0 shrink-0 flex-col border-t",
+				"relative flex min-h-0 shrink-0 flex-col overflow-hidden border-t",
+				// Match rail collapse: 200ms ease-out. Skip while resizing.
+				!isDragging &&
+					"transition-[height] duration-200 ease-[cubic-bezier(0.25,1,0.5,1)]",
 				className,
 			)}
 			style={{ height: open ? contentHeight + HEADER_HEIGHT : HEADER_HEIGHT }}
@@ -549,6 +557,11 @@ export function PaperInfoPanel({
 					onPointerMove={onHandlePointerMove}
 					onPointerUp={onHandlePointerUp}
 					onPointerCancel={onHandlePointerUp}
+					onLostPointerCapture={() => {
+						if (!dragRef.current) return;
+						dragRef.current = null;
+						setIsDragging(false);
+					}}
 					onKeyDown={onHandleKeyDown}
 					className={cn(
 						// Sits on the panel's top border; wider invisible hit area.
@@ -624,7 +637,16 @@ export function PaperInfoPanel({
 						</Tooltip>
 					) : null}
 				</div>
-				<CollapsibleContent className="flex min-h-0 flex-1 flex-col">
+				{/* forceMount: keep body mounted so the outer height transition
+				    can clip it closed instead of unmounting on the first frame. */}
+				<CollapsibleContent
+					forceMount
+					className={cn(
+						"flex min-h-0 flex-1 flex-col",
+						!open && "pointer-events-none",
+					)}
+					aria-hidden={!open}
+				>
 					{!meta ? (
 						<p className="px-3 pb-3 text-muted-foreground text-xs leading-snug">
 							{t("paperInfo.selectPrompt")}
