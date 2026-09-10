@@ -12,6 +12,13 @@ use tokio::process::Command;
 
 const HOST_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 
+/// Doctor spawns `<tool> --version` probes for every host runtime and registered
+/// Agent. The app ships as a GUI subsystem binary, so a console child without
+/// this flag makes Windows allocate a visible console window — one black window
+/// per probed tool on every Doctor refresh.
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, specta::Type)]
 #[serde(rename_all = "kebab-case")]
 pub enum HostToolStatus {
@@ -96,6 +103,12 @@ fn codex_descriptor(registry: &AgentRegistry) -> Result<AgentDescriptor, AppErro
 }
 
 fn diagnostic_command(path: &Path, args: &[&str]) -> Command {
+    let mut command = base_command(path, args);
+    hide_console_window(&mut command);
+    command
+}
+
+fn base_command(path: &Path, args: &[&str]) -> Command {
     #[cfg(windows)]
     {
         let extension = path
@@ -121,6 +134,17 @@ fn diagnostic_command(path: &Path, args: &[&str]) -> Command {
     let mut command = Command::new(path);
     command.args(args);
     command
+}
+
+fn hide_console_window(command: &mut Command) {
+    #[cfg(windows)]
+    {
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = command;
+    }
 }
 
 async fn run_command(
@@ -338,6 +362,21 @@ mod tests {
             stdout: stdout.to_string(),
             stderr: stderr.to_string(),
         }
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn diagnostic_command_routes_scripts_through_shells() {
+        // `hide_console_window` has no std getter, so guard the routing that the
+        // console-hiding wrapper sits on top of.
+        let cmd = diagnostic_command(Path::new("probe.cmd"), &["--version"]);
+        assert_eq!(cmd.as_std().get_program(), "cmd");
+
+        let ps1 = diagnostic_command(Path::new("probe.ps1"), &["--version"]);
+        assert_eq!(ps1.as_std().get_program(), "powershell");
+
+        let exe = diagnostic_command(Path::new("hermes.exe"), &["--version"]);
+        assert_eq!(exe.as_std().get_program(), "hermes.exe");
     }
 
     #[test]
