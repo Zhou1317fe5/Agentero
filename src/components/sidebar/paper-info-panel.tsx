@@ -712,18 +712,18 @@ export function PaperInfoPanel({
 								</div>
 							) : null}
 							{canEditMeta ? (
-								<div className="px-3 pt-1.5">
+								<div className="px-3 pt-2">
 									<button
 										type="button"
 										onClick={() => setEditMetaDraft(meta)}
 										className={cn(
-											"flex h-6 w-full cursor-pointer items-center justify-center gap-1 rounded-md border bg-background px-1.5",
-											"text-caption leading-none text-muted-foreground transition-colors",
+											"flex h-7 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border bg-background px-2",
+											"text-xs leading-none text-muted-foreground transition-colors",
 											"hover:bg-muted hover:text-foreground",
 											"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
 										)}
 									>
-										<Pencil className="size-3 shrink-0" aria-hidden />
+										<Pencil className="size-3.5 shrink-0" aria-hidden />
 										<span className="truncate">
 											{t("paperInfo.editMeta.title")}
 										</span>
