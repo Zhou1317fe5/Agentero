@@ -30,6 +30,7 @@ import { cn } from "@/lib/core/utils";
 import { normalizeMarkdownMath } from "@/lib/markdown/math-normalize";
 
 import { ExternalLink } from "./external-link";
+import { PlainCodeBlock } from "./plain-code-block";
 import { PlainTable } from "./plain-table";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
@@ -354,7 +355,11 @@ export const MessageResponse = memo(
 					"w-full min-w-0 select-text text-base leading-relaxed [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
 					className,
 				)}
-				components={{ a: ExternalLink, table: PlainTable }}
+				components={{
+					a: ExternalLink,
+					code: PlainCodeBlock,
+					table: PlainTable,
+				}}
 				linkSafety={{ enabled: false }}
 				plugins={streamdownPlugins}
 				{...props}

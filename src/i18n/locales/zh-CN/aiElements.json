@@ -77,6 +77,10 @@
 		"downloadAsMarkdown": "下载为 Markdown",
 		"viewFullscreen": "全屏查看"
 	},
+	"code": {
+		"copy": "复制代码",
+		"download": "下载代码"
+	},
 	"promptInput": {
 		"placeholder": "想了解些什么？",
 		"uploadFiles": "上传文件",

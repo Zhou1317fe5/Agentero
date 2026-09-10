@@ -77,6 +77,10 @@
 		"downloadAsMarkdown": "Download as Markdown",
 		"viewFullscreen": "View fullscreen"
 	},
+	"code": {
+		"copy": "Copy code",
+		"download": "Download code"
+	},
 	"promptInput": {
 		"placeholder": "What would you like to know?",
 		"uploadFiles": "Upload files",
