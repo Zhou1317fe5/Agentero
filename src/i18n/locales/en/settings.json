@@ -203,8 +203,9 @@
 			"value": "{{size}} px"
 		},
 		"fontFamily": {
-			"default": "Default",
+			"default": "Default (System)",
 			"system": "System UI",
+			"geist": "Geist",
 			"serif": "Serif",
 			"mono": "Monospace",
 			"search": "Search fonts…",

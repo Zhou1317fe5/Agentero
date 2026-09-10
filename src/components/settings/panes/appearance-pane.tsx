@@ -181,7 +181,7 @@ function AppearancePaneInner({
 				</SettingsRow>
 				<div className="border-b px-3.5 py-3.5">
 					<div className="mb-2.5 flex items-center justify-between gap-3">
-						<span className="font-normal text-[13px]">
+						<span className="font-normal text-sm">
 							{t("appearance.uiThemeLabel")}
 						</span>
 						<span className="truncate text-muted-foreground text-xs">

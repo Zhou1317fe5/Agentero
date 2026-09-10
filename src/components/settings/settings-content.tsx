@@ -257,7 +257,7 @@ export function SettingsContent({
 					<div className="flex items-center justify-between gap-1 px-3 pt-3 pb-2">
 						<span
 							id={headingId}
-							className="font-semibold text-[13px] leading-none tracking-tight"
+							className="font-semibold text-sm leading-none tracking-tight"
 						>
 							{t("title")}
 						</span>
@@ -291,7 +291,7 @@ export function SettingsContent({
 									<button
 										type="button"
 										className={cn(
-											"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] outline-none transition-colors",
+											"flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none transition-colors",
 											"hover:bg-black/5 dark:hover:bg-white/10",
 											active &&
 												"bg-primary text-primary-foreground hover:bg-primary dark:hover:bg-primary",

@@ -50,7 +50,7 @@ async function boot() {
 	initSettingsSync();
 	const initialSettings = loadSettings();
 	// Apply scale + interface/mono fonts before first paint so settings/main
-	// windows do not flash Geist then switch.
+	// windows do not flash the stylesheet default then switch.
 	applyDocumentChrome({
 		uiScale: initialSettings.uiScale,
 		interfaceFontFamily: initialSettings.interfaceFontFamily,

@@ -203,8 +203,9 @@
 			"value": "{{size}} px"
 		},
 		"fontFamily": {
-			"default": "默认",
+			"default": "默认（系统）",
 			"system": "系统 UI",
+			"geist": "Geist",
 			"serif": "衬线",
 			"mono": "等宽",
 			"search": "搜索字体…",

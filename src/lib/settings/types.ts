@@ -225,9 +225,10 @@ export type AppSettings = {
 	locale: LocalePreference;
 	editorFontSize: number;
 	/**
-	 * UI chrome font (sidebars, toolbars, settings). Empty = app default (Geist).
-	 * Also accepts built-in stacks (`system` | `serif` | `mono`) or a system
-	 * family name discovered via `list_system_fonts`.
+	 * UI chrome font (sidebars, toolbars, settings). Empty = app default
+	 * (platform system UI). Also accepts built-in stacks
+	 * (`system` | `geist` | `serif` | `mono`) or a system family name
+	 * discovered via `list_system_fonts`.
 	 */
 	interfaceFontFamily: string;
 	/**

@@ -36,12 +36,12 @@ export function PageTitle({
 }) {
 	if (!actions) {
 		return (
-			<h2 className="mb-4 font-semibold text-lg tracking-tight">{title}</h2>
+			<h2 className="mb-4 font-semibold text-base tracking-tight">{title}</h2>
 		);
 	}
 	return (
 		<div className="mb-4 flex items-center justify-between gap-3">
-			<h2 className="font-semibold text-lg tracking-tight">{title}</h2>
+			<h2 className="font-semibold text-base tracking-tight">{title}</h2>
 			{actions}
 		</div>
 	);
@@ -72,7 +72,7 @@ export function SettingsRow({
 	return (
 		<div className="flex items-center justify-between gap-4 border-b px-3.5 py-2.5 last:border-b-0">
 			<div className="min-w-0">
-				<Label htmlFor={htmlFor} className="font-normal text-[13px]">
+				<Label htmlFor={htmlFor} className="font-normal text-sm">
 					{label}
 				</Label>
 				{description ? (

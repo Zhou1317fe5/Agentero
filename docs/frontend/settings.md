@@ -57,15 +57,21 @@
 - 外观设置中的配色主题以紧凑预览网格展示背景、卡片、主色和强调色；点击预览项即可应用主题。
 - 36 个 tweakcn 预设：`src/themes/tweakcn.json`；`src/lib/ui/theme.ts` 注入 CSS 变量。
 - 刷新主题数据：`node scripts/fetch-tweakcn-themes.mjs`。
-- `uiScale`：80%–150% 五档，改 `html` font-size（整 UI，与编辑器字号/行距正交）。
+- `uiScale`：80%–150% 五档，改 `html` font-size（基数仍为 **16×scale**，与编辑器字号/行距正交；不把根字号改成 13，以免 rem 间距在 Windows 125% 等缩放下整体被压扁）。
+- 字号阶梯（对齐 macOS HIG Body/Callout/Title 3，见 `src/index.css` `@theme`）：
+  - `text-sm` → **13px**（Body，侧栏/表/设置行/默认按钮）
+  - `text-xs` → **12px**（Callout，次要控件与说明）
+  - `text-base` → **15px**（Title 3，设置页标题、对话框标题）
+  - 更密的 caption 用 `0.6875rem`（11px），避免再堆 `px` 字面量。
 - 字体（Appearance → Fonts，对齐 Obsidian 三分法）：
   - `interfaceFontFamily`：界面 chrome（`--font-sans` / `--font-heading`）。
   - `textFontFamily`：Markdown/笔记正文（仅编辑器根节点）。
   - `monoFontFamily`：代码块与 `font-mono`（`--font-mono`）。
-  - 取值：空 = 应用默认；`system` / `serif` / `mono` = 内置栈；其余 = 系统字体族名。
+  - 取值：空 = **系统 UI**（macOS SF Pro / Windows Segoe UI + 雅黑等 CJK 回退）；`system` 同义；`geist` = 打包 Geist Variable；`serif` / `mono` = 内置栈；其余 = 系统字体族名。
+  - 等宽默认含 Cascadia Mono / Consolas，照顾 Windows。
   - 选择器：Popover + 搜索；Host `list_system_fonts`（fontdb）枚举本机字体。
 - Markdown 编辑器（Appearance → Markdown editor）：
-  - `editorFontSize`：12–20 px。
+  - `editorFontSize`：12–20 px（默认 14，阅读区可略大于 chrome）。
   - `editorLineHeight`：1.4–2.0（步长 0.1，默认 1.6）。
 - `batchImportConcurrency`：魔棒批量导入及后续资源下载的并发上限，范围 1–10，默认 5。
 - `paperNoteMode`：新导入论文 NOTES.md 壳的初始化方式，四档：
