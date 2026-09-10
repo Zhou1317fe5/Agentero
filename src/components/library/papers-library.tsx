@@ -83,7 +83,7 @@ export type PapersLibraryProps = {
  */
 const SEARCH_DEBOUNCE_MS = 250;
 /** Hide header search/actions while scrolling; restore after this idle gap. */
-const HEADER_SCROLL_IDLE_MS = 180;
+const HEADER_SCROLL_IDLE_MS = 450;
 
 export function PapersLibrary({
 	papers,
