@@ -175,9 +175,9 @@ export function ComposerSubmitControl({
 			className={cn(
 				// Filled circle: match attach/context footprint (`size-7`); solid fill like ChatGPT send.
 				"size-7 shrink-0 rounded-full border-0 shadow-none disabled:opacity-100",
-				// Compact sits in the single-line row; expanded sits in the footer.
-				// Both use the same InputGroup corner insets (px-3 / pb-2.5).
-				compact ? "self-end" : "ml-auto",
+				// Compact: vertically centered in the single-line row.
+				// Expanded: footer end. Shared bottom inset via py-2.5 / pb-2.5.
+				compact ? "self-center" : "ml-auto",
 				idleEmpty
 					? "bg-muted text-muted-foreground/55 hover:bg-muted"
 					: "bg-foreground text-background hover:bg-foreground/90",
