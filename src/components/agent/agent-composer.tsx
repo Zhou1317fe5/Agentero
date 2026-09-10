@@ -135,7 +135,7 @@ export function AgentComposer(props: AgentComposerProps) {
 				// Queue sits in normal flow above the shell; fixed height applies only
 				// to the input shell so the waitlist never covers the composer.
 				"flex shrink-0 flex-col border-t bg-muted/10",
-				compact ? "gap-1.5 px-2 pt-2 pb-3" : "gap-2 p-3",
+				compact ? "gap-1 px-2 py-2" : "gap-2 p-3",
 			)}
 		>
 			{hasQueuedMessages ? (
@@ -148,8 +148,13 @@ export function AgentComposer(props: AgentComposerProps) {
 			<div
 				ref={shellRef}
 				data-composer-drop-shell
-				className="relative flex min-h-0 flex-col gap-1.5 overflow-hidden"
-				style={heightPx ? { height: heightPx } : undefined}
+				className={cn(
+					"relative flex min-h-0 flex-col gap-1.5 overflow-hidden",
+					// Compact hugs the input row; a fixed height would leave empty
+					// space under the field inside the shell.
+					!compact && heightPx == null && "flex-1",
+				)}
+				style={!compact && heightPx != null ? { height: heightPx } : undefined}
 			>
 				{/* Block chips: current file / selection / visual only. @ and $ are inline. */}
 				{props.currentFilePath ||
@@ -230,7 +235,7 @@ export function AgentComposer(props: AgentComposerProps) {
 										className={cn(
 											"relative flex w-full overflow-hidden",
 											compact
-												? "min-h-0 flex-row items-center gap-1 px-2 py-1.5"
+												? "min-h-0 flex-row items-center gap-1 px-2 py-1"
 												: "min-h-0 flex-1 flex-col px-3 pt-3",
 										)}
 										onVaultPathDragOver={onComposerDragOver}
