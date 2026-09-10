@@ -15,7 +15,7 @@ import {
 	MessageSquarePlus,
 	Trash2,
 } from "lucide-react";
-import { memo, useEffect, useRef } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,7 +76,7 @@ type CommentCardsLayerProps = {
 	hoveredId: string | null;
 	/**
 	 * Transient chip for the active text selection on this page. Hover expands
-	 * into an empty comment-card preview; click creates the note.
+	 * then opens the real rail editor so the note is immediately editable.
 	 */
 	selectionDraft?: SelectionCommentDraft | null;
 	/** Create a highlight + open the rail editor for `selectionDraft`. */
@@ -512,9 +512,13 @@ type SelectionCommentAffordanceProps = {
 	onActivate: () => void;
 };
 
+/** Brief dwell so a glancing pass over the chip does not create a note. */
+const SELECTION_COMMENT_HOVER_ACTIVATE_MS = 120;
+
 /**
- * Collapsed icon chip at the selection's rail height. Hover / focus expands to
- * the same footprint as an empty comment card; click creates the annotation.
+ * Collapsed icon chip at the selection's rail height. Hover expands it, then
+ * hands off to the real comment-rail editor so the user can type immediately.
+ * Click activates without waiting for the dwell.
  */
 const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 	draft,
@@ -522,21 +526,46 @@ const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 	onActivate,
 }: SelectionCommentAffordanceProps) {
 	const { t } = useTranslation("viewer");
-	const heightPx = estimateCommentCardHeight({
-		id: "__selection-draft__",
-		pageIndex: draft.page - 1,
-		anchorY: draft.anchorY,
-		rects: [],
-		quote: draft.quote,
-		comment: "",
-		color: DEFAULT_HIGHLIGHT_COLOR,
-		kind: "highlight",
-		linkAlias: null,
-	});
+	const [expanded, setExpanded] = useState(false);
+	const activatedRef = useRef(false);
+	const dwellRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const onActivateRef = useRef(onActivate);
+	onActivateRef.current = onActivate;
+
+	const heightPx = estimateCommentCardHeight(
+		{
+			id: "__selection-draft__",
+			pageIndex: draft.page - 1,
+			anchorY: draft.anchorY,
+			rects: [],
+			quote: draft.quote,
+			comment: "",
+			color: DEFAULT_HIGHLIGHT_COLOR,
+			kind: "highlight",
+			linkAlias: null,
+		},
+		expanded,
+	);
 	const topPx = Math.max(
 		0,
 		Math.min(draft.anchorY * pageHeightPx, pageHeightPx - heightPx),
 	);
+
+	const activate = useCallback(() => {
+		if (activatedRef.current) return;
+		activatedRef.current = true;
+		if (dwellRef.current) {
+			clearTimeout(dwellRef.current);
+			dwellRef.current = null;
+		}
+		onActivateRef.current();
+	}, []);
+
+	useEffect(() => {
+		return () => {
+			if (dwellRef.current) clearTimeout(dwellRef.current);
+		};
+	}, []);
 
 	return (
 		<button
@@ -545,10 +574,11 @@ const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 			title={t("selection.note")}
 			data-pdf-chrome
 			className={cn(
-				"group/draft pointer-events-auto absolute z-[6] w-9 select-none overflow-hidden rounded-lg border border-border/50 bg-background/90 text-left shadow-sm ring-1 ring-black/5 backdrop-blur-md backdrop-saturate-150 outline-none supports-backdrop-blur:bg-background/75 dark:ring-white/10",
-				"transition-[width,box-shadow] duration-200 ease-out motion-reduce:transition-none",
-				"hover:z-[7] hover:w-56 hover:shadow-md hover:ring-primary/40",
-				"focus-within:z-[7] focus-within:w-56 focus-within:shadow-md",
+				"group/draft pointer-events-auto absolute z-[6] select-none overflow-hidden rounded-lg border border-border/50 bg-background/90 text-left shadow-sm ring-1 ring-black/5 backdrop-blur-md backdrop-saturate-150 outline-none supports-backdrop-blur:bg-background/75 dark:ring-white/10",
+				"transition-[width,box-shadow,height] duration-200 ease-out motion-reduce:transition-none",
+				expanded
+					? "z-[7] w-56 shadow-md ring-primary/40"
+					: "w-9 hover:shadow-md",
 				"focus-visible:ring-2 focus-visible:ring-ring/50",
 			)}
 			style={{
@@ -557,21 +587,40 @@ const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 				height: heightPx,
 			}}
 			onPointerDown={(e) => e.stopPropagation()}
+			onPointerEnter={() => {
+				setExpanded(true);
+				if (activatedRef.current || dwellRef.current) return;
+				dwellRef.current = setTimeout(() => {
+					dwellRef.current = null;
+					activate();
+				}, SELECTION_COMMENT_HOVER_ACTIVATE_MS);
+			}}
+			onPointerLeave={() => {
+				if (activatedRef.current) return;
+				if (dwellRef.current) {
+					clearTimeout(dwellRef.current);
+					dwellRef.current = null;
+				}
+				setExpanded(false);
+			}}
 			onClick={(e) => {
 				e.stopPropagation();
-				onActivate();
+				activate();
 			}}
 		>
 			<span
-				className="absolute inset-0 flex items-center justify-center text-muted-foreground transition-opacity duration-150 group-hover/draft:pointer-events-none group-hover/draft:opacity-0 group-focus-within/draft:pointer-events-none group-focus-within/draft:opacity-0"
+				className={cn(
+					"absolute inset-0 flex items-center justify-center text-muted-foreground transition-opacity duration-150",
+					expanded && "pointer-events-none opacity-0",
+				)}
 				aria-hidden
 			>
 				<MessageSquare className="size-4" />
 			</span>
 			<div
 				className={cn(
-					"h-full w-56 px-2.5 py-2 opacity-0 transition-opacity duration-150",
-					"group-hover/draft:opacity-100 group-focus-within/draft:opacity-100",
+					"h-full w-56 px-2.5 py-2 transition-opacity duration-150",
+					expanded ? "opacity-100" : "opacity-0",
 				)}
 			>
 				<span
