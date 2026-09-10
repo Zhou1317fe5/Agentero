@@ -199,8 +199,8 @@ type PageTranslateTabProps = {
 	onToggle: (pageIndex: number) => void;
 };
 
-const PAGE_TRANSLATE_TAB_WIDTH_PX = 32;
-const PAGE_TRANSLATE_TAB_MIN_HEIGHT_PX = 72;
+const PAGE_TRANSLATE_TAB_WIDTH_PX = 22;
+const PAGE_TRANSLATE_TAB_MIN_HEIGHT_PX = 56;
 
 function labelCharacters(label: string): { key: string; char: string }[] {
 	const seen = new Map<string, number>();
@@ -231,7 +231,7 @@ const PageTranslateTab = memo(function PageTranslateTab({
 		<button
 			type="button"
 			className={cn(
-				"absolute top-3 left-0 z-[6] flex -translate-x-full flex-col items-center justify-center gap-1 rounded-l-md border border-r-0 border-border/80 bg-background/95 px-1 py-2 font-medium text-xs text-foreground shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 dark:ring-white/10",
+				"absolute top-3 left-0 z-[6] flex -translate-x-full flex-col items-center justify-center gap-0.5 rounded-l-md border border-r-0 border-border/80 bg-background/95 px-0.5 py-1.5 font-medium text-caption text-foreground shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 dark:ring-white/10",
 				active && "border-primary/30 bg-primary/10 text-primary",
 			)}
 			style={{
@@ -249,10 +249,10 @@ const PageTranslateTab = memo(function PageTranslateTab({
 			onPointerDown={(event) => event.stopPropagation()}
 		>
 			<Icon
-				className={cn("size-3.5 shrink-0", running && "animate-spin")}
+				className={cn("size-3 shrink-0", running && "animate-spin")}
 				aria-hidden="true"
 			/>
-			<span className="flex flex-col items-center gap-0.5 leading-none">
+			<span className="flex flex-col items-center gap-px leading-none">
 				{labelCharacters(shortLabel).map((part) => (
 					<span key={part.key} className="block text-center">
 						{part.char}
