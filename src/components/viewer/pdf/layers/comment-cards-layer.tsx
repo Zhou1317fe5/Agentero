@@ -75,8 +75,8 @@ type CommentCardsLayerProps = {
 	/** Id of the card currently being hovered; null when idle. */
 	hoveredId: string | null;
 	/**
-	 * Transient chip for the active text selection on this page. Hover expands
-	 * then opens the real rail editor so the note is immediately editable.
+	 * Transient chip for the active text selection on this page. Hover expands;
+	 * leave collapses. Click / focus opens the real rail editor.
 	 */
 	selectionDraft?: SelectionCommentDraft | null;
 	/** Create a highlight + open the rail editor for `selectionDraft`. */
@@ -512,13 +512,10 @@ type SelectionCommentAffordanceProps = {
 	onActivate: () => void;
 };
 
-/** Brief dwell so a glancing pass over the chip does not create a note. */
-const SELECTION_COMMENT_HOVER_ACTIVATE_MS = 120;
-
 /**
- * Collapsed icon chip at the selection's rail height. Hover expands it, then
- * hands off to the real comment-rail editor so the user can type immediately.
- * Click activates without waiting for the dwell.
+ * Collapsed icon chip at the selection's rail height. Hover expands to a
+ * comment-card footprint; pointer leave collapses it again. Click / focus the
+ * expanded field to create the highlight and open the real rail editor.
  */
 const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 	draft,
@@ -528,24 +525,21 @@ const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 	const { t } = useTranslation("viewer");
 	const [expanded, setExpanded] = useState(false);
 	const activatedRef = useRef(false);
-	const dwellRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const rootRef = useRef<HTMLDivElement>(null);
 	const onActivateRef = useRef(onActivate);
 	onActivateRef.current = onActivate;
 
-	const heightPx = estimateCommentCardHeight(
-		{
-			id: "__selection-draft__",
-			pageIndex: draft.page - 1,
-			anchorY: draft.anchorY,
-			rects: [],
-			quote: draft.quote,
-			comment: "",
-			color: DEFAULT_HIGHLIGHT_COLOR,
-			kind: "highlight",
-			linkAlias: null,
-		},
-		expanded,
-	);
+	const heightPx = estimateCommentCardHeight({
+		id: "__selection-draft__",
+		pageIndex: draft.page - 1,
+		anchorY: draft.anchorY,
+		rects: [],
+		quote: draft.quote,
+		comment: "",
+		color: DEFAULT_HIGHLIGHT_COLOR,
+		kind: "highlight",
+		linkAlias: null,
+	});
 	const topPx = Math.max(
 		0,
 		Math.min(draft.anchorY * pageHeightPx, pageHeightPx - heightPx),
@@ -554,28 +548,21 @@ const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 	const activate = useCallback(() => {
 		if (activatedRef.current) return;
 		activatedRef.current = true;
-		if (dwellRef.current) {
-			clearTimeout(dwellRef.current);
-			dwellRef.current = null;
-		}
 		onActivateRef.current();
 	}, []);
 
-	useEffect(() => {
-		return () => {
-			if (dwellRef.current) clearTimeout(dwellRef.current);
-		};
-	}, []);
-
 	return (
-		<button
-			type="button"
+		// biome-ignore lint/a11y/useSemanticElements: expands to host a textarea; native <button> cannot wrap it
+		<div
+			ref={rootRef}
+			role="button"
+			tabIndex={0}
 			aria-label={t("selection.note")}
 			title={t("selection.note")}
 			data-pdf-chrome
 			className={cn(
-				"group/draft pointer-events-auto absolute z-[6] select-none overflow-hidden rounded-lg border border-border/50 bg-background/90 text-left shadow-sm ring-1 ring-black/5 backdrop-blur-md backdrop-saturate-150 outline-none supports-backdrop-blur:bg-background/75 dark:ring-white/10",
-				"transition-[width,box-shadow,height] duration-200 ease-out motion-reduce:transition-none",
+				"group/draft pointer-events-auto absolute z-[6] cursor-text select-none overflow-hidden rounded-lg border border-border/50 bg-background/90 text-left shadow-sm ring-1 ring-black/5 backdrop-blur-md backdrop-saturate-150 outline-none supports-backdrop-blur:bg-background/75 dark:ring-white/10",
+				"transition-[width,box-shadow] duration-200 ease-out motion-reduce:transition-none",
 				expanded
 					? "z-[7] w-56 shadow-md ring-primary/40"
 					: "w-9 hover:shadow-md",
@@ -587,25 +574,23 @@ const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 				height: heightPx,
 			}}
 			onPointerDown={(e) => e.stopPropagation()}
-			onPointerEnter={() => {
-				setExpanded(true);
-				if (activatedRef.current || dwellRef.current) return;
-				dwellRef.current = setTimeout(() => {
-					dwellRef.current = null;
-					activate();
-				}, SELECTION_COMMENT_HOVER_ACTIVATE_MS);
-			}}
-			onPointerLeave={() => {
+			onPointerEnter={() => setExpanded(true)}
+			onPointerLeave={(e) => {
 				if (activatedRef.current) return;
-				if (dwellRef.current) {
-					clearTimeout(dwellRef.current);
-					dwellRef.current = null;
-				}
+				const next = e.relatedTarget as Node | null;
+				if (next && rootRef.current?.contains(next)) return;
 				setExpanded(false);
 			}}
 			onClick={(e) => {
 				e.stopPropagation();
 				activate();
+			}}
+			onKeyDown={(e) => {
+				if (e.key === "Enter" || e.key === " ") {
+					e.preventDefault();
+					e.stopPropagation();
+					activate();
+				}
 			}}
 		>
 			<span
@@ -630,11 +615,25 @@ const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 					)}
 					aria-hidden
 				/>
-				<p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground/70">
-					{t("annotations.placeholder")}
-				</p>
+				<textarea
+					className="mt-1 max-h-60 w-full resize-none bg-transparent p-0 text-sm text-foreground/80 leading-relaxed outline-none placeholder:text-muted-foreground/70"
+					placeholder={t("annotations.placeholder")}
+					aria-label={t("annotations.editorLabel")}
+					rows={EDIT_MIN_COMMENT_LINES}
+					tabIndex={expanded ? 0 : -1}
+					onFocus={(e) => {
+						e.stopPropagation();
+						setExpanded(true);
+						activate();
+					}}
+					onClick={(e) => {
+						e.stopPropagation();
+						activate();
+					}}
+					onPointerDown={(e) => e.stopPropagation()}
+				/>
 			</div>
-		</button>
+		</div>
 	);
 });
 

@@ -107,7 +107,8 @@ export type SelectionMenuState = {
 
 /**
  * Transient right-rail chip while a text selection is active: collapsed icon
- * that expands on hover and opens the real rail editor for typing.
+ * that expands on hover (leave collapses) and opens the rail editor on
+ * click / focus.
  */
 export type SelectionCommentDraft = {
 	/** 1-based page number (matches `commentsByPage` keys). */
