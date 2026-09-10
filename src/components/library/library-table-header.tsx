@@ -125,10 +125,10 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 	}, [compact]);
 
 	const showActions = !compact;
-	/** Fade chrome in place (keeps h-9); hide quick, restore a touch slower. */
+	/** Fade chrome in place (keeps h-9); hide instantly, restore with fade-in. */
 	const chromeFadeClass = showActions
 		? "opacity-100 duration-300"
-		: "pointer-events-none opacity-0 duration-150";
+		: "pointer-events-none opacity-0 duration-0";
 	const canFetchRanks = Boolean(vaultPath) && !rankBusy && papers.length > 0;
 
 	const fetchAllRanks = async () => {
@@ -254,7 +254,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 													"inline-flex transition-opacity ease-out",
 													showActions || active
 														? "opacity-100 duration-300"
-														: "opacity-0 duration-150",
+														: "opacity-0 duration-0",
 												)}
 												aria-hidden={!showActions && !active}
 											>
@@ -266,7 +266,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 														"size-1.5 shrink-0 rounded-full bg-primary transition-opacity ease-out",
 														!showActions && tagFilterActive
 															? "opacity-100 duration-300"
-															: "opacity-0 duration-150",
+															: "opacity-0 duration-0",
 													)}
 													aria-hidden
 												/>
