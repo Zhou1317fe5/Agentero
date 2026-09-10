@@ -14,6 +14,7 @@ macro_rules! common_commands {
             crate::features::system::settings::commands::list_system_fonts,
             crate::features::system::settings::commands::easy_scholar_probe,
             crate::features::system::settings::commands::easy_scholar_get_rank,
+            crate::features::system::builtin::builtin_provider_status,
             crate::features::paper::analyze::layout::model_assets::commands::layout_model_status,
             crate::features::paper::analyze::layout::hosted::commands::layout_remote_analyze_pdf,
             crate::features::paper::analyze::layout::hosted::commands::layout_remote_probe,

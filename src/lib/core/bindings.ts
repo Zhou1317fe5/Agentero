@@ -40,6 +40,7 @@ export const commands = {
 	 *  and build namespaced tags.
 	 */
 	easyScholarGetRank: (publicationName: string) => __TAURI_INVOKE<ApiResult<Json>>("easy_scholar_get_rank", { publicationName }),
+	builtinProviderStatus: () => __TAURI_INVOKE<ApiResult<BuiltinProviderStatus>>("builtin_provider_status"),
 	layoutModelStatus: () => __TAURI_INVOKE<ApiResult<LayoutModelStatus>>("layout_model_status"),
 	layoutRemoteAnalyzePdf: (args: LayoutRemoteAnalyzePdfArgs) => __TAURI_INVOKE<ApiResult<LayoutRemoteAnalyzePdfResult>>("layout_remote_analyze_pdf", { args }),
 	layoutRemoteProbe: (args: LayoutRemoteProbeArgs) => __TAURI_INVOKE<ApiResult<LayoutRemoteProbeResult>>("layout_remote_probe", { args }),
@@ -1622,6 +1623,15 @@ export type BridgeStatus = {
 	activeConnections: number,
 	pendingPairings: PairingRequest[],
 	lastError: string | null,
+};
+
+/**  Non-secret snapshot for Host-side consumers resolving built-in credentials. */
+export type BuiltinProviderStatus = {
+	available: boolean,
+	baseUrl: string,
+	translateModel: string,
+	embeddingModel: string,
+	ocrModel: string,
 };
 
 /**  Status for a common agent row in Settings. */
