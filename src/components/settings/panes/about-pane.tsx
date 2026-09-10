@@ -266,9 +266,11 @@ export function AboutPane() {
 							className="size-10 shrink-0 rounded-lg"
 						/>
 						<div className="min-w-0 space-y-0.5">
-							<p className="font-semibold text-base tracking-tight">Agentero</p>
+							<p className="font-semibold text-base text-foreground">
+								Agentero
+							</p>
 							{version && (
-								<p className="text-muted-foreground text-sm">
+								<p className="text-muted-foreground text-xs">
 									{t("about.version", { version })}
 								</p>
 							)}

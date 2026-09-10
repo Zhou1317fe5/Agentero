@@ -169,10 +169,15 @@
 /* Frost translucent chrome when the OS asks for reduced transparency. */
 @media (prefers-reduced-transparency: reduce) {
 	[data-titlebar],
-	[data-pdf-chrome] {
+	[data-pdf-chrome],
+	[data-settings-titlebar] {
 		background-color: var(--background);
 		backdrop-filter: none;
 		-webkit-backdrop-filter: none;
+	}
+	[data-settings-titlebar],
+	[data-settings-sidebar] {
+		background-color: var(--sidebar);
 	}
 	[data-library-header] {
 		background-color: var(--background);
@@ -180,6 +185,29 @@
 		-webkit-backdrop-filter: none;
 		box-shadow: none;
 		border-bottom-width: 1px;
+	}
+}
+
+/* Settings pane enter: short opacity cross-fade (respects reduced-motion). */
+@keyframes settings-pane-in {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+[data-settings-pane][data-active="true"] {
+	animation: settings-pane-in var(--motion-duration-fast) var(--motion-ease-out);
+}
+@media (prefers-reduced-motion: reduce) {
+	[data-settings-pane][data-active="true"] {
+		animation: none;
+	}
+}
+@media (prefers-contrast: more) {
+	[data-settings-sidebar] {
+		border-right-color: var(--sidebar-border);
 	}
 }
 

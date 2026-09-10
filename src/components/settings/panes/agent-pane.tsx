@@ -20,6 +20,7 @@ import { AgentUninstallDialog } from "@/components/settings/panes/agent-uninstal
 import {
 	PageTitle,
 	SettingsGroup,
+	SettingsSectionLabel,
 } from "@/components/settings/settings-layout";
 import type { SettingsHostContext } from "@/components/settings/types";
 import { Button } from "@/components/ui/button";
@@ -146,9 +147,9 @@ export function AgentPane({
 
 			{/* Common agents first — install/update before prefs that pick among them. */}
 			<div className="mb-2 flex items-center justify-between gap-2">
-				<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+				<SettingsSectionLabel className="mb-0 px-0">
 					{t("agent.commonAgents")}
-				</p>
+				</SettingsSectionLabel>
 				<Button
 					type="button"
 					variant="ghost"
@@ -184,9 +185,9 @@ export function AgentPane({
 
 			<AgentPersonalPromptBlock settings={settings} patch={patch} />
 
-			<p className="mb-1.5 mt-4 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+			<SettingsSectionLabel className="mt-4">
 				{t("agent.pdfAsk.section")}
-			</p>
+			</SettingsSectionLabel>
 			<SettingsGroup>
 				<AgentModelPicker
 					value={pdfAskValue}
@@ -292,9 +293,9 @@ export function RemoteAgentPane({
 			) : null}
 
 			<div className="mb-2 flex items-center justify-between gap-2">
-				<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+				<SettingsSectionLabel className="mb-0 px-0">
 					{t("agent.remote.commonAgents")}
-				</p>
+				</SettingsSectionLabel>
 				<Button
 					type="button"
 					variant="ghost"

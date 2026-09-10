@@ -3,13 +3,31 @@
 ## 设置窗口
 
 - 独立原生单例：`settings_window_open` + `?window=settings` → `SettingsNativeRoot`。
-- macOS Overlay 标题栏 + 交通灯；Windows/Linux 系统原生边框。
+- macOS Overlay 标题栏 + 交通灯；Windows/Linux 系统原生边框。标题栏与侧栏共用 `--sidebar` 材质（macOS 标题栏 `backdrop-blur`；`prefers-reduced-transparency` 下实色）。
 - 开/关：`⌘,`、菜单、齿轮；`Esc` / 标题栏 X 关闭。
 - 不查询或展示本机 hostname / OS 身份。
 - 保存：`settings_set` → 广播 `settings:changed` 跨窗口同步。
 - 落盘：XDG `$XDG_CONFIG_HOME/agentero/settings.json`。
 - 加载策略：设置 webview 不加载完整 `App`，也不加载 PDF 引擎与 KaTeX（二者随 `App` 动态 import）。各分区 pane 按 `lazy()` 分 chunk；**当前分区**的 pane 与外壳并行预热（`preloadSettingsPane`），避免窗口刚可交互时才去拉 pane 而卡一下；其余分区首次访问才加载，已访问的保持挂载。
 - 通用页的「网络代理」是 Host 级配置，启用后用于 Host 创建的 HTTP(S)/SOCKS 请求，并同步注入本地与远端 Agent 进程的 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`。旧版 Settings → Agent 的代理配置会在首次启动时迁移。
+
+### UI 约定（System Settings 风格）
+
+共用件在 `src/components/settings/settings-layout.tsx`：
+
+| 元件 | 约定 |
+|---|---|
+| `PageTitle` | Title 3：`text-base` + `font-semibold`（字距/行高走字号阶梯 token） |
+| `SettingsSectionLabel` | Callout 大写小标题：`text-xs` + `font-medium` + muted（避免 `text-caption` 被 twMerge 与 `text-muted-*` 互斥吃掉） |
+| `SettingsGroup` / `settingsCardClassName` | 圆角 inset 卡片：`rounded-xl`、淡边框、极轻阴影 |
+| `SettingsRow` / `settingsRowClassName` | Body 行：`text-sm` 常规字重、`min-h-10`、柔和行间分隔 |
+| `HelpLabel` | 可键盘聚焦的 `?` 按钮（Tooltip），按压有微缩反馈 |
+
+侧栏（`SettingsContent`）：
+
+- 材质：`bg-sidebar` / `border-sidebar-border`；选中项滑动高亮（`sidebar-primary`）+ `font-medium`；按压 `scale(0.98)`；方向键在导航项间移动。
+- 内容区：`overscroll-y-contain`；切换分区平滑滚回顶部（尊重 `prefers-reduced-motion`）；pane 进入短时 opacity 交叉淡入。
+- 主题预览卡：选中 inset ring + 按压缩放；slider 带 `aria-valuetext`。
 
 ## 主要分类
 

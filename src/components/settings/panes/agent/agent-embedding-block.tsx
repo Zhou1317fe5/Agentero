@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import {
 	SettingsGroup,
 	SettingsRow,
+	SettingsSectionLabel,
 } from "@/components/settings/settings-layout";
 import { useBuiltinProviderAvailable } from "@/components/settings/use-builtin-provider";
 import { Button } from "@/components/ui/button";
@@ -115,9 +116,9 @@ export function AgentEmbeddingBlock({
 		<>
 			{/* Embedding endpoint (BYOK) for arxiv daily recommendation & semantic features. */}
 			<div className="mb-1.5 mt-4 flex items-center justify-between gap-2">
-				<p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+				<SettingsSectionLabel className="mb-0 px-0">
 					{t("agent.embedding.section")}
-				</p>
+				</SettingsSectionLabel>
 				{isCustomSource ? (
 					<div className="flex items-center gap-1.5">
 						<Tooltip>
