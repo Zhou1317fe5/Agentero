@@ -136,23 +136,33 @@ export function AgentComposer(props: AgentComposerProps) {
 	return (
 		<div
 			className={cn(
-				// Queue stacks above the height-bound body so compact mode keeps a usable input.
-				"flex shrink-0 flex-col border-t bg-muted/10",
+				// Keep overflow visible so the waiting-send queue can float above the shell.
+				"relative flex shrink-0 flex-col border-t bg-muted/10",
 				compact ? "gap-1.5 px-2 pt-2 pb-3" : "gap-2 p-3",
-				!hasQueuedMessages && "overflow-hidden",
 			)}
-			style={heightPx && !hasQueuedMessages ? { height: heightPx } : undefined}
+			style={heightPx ? { height: heightPx } : undefined}
 		>
-			<ComposerQueue
-				compact={compact}
-				messageQueue={props.messageQueue}
-				onRemoveQueuedMessage={props.onRemoveQueuedMessage}
-			/>
+			{hasQueuedMessages ? (
+				<div
+					className={cn(
+						"pointer-events-none absolute inset-x-0 bottom-full z-20",
+						compact ? "px-2 pb-1.5" : "px-3 pb-2",
+					)}
+				>
+					<div className="pointer-events-auto">
+						<ComposerQueue
+							compact={compact}
+							floating
+							messageQueue={props.messageQueue}
+							onRemoveQueuedMessage={props.onRemoveQueuedMessage}
+						/>
+					</div>
+				</div>
+			) : null}
 			<div
 				ref={shellRef}
 				data-composer-drop-shell
 				className="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden"
-				style={heightPx && hasQueuedMessages ? { height: heightPx } : undefined}
 			>
 				{/* Short chips above the shell; hover expands a brief description. */}
 				{compact ? null : (

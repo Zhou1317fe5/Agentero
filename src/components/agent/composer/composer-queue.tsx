@@ -20,10 +20,13 @@ export function ComposerQueue({
 	messageQueue,
 	onRemoveQueuedMessage,
 	compact = false,
+	floating = false,
 }: {
 	messageQueue: QueuedPrompt[];
 	onRemoveQueuedMessage: (id: string) => void;
 	compact?: boolean;
+	/** Anchored above the composer shell without taking its height budget. */
+	floating?: boolean;
 }) {
 	const { t } = useTranslation("agent");
 	if (messageQueue.length === 0) return null;
@@ -31,7 +34,9 @@ export function ComposerQueue({
 		<Queue
 			className={cn(
 				"shrink-0",
-				compact && "gap-1 px-2 pt-1.5 pb-1.5 shadow-none",
+				floating && "shadow-md",
+				compact && "gap-1 px-2 pt-1.5 pb-1.5",
+				compact && !floating && "shadow-none",
 			)}
 		>
 			<QueueSection defaultOpen>
