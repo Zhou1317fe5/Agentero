@@ -1341,7 +1341,10 @@ function PdfViewerInner({
 	});
 
 	return (
-		<div ref={hostRef} className="relative flex h-full min-h-0 w-full flex-col">
+		<div
+			ref={hostRef}
+			className="relative flex h-full min-h-0 w-full select-none flex-col"
+		>
 			<PdfLeftToolbar
 				outline={outline}
 				showOutline={showOutline}

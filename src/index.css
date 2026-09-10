@@ -617,6 +617,8 @@ body.agentero-dockview-dragging * {
 	z-index: 2;
 	/* Divider vs. the toolbar/content below (#408). */
 	border-bottom: 1px solid var(--border);
+	-webkit-user-select: none;
+	user-select: none;
 }
 
 /*
@@ -627,6 +629,8 @@ body.agentero-dockview-dragging * {
 	max-width: 12rem;
 	min-width: 0;
 	overflow: hidden;
+	-webkit-user-select: none;
+	user-select: none;
 	/* Tab chrome fades like every other row; content still switches instantly. */
 	transition:
 		background-color var(--motion-duration-fast) var(--motion-ease-out),

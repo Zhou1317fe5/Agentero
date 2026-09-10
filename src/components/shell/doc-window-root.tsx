@@ -11,6 +11,7 @@ import {
 	type DocViewPdfProps,
 } from "@/components/workspace/doc-view";
 import { useSettings, useVaultStore } from "@/hooks/use-app-stores";
+import { useNativeSelectAllGuard } from "@/hooks/use-native-select-all-guard";
 import { isMacOS, isTauri } from "@/lib/core/tauri";
 import { isLibraryVirtualPath, isTrashVirtualPath } from "@/lib/paper/api";
 import { refreshLibrary } from "@/lib/paper/library-store";
@@ -69,6 +70,7 @@ export function DocWindowRoot() {
 	const [tab, setTab] = useState<DocTab | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [ready, setReady] = useState(false);
+	useNativeSelectAllGuard();
 
 	const vaultPath = useVaultStore((s) => s.vaultPath);
 	const fontSize = useSettings((s) => s.editorFontSize);

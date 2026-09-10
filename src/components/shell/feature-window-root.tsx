@@ -15,6 +15,7 @@ import {
 	useSettings,
 	useVaultStore,
 } from "@/hooks/use-app-stores";
+import { useNativeSelectAllGuard } from "@/hooks/use-native-select-all-guard";
 import { applyAgentSessionHandoffOnce } from "@/lib/agent/agent-session-store";
 import { normalizeAgentSourcePath } from "@/lib/agent/sources";
 import { toVaultRelative } from "@/lib/core/path";
@@ -254,6 +255,7 @@ export function FeatureWindowRoot() {
 	const bootQuery = useMemo(() => readFeatureQuery(), []);
 	const isMac = useMemo(() => isMacOS(), []);
 	const [ready, setReady] = useState(false);
+	useNativeSelectAllGuard();
 	const [followed, setFollowed] = useState<WorkspaceActiveChangedPayload>({
 		path: bootQuery.activePath,
 		vaultPath: bootQuery.vaultPath,

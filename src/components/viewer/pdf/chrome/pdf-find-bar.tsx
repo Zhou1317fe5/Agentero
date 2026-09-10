@@ -41,12 +41,12 @@ export function PdfFindBar({
 
 	return (
 		<TooltipProvider delayDuration={200}>
-			<div className="absolute top-12 right-3 z-30 flex items-center gap-1 rounded-lg border border-border/80 bg-background/95 p-1 shadow-md backdrop-blur-sm">
+			<div className="absolute top-12 right-3 z-30 flex select-none items-center gap-1 rounded-lg border border-border/80 bg-background/95 p-1 shadow-md backdrop-blur-sm">
 				<Search className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
 				<input
 					ref={inputRef}
 					type="text"
-					className="w-40 bg-transparent text-sm outline-none"
+					className="w-40 select-text bg-transparent text-sm outline-none"
 					placeholder={t("pdf.findPlaceholder")}
 					value={query}
 					onChange={(e) => onQueryChange(e.target.value)}

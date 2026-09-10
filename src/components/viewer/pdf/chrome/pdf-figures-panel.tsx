@@ -25,7 +25,7 @@ export function PdfFiguresPanel({
 	if (!showFigures) return null;
 
 	return (
-		<aside className="absolute inset-y-0 left-0 z-20 w-80 overflow-hidden border-r bg-background/95 pt-11 pb-2 backdrop-blur-sm">
+		<aside className="absolute inset-y-0 left-0 z-20 w-80 select-none overflow-hidden border-r bg-background/95 pt-11 pb-2 backdrop-blur-sm">
 			<FiguresPanel
 				documentId={documentId}
 				viewerReady
