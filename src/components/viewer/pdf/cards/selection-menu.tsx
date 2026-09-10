@@ -109,8 +109,12 @@ export function SelectionMenu({
 		// Menu sits below the selection and may cover body text.
 		overContent = true;
 	}
-	// Keep the toolbar on-screen even if the anchor page is scrolled out of view.
-	top = Math.max(12, Math.min(vh - BAR_H - 12, top));
+	// Keep the toolbar on-screen when the selection scrolls out of view; dim it
+	// so it does not look glued to an off-screen anchor.
+	const clampedTop = Math.max(12, Math.min(vh - BAR_H - 12, top));
+	const scrolledAway = clampedTop !== top;
+	top = clampedTop;
+	const dimmed = overContent || scrolledAway;
 
 	// Pill sits just outside the selection's bottom-right corner; if that would
 	// overflow the viewport, flip to the left of the corner instead.
@@ -155,10 +159,10 @@ export function SelectionMenu({
 		<>
 			<div
 				className={cn(
-					"fixed z-50 flex h-10 items-center gap-0.5 rounded-xl border border-border/80 bg-background px-1 shadow-2xl ring-1 ring-black/5 dark:ring-white/10",
-					// Only dim when flipped below the selection (covers body text).
-					overContent &&
-						"bg-background/80 backdrop-blur-sm transition-[background-color] duration-150 hover:bg-background",
+					"fixed z-50 flex h-10 items-center gap-0.5 rounded-xl border border-border/80 bg-background px-1 shadow-2xl ring-1 ring-black/5 transition-[background-color,opacity] duration-150 dark:ring-white/10",
+					// Dim when covering body text or when the selection scrolled away.
+					dimmed &&
+						"bg-background/80 opacity-70 backdrop-blur-sm hover:bg-background hover:opacity-100",
 				)}
 				style={{ left, top }}
 				role="toolbar"
@@ -277,8 +281,9 @@ export function SelectionMenu({
 			<button
 				type="button"
 				className={cn(
-					"fixed z-50 inline-flex h-6 max-w-[10rem] items-center truncate rounded-full border border-border/80 bg-background px-2 text-caption font-medium text-foreground shadow-md ring-1 ring-black/5 transition-colors hover:bg-accent hover:text-accent-foreground dark:ring-white/10",
+					"fixed z-50 inline-flex h-6 max-w-[10rem] items-center truncate rounded-full border border-border/80 bg-background px-2 text-caption font-medium text-foreground shadow-md ring-1 ring-black/5 transition-[colors,opacity] hover:bg-accent hover:text-accent-foreground dark:ring-white/10",
 					"active:scale-[0.97] motion-reduce:active:scale-100",
+					scrolledAway && "opacity-70 hover:opacity-100",
 				)}
 				style={{ left: pillLeft, top: pillTop }}
 				aria-label={t("selection.addToChat")}

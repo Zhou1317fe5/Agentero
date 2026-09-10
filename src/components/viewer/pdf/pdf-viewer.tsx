@@ -537,17 +537,22 @@ function PdfViewerInner({
 	// ---- Text selection → floating action menu ----
 	// Placed after hostRef/zoomRef: the hook anchors the menu against the page
 	// element and needs both refs injected.
-	const { selectionMenu, setSelectionMenu, isSelecting, closeSelectionMenu } =
-		usePdfTextSelection({
-			selectionCap,
-			docCap,
-			docId,
-			hostRef,
-			zoomRef,
-			isActive,
-			paperRelPath,
-			paperAbsPath,
-		});
+	const {
+		selectionMenu,
+		setSelectionMenu,
+		isSelecting,
+		closeSelectionMenu,
+		rePlaceSelectionMenu,
+	} = usePdfTextSelection({
+		selectionCap,
+		docCap,
+		docId,
+		hostRef,
+		zoomRef,
+		isActive,
+		paperRelPath,
+		paperAbsPath,
+	});
 
 	/**
 	 * Session token of the single in-flight PDF agent run. Shared by ask and
@@ -1129,24 +1134,35 @@ function PdfViewerInner({
 
 	// ---- In-PDF highlight selection menu ----
 
-	// Re-anchor the active pin modal on scroll + zoom. zoomLevel forces
-	// re-placement after zoom. Use scrollReady (boolean) — not `scroll` —
-	// because EmbedPDF returns a new scope object every render; depending on
-	// it re-fired this effect → setCardScreen → re-render → Maximum update depth
-	// when a modal card was open (visual-trace chat + agent panel re-renders).
+	const rePlaceFloatingOnScroll = useCallback(() => {
+		rePlaceActiveCardOnScroll();
+		rePlaceSelectionMenu();
+	}, [rePlaceActiveCardOnScroll, rePlaceSelectionMenu]);
+
+	// Boolean only — do not depend on selectionMenu.screen or re-place loops.
+	const selectionMenuOpen = selectionMenu != null;
+
+	// Re-anchor the active pin modal and the text-selection toolbar on scroll +
+	// zoom. zoomLevel forces re-placement after zoom. Use scrollReady (boolean)
+	// — not `scroll` — because EmbedPDF returns a new scope object every render;
+	// depending on it re-fired this effect → setCardScreen → re-render →
+	// Maximum update depth when a modal card was open.
 	// Native wheel scroll is handled by ActiveCardScrollSync (viewport element).
 	// biome-ignore lint/correctness/useExhaustiveDependencies: scrollReady/zoomLevel are intentional re-place triggers
 	useEffect(() => {
-		if (!activeCard) return;
+		if (!activeCard && !selectionMenuOpen) return;
 		// Force re-place after zoom / card change even if rounded coords match.
-		cardScreenRef.current = null;
-		placeActiveCard(activeCard);
+		if (activeCard) {
+			cardScreenRef.current = null;
+			placeActiveCard(activeCard);
+		}
+		if (selectionMenuOpen) rePlaceSelectionMenu();
 		let raf: number | null = null;
 		const rePlace = () => {
 			if (raf != null) return;
 			raf = requestAnimationFrame(() => {
 				raf = null;
-				rePlaceActiveCardOnScroll();
+				rePlaceFloatingOnScroll();
 			});
 		};
 		const scrollScope = scrollRef.current;
@@ -1157,10 +1173,12 @@ function PdfViewerInner({
 		};
 	}, [
 		activeCard,
+		selectionMenuOpen,
 		scrollReady,
 		placeActiveCard,
 		zoomLevel,
-		rePlaceActiveCardOnScroll,
+		rePlaceFloatingOnScroll,
+		rePlaceSelectionMenu,
 	]);
 
 	usePdfViewerHandle({
@@ -1482,8 +1500,8 @@ function PdfViewerInner({
 					allowLeftDrag={!regionSelecting}
 				/>
 				<ActiveCardScrollSync
-					active={Boolean(activeCard)}
-					onScroll={rePlaceActiveCardOnScroll}
+					active={Boolean(activeCard) || Boolean(selectionMenu)}
+					onScroll={rePlaceFloatingOnScroll}
 				/>
 				{/* Ctrl+wheel and trackpad pinch are handled by WheelZoomHandler (WebKit
 				    pinch arrives as GestureEvents, not ctrl+wheel); EmbedPDF's built-in
