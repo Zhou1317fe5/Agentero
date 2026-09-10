@@ -10,6 +10,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { PDF_SELECTION_MENU } from "@/components/viewer/pdf/chrome/pdf-chrome-surface";
 import { cn } from "@/lib/core/utils";
 import {
 	highlightColorOf,
@@ -82,10 +83,12 @@ export function HighlightAnnotationMenu({
 		<div {...menuWrapperProps} ref={setRef}>
 			<TooltipProvider delayDuration={200}>
 				<div
+					data-pdf-chrome
 					role="toolbar"
 					aria-label={t("selection.highlightMenuLabel")}
 					className={cn(
-						"pointer-events-auto absolute left-1/2 z-10 flex h-10 items-center gap-0.5 rounded-xl border border-border/80 bg-background px-1 shadow-lg ring-1 ring-black/5 dark:ring-white/10",
+						"pointer-events-auto absolute left-1/2 z-10 flex h-10 items-center gap-0.5 px-1",
+						PDF_SELECTION_MENU,
 						placement.suggestTop ? "top-full mt-1.5" : "bottom-full mb-1.5",
 					)}
 					style={{ transform: "translateX(-50%)" }}
@@ -98,7 +101,7 @@ export function HighlightAnnotationMenu({
 									aria-label={t(`selection.color.${color}`)}
 									aria-pressed={activeColor === color}
 									className={cn(
-										"mx-0.5 size-4 shrink-0 rounded-full ring-1 ring-black/15 transition hover:scale-110 dark:ring-white/25",
+										"mx-0.5 size-4 shrink-0 rounded-full ring-1 ring-black/15 transition-transform duration-100 hover:scale-105 active:scale-95 dark:ring-white/25",
 										swatchColorClass(color),
 										activeColor === color &&
 											"ring-2 ring-offset-1 ring-offset-background ring-foreground/70",

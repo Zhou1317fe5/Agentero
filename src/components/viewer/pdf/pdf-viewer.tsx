@@ -101,6 +101,7 @@ import type {
 	PdfViewerInnerProps,
 	PdfViewerProps,
 	RailEditState,
+	SelectionCommentDraft,
 } from "@/components/viewer/pdf/types";
 import { ActiveCardScrollSync } from "@/components/viewer/pdf/viewport/active-card-scroll-sync";
 import { DockviewViewport } from "@/components/viewer/pdf/viewport/dockview-viewport";
@@ -240,7 +241,7 @@ export const PdfViewer = memo(function PdfViewer(props: PdfViewerProps) {
 	}, [source, effectiveSourceBytes, docId]);
 
 	const hostClass = cn(
-		"relative flex h-full min-h-0 flex-col bg-muted/20",
+		"relative flex h-full min-h-0 flex-col bg-muted/40",
 		props.className,
 	);
 
@@ -1074,6 +1075,17 @@ function PdfViewerInner({
 		translateSelection(selectionMenu.anchor);
 	}, [autoTranslateSelection, selectionMenu, translateSelection]);
 
+	// Right-rail annotate chip for the active local selection (remote PDFs are
+	// read-only and keep only the floating toolbar actions).
+	const selectionCommentDraft = useMemo<SelectionCommentDraft | null>(() => {
+		if (isRemotePaper || !selectionMenu) return null;
+		return {
+			page: selectionMenu.anchor.page,
+			anchorY: selectionMenu.anchor.rects[0]?.y ?? 0,
+			quote: selectionMenu.anchor.quote ?? "",
+		};
+	}, [isRemotePaper, selectionMenu]);
+
 	// ---- In-PDF highlight selection menu ----
 
 	// Re-anchor the active pin modal on scroll + zoom. zoomLevel forces
@@ -1148,6 +1160,7 @@ function PdfViewerInner({
 			textLinks,
 			activeCardId: activeCard?.id ?? null,
 			hoveredCommentId,
+			selectionCommentDraft,
 		}),
 		[
 			activeAskAnchor,
@@ -1164,6 +1177,7 @@ function PdfViewerInner({
 			textLinks,
 			activeCard?.id,
 			hoveredCommentId,
+			selectionCommentDraft,
 		],
 	);
 
@@ -1270,6 +1284,7 @@ function PdfViewerInner({
 			onAddCommentToChat: handleAddCommentToChat,
 			onHoverComment: (comment) => setHoveredCommentId(comment.id),
 			onLeaveComment: () => setHoveredCommentId(null),
+			onActivateSelectionComment: handleNote,
 		}),
 		[
 			handleOpenPin,
@@ -1291,6 +1306,7 @@ function PdfViewerInner({
 			handleCopyCommentEmbed,
 			handleAddCommentToChat,
 			setHoveredCommentId,
+			handleNote,
 		],
 	);
 
@@ -1440,11 +1456,9 @@ function PdfViewerInner({
 					state: selectionMenu,
 					onHighlight: handleHighlight,
 					onCopy: handleCopy,
-					onNote: handleNote,
 					onAsk: handleMenuAsk,
 					onAddToChat: handleMenuAddToChat,
 					onTranslate: handleMenuTranslate,
-					onClose: closeSelectionMenu,
 					readOnly: isRemotePaper,
 				}}
 				citationPreview={{

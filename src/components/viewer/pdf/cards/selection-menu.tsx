@@ -4,7 +4,6 @@ import {
 	Languages,
 	MessageSquare,
 	MessageSquarePlus,
-	NotebookPen,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -30,39 +29,34 @@ type SelectionMenuProps = {
 	onHighlight: (color: HighlightColor) => void;
 	/** Copy the selected text to the clipboard */
 	onCopy: () => void;
-	/** Annotate: create a highlight and open its inline note editor */
-	onNote: () => void;
 	onAsk: () => void;
 	/** Pin the selection as an Agent composer context chip and open the chat. */
 	onAddToChat: () => void;
 	onTranslate: () => void;
-	/** Dismiss the menu without acting */
-	onClose: () => void;
-	/** Hide highlight / note / translate (need marks/); keep Copy / Ask / Add-to-chat. */
+	/** Hide highlight / translate (need marks/); keep Copy / Ask / Add-to-chat. */
 	readOnly?: boolean;
 };
 
-const BAR_W_NORMAL = 340;
+const BAR_W_NORMAL = 304;
 const BAR_W_READONLY = 160;
 const BAR_H = 40;
 const COPIED_FLASH_MS = 1500;
 
 /**
  * Floating action bar shown next to a text selection: a row of color swatches
- * (highlight), then Copy / Annotate / Ask / Translate.
+ * (highlight), then Copy / Ask / Add-to-chat / Translate.
+ * Annotate lives on the right-rail selection comment chip instead.
  * Copy keeps the bar open and swaps the copy icon for a check briefly.
  * Remote papers are read-only: they keep Copy, Ask, and Add-to-chat but hide
- * persistent highlight / note / translate actions.
+ * persistent highlight / translate actions.
  */
 export function SelectionMenu({
 	screen,
 	onHighlight,
 	onCopy,
-	onNote,
 	onAsk,
 	onAddToChat,
 	onTranslate,
-	onClose,
 	readOnly = false,
 }: SelectionMenuProps) {
 	const { t } = useTranslation("viewer");
@@ -100,12 +94,6 @@ export function SelectionMenu({
 			setCopied(false);
 		}, COPIED_FLASH_MS);
 	}, [onCopy]);
-
-	// Annotate opens the inline note editor in the viewer, so just close the menu.
-	const handleNote = useCallback(() => {
-		onNote();
-		onClose();
-	}, [onNote, onClose]);
 
 	const colorLabel = (c: HighlightColor): string => {
 		switch (c) {
@@ -199,22 +187,6 @@ export function SelectionMenu({
 						) : null}
 					</Tooltip>
 				</div>
-				{!readOnly ? (
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon-sm"
-								aria-label={t("selection.note")}
-								onClick={handleNote}
-							>
-								<NotebookPen className="size-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent side="top">{t("selection.note")}</TooltipContent>
-					</Tooltip>
-				) : null}
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Button

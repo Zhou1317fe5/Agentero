@@ -22,6 +22,7 @@ import { TilingLayer } from "@embedpdf/plugin-tiling/react";
 import { EyeOff, Languages, Loader2 } from "lucide-react";
 import { memo, type RefObject, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { PDF_CHROME_CHIP } from "@/components/viewer/pdf/chrome/pdf-chrome-surface";
 import {
 	EMPTY_CITATION_LINKS,
 	EMPTY_COMMENTS,
@@ -39,7 +40,10 @@ import { HighlightAnnotationMenu } from "@/components/viewer/pdf/layers/highligh
 import { LayoutTranslateOverlay } from "@/components/viewer/pdf/layers/layout-translate-overlay";
 import { PdfRegionSelectLayer } from "@/components/viewer/pdf/layers/region-select-layer";
 import { SelectionGutter } from "@/components/viewer/pdf/layers/selection-gutter";
-import type { PageAnnotationComment } from "@/components/viewer/pdf/types";
+import type {
+	PageAnnotationComment,
+	SelectionCommentDraft,
+} from "@/components/viewer/pdf/types";
 import { cn } from "@/lib/core/utils";
 import type { PdfVisualSessionTrace } from "@/lib/pdf/agent-trace";
 import type { PdfAskNormalizedRect } from "@/lib/pdf/ask/types";
@@ -112,6 +116,11 @@ export type PdfPageMarksSlice = {
 	activeCardId: string | null;
 	/** Id of the comment-rail card currently being hovered; null when idle. */
 	hoveredCommentId: string | null;
+	/**
+	 * Active text-selection comment chip (right rail). Null when idle or on a
+	 * read-only remote PDF.
+	 */
+	selectionCommentDraft: SelectionCommentDraft | null;
 };
 
 /** Layout-analysis derived overlays (hover targets, debug boxes, translations). */
@@ -175,6 +184,8 @@ export type PdfPageHandlers = {
 	onHoverComment: (comment: PageAnnotationComment) => void;
 	/** Hover leaves a comment-rail card. */
 	onLeaveComment: () => void;
+	/** Create a note from the active selection comment chip. */
+	onActivateSelectionComment: () => void;
 };
 
 export type PdfPageLayersProps = {
@@ -232,8 +243,10 @@ const PageTranslateTab = memo(function PageTranslateTab({
 	return (
 		<button
 			type="button"
+			data-pdf-chrome
 			className={cn(
-				"absolute top-3 left-0 z-[6] flex w-7 min-h-16 -translate-x-full flex-col items-center justify-center gap-1 rounded-l-lg border border-r-0 border-border/80 bg-background/95 px-1 py-2 font-medium text-xs text-foreground shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 dark:ring-white/10",
+				"absolute top-3 left-0 z-[6] flex w-7 min-h-16 -translate-x-full flex-col items-center justify-center gap-1 rounded-l-lg border-r-0 px-1 py-2 font-medium text-xs text-foreground transition-colors duration-100 hover:bg-muted/80 active:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
+				PDF_CHROME_CHIP,
 				active && "border-primary/30 bg-primary/10 text-primary",
 			)}
 			aria-label={label}
@@ -305,6 +318,10 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 			: null;
 	const pins = marks.pinsByPage.get(pageNumber) ?? EMPTY_PINS;
 	const comments = marks.commentsByPage.get(pageNumber) ?? EMPTY_COMMENTS;
+	const selectionDraftOnPage =
+		marks.selectionCommentDraft?.page === pageNumber
+			? marks.selectionCommentDraft
+			: null;
 	const layoutTranslateOnPage =
 		layout.layoutTranslateItemsByPage.get(pageIndex);
 	const pageTranslateState = layout.layoutTranslatePageStateByPage.get(
@@ -759,6 +776,8 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 					editingId={marks.editingCommentId}
 					wikiTarget={marks.commentWikiTarget}
 					hoveredId={marks.hoveredCommentId}
+					selectionDraft={selectionDraftOnPage}
+					onActivateSelectionComment={handlers.onActivateSelectionComment}
 					onOpen={handlers.onOpenComment}
 					onSave={handlers.onSaveComment}
 					onCancel={handlers.onCancelComment}

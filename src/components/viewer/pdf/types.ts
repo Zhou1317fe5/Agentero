@@ -105,6 +105,18 @@ export type SelectionMenuState = {
 	pages: FormattedSelection[];
 };
 
+/**
+ * Transient right-rail chip while a text selection is active: collapsed icon
+ * that expands into an empty comment-card preview; click creates the note.
+ */
+export type SelectionCommentDraft = {
+	/** 1-based page number (matches `commentsByPage` keys). */
+	page: number;
+	/** Normalized Y of the selection top (0–1). */
+	anchorY: number;
+	quote: string;
+};
+
 export type CitationPreviewState = {
 	screen: ScreenPoint;
 	/**

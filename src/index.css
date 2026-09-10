@@ -168,7 +168,8 @@
 
 /* Frost translucent chrome when the OS asks for reduced transparency. */
 @media (prefers-reduced-transparency: reduce) {
-	[data-titlebar] {
+	[data-titlebar],
+	[data-pdf-chrome] {
 		background-color: var(--background);
 		backdrop-filter: none;
 		-webkit-backdrop-filter: none;

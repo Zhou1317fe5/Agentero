@@ -8,7 +8,13 @@
  * textarea, ⌘/Ctrl+Enter or blur saves, Escape cancels. No floating editor.
  */
 
-import { Crop, Link2, MessageSquarePlus, Trash2 } from "lucide-react";
+import {
+	Crop,
+	Link2,
+	MessageSquare,
+	MessageSquarePlus,
+	Trash2,
+} from "lucide-react";
 import { memo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -18,13 +24,21 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { PageAnnotationComment } from "@/components/viewer/pdf/types";
+import type {
+	PageAnnotationComment,
+	SelectionCommentDraft,
+} from "@/components/viewer/pdf/types";
 import { useImeGuard } from "@/hooks/use-ime-guard";
 import { cn } from "@/lib/core/utils";
-import { swatchColorClass } from "@/lib/pdf/highlight/palette";
+import {
+	DEFAULT_HIGHLIGHT_COLOR,
+	swatchColorClass,
+} from "@/lib/pdf/highlight/palette";
 
 /** Card width in CSS px — also the gutter width reserved on the viewport. */
 export const COMMENT_CARD_WIDTH_PX = 224;
+/** Collapsed selection-comment chip width (icon only). */
+export const COMMENT_AFFORDANCE_COLLAPSED_WIDTH_PX = 36;
 /** Horizontal gap between the page edge and the rail. */
 export const COMMENT_CARD_GAP_PX = 8;
 /** Extra px so ring + shadow aren't clipped by the viewport overflow. */
@@ -60,6 +74,13 @@ type CommentCardsLayerProps = {
 	wikiTarget: string | null;
 	/** Id of the card currently being hovered; null when idle. */
 	hoveredId: string | null;
+	/**
+	 * Transient chip for the active text selection on this page. Hover expands
+	 * into an empty comment-card preview; click creates the note.
+	 */
+	selectionDraft?: SelectionCommentDraft | null;
+	/** Create a highlight + open the rail editor for `selectionDraft`. */
+	onActivateSelectionComment?: () => void;
 	onOpen: (comment: PageAnnotationComment) => void;
 	onSave: (comment: PageAnnotationComment, text: string) => void;
 	onCancel: () => void;
@@ -245,13 +266,14 @@ const CommentCard = memo(function CommentCard({
 
 	return (
 		<div
+			data-pdf-chrome
 			className={cn(
-				"group pointer-events-auto absolute select-none rounded-lg bg-background/95 shadow-sm ring-1 backdrop-blur-sm transition-all duration-200 ease-out hover:z-[7] hover:scale-[1.02] hover:shadow-md hover:!h-auto",
+				"group pointer-events-auto absolute select-none rounded-lg border border-border/50 bg-background/90 shadow-sm ring-1 backdrop-blur-md backdrop-saturate-150 transition-[box-shadow,background-color] duration-150 ease-out hover:z-[7] hover:shadow-md hover:!h-auto supports-backdrop-blur:bg-background/75",
 				editing
 					? "z-[6] ring-2 ring-ring/50"
 					: hovered
 						? "z-[6] ring-2 ring-primary/40 shadow-md"
-						: "ring-border/60",
+						: "ring-black/5 dark:ring-white/10",
 			)}
 			style={{
 				left: `calc(100% + ${COMMENT_CARD_GAP_PX}px)`,
@@ -484,12 +506,97 @@ const CommentCard = memo(function CommentCard({
 	);
 });
 
+type SelectionCommentAffordanceProps = {
+	draft: SelectionCommentDraft;
+	pageHeightPx: number;
+	onActivate: () => void;
+};
+
+/**
+ * Collapsed icon chip at the selection's rail height. Hover / focus expands to
+ * the same footprint as an empty comment card; click creates the annotation.
+ */
+const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
+	draft,
+	pageHeightPx,
+	onActivate,
+}: SelectionCommentAffordanceProps) {
+	const { t } = useTranslation("viewer");
+	const heightPx = estimateCommentCardHeight({
+		id: "__selection-draft__",
+		pageIndex: draft.page - 1,
+		anchorY: draft.anchorY,
+		rects: [],
+		quote: draft.quote,
+		comment: "",
+		color: DEFAULT_HIGHLIGHT_COLOR,
+		kind: "highlight",
+		linkAlias: null,
+	});
+	const topPx = Math.max(
+		0,
+		Math.min(draft.anchorY * pageHeightPx, pageHeightPx - heightPx),
+	);
+
+	return (
+		<button
+			type="button"
+			aria-label={t("selection.note")}
+			title={t("selection.note")}
+			data-pdf-chrome
+			className={cn(
+				"group/draft pointer-events-auto absolute z-[6] w-9 select-none overflow-hidden rounded-lg border border-border/50 bg-background/90 text-left shadow-sm ring-1 ring-black/5 backdrop-blur-md backdrop-saturate-150 outline-none supports-backdrop-blur:bg-background/75 dark:ring-white/10",
+				"transition-[width,box-shadow] duration-200 ease-out motion-reduce:transition-none",
+				"hover:z-[7] hover:w-56 hover:shadow-md hover:ring-primary/40",
+				"focus-within:z-[7] focus-within:w-56 focus-within:shadow-md",
+				"focus-visible:ring-2 focus-visible:ring-ring/50",
+			)}
+			style={{
+				left: `calc(100% + ${COMMENT_CARD_GAP_PX}px)`,
+				top: topPx,
+				height: heightPx,
+			}}
+			onPointerDown={(e) => e.stopPropagation()}
+			onClick={(e) => {
+				e.stopPropagation();
+				onActivate();
+			}}
+		>
+			<span
+				className="absolute inset-0 flex items-center justify-center text-muted-foreground transition-opacity duration-150 group-hover/draft:pointer-events-none group-hover/draft:opacity-0 group-focus-within/draft:pointer-events-none group-focus-within/draft:opacity-0"
+				aria-hidden
+			>
+				<MessageSquare className="size-4" />
+			</span>
+			<div
+				className={cn(
+					"h-full w-56 px-2.5 py-2 opacity-0 transition-opacity duration-150",
+					"group-hover/draft:opacity-100 group-focus-within/draft:opacity-100",
+				)}
+			>
+				<span
+					className={cn(
+						"block size-2 rounded-full",
+						swatchColorClass(DEFAULT_HIGHLIGHT_COLOR),
+					)}
+					aria-hidden
+				/>
+				<p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground/70">
+					{t("annotations.placeholder")}
+				</p>
+			</div>
+		</button>
+	);
+});
+
 export const CommentCardsLayer = memo(function CommentCardsLayer({
 	items,
 	pageHeightPx,
 	editingId,
 	wikiTarget,
 	hoveredId,
+	selectionDraft = null,
+	onActivateSelectionComment,
 	onOpen,
 	onSave,
 	onCancel,
@@ -500,7 +607,7 @@ export const CommentCardsLayer = memo(function CommentCardsLayer({
 	onHover,
 	onLeave,
 }: CommentCardsLayerProps) {
-	if (!items.length) return null;
+	if (!items.length && !selectionDraft) return null;
 
 	const laid = layoutCommentCards(items, pageHeightPx, editingId);
 	const byId = new Map(items.map((item) => [item.id, item]));
@@ -532,6 +639,13 @@ export const CommentCardsLayer = memo(function CommentCardsLayer({
 						/>
 					);
 				})}
+				{selectionDraft && onActivateSelectionComment ? (
+					<SelectionCommentAffordance
+						draft={selectionDraft}
+						pageHeightPx={pageHeightPx}
+						onActivate={onActivateSelectionComment}
+					/>
+				) : null}
 			</TooltipProvider>
 		</div>
 	);
