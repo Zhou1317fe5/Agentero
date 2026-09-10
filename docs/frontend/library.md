@@ -2,6 +2,11 @@
 
 中间栏 catalog 表格；数据一次 `paper_list` 进内存。
 
+## 外观
+
+- 画布用 `bg-background`（与侧栏 `bg-sidebar` 分层）；表头 sticky 半透明 + `backdrop-blur`（滚动边缘用 soft shadow，非硬分割线）；行间 hairline `border-border/40`，悬停 `accent` 浅洗。
+- 配色跟默认主题 token，见 [settings.md](settings.md)「主题」。
+
 ## 视图
 
 - 虚拟路径 `agentero:library`（不写盘）。

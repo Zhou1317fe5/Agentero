@@ -176,8 +176,11 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger asChild>
-				<thead className="sticky top-0 z-[1] select-none border-b bg-background/95 backdrop-blur-sm">
-					<tr className="text-muted-foreground text-xs">
+				<thead
+					data-library-header
+					className="sticky top-0 z-[1] select-none border-b border-transparent bg-background/72 shadow-[0_1px_0_0_color-mix(in_oklch,var(--border)_55%,transparent)] backdrop-blur-xl backdrop-saturate-150 supports-backdrop-blur:bg-background/60"
+				>
+					<tr className="text-muted-foreground text-xs tracking-wide">
 						{visibleColumns.map((col) => {
 							const meta = COLUMN_META[col.key];
 							const active = sortKey === col.key;
@@ -290,7 +293,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 													onChange={(e) => onInputChange(e.target.value)}
 													aria-label={t("papersLibrary.search")}
 													tabIndex={showActions ? undefined : -1}
-													className="h-6 border-transparent bg-muted/50 pl-6 pr-1.5 text-xs shadow-none focus-visible:border-input focus-visible:bg-background"
+													className="h-6 border-transparent bg-muted/70 pl-6 pr-1.5 text-xs shadow-none placeholder:text-muted-foreground/70 focus-visible:border-border/60 focus-visible:bg-card"
 													onMouseDown={(e) => e.stopPropagation()}
 													onClick={(e) => e.stopPropagation()}
 													onKeyDown={(e) => e.stopPropagation()}

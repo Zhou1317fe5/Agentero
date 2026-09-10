@@ -53,10 +53,11 @@
 
 ## 主题
 
-- `uiTheme` 默认 `default`（内置外观）。
+- `uiTheme` 默认 `default`（内置外观）：Apple 系统灰材质——冷灰低饱和中性色（oklch hue ≈260），侧栏略重于画布、卡片抬起；`--brand` / `--highlight` 保留彩色强调。覆盖见 `src/index.css` `:root` / `.dark`。
 - 外观设置中的配色主题以紧凑预览网格展示背景、卡片、主色和强调色；点击预览项即可应用主题。
 - 36 个 tweakcn 预设：`src/themes/tweakcn.json`；`src/lib/ui/theme.ts` 注入 CSS 变量。
 - 刷新主题数据：`node scripts/fetch-tweakcn-themes.mjs`。
+- 可访问性：`prefers-reduced-transparency` 下标题栏 / Library 表头退回实色；`prefers-contrast: more` 加深边框。
 - `uiScale`：80%–150% 五档，改 `html` font-size（基数仍为 **16×scale**，与编辑器字号/行距正交；不把根字号改成 13，以免 rem 间距在 Windows 125% 等缩放下整体被压扁）。
 - 字号阶梯（Apple UI 光学字阶，见 `src/index.css` `@theme`；`body` 默认 `text-sm`，PaneHeader / 侧栏 / 底栏 / 顶栏 / Dock / 库表 / Agent chrome 共用）。每档是 **字号 + 行高 + 字距** 一组，不是只改 size：
   - `text-caption` → **11px**（Caption；行高 1.35，字距 +0.012em；chip / 密集元数据；禁止再写 9/10px）

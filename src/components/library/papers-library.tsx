@@ -439,7 +439,7 @@ export function PapersLibrary({
 						</tbody>
 					</table>
 					{!empty ? (
-						<p className="sticky left-0 px-3 py-2 text-muted-foreground text-xs">
+						<p className="sticky left-0 border-border/40 border-t px-3 py-2 text-muted-foreground text-xs tracking-wide">
 							{t("papersLibrary.count", {
 								count: rows.length,
 								formatted: new Intl.NumberFormat(i18n.language).format(
