@@ -30,7 +30,7 @@ type TranslateCardProps = {
  */
 export function TranslateCard({
 	screen,
-	preferRight = true,
+	preferRight = false,
 	result,
 	streaming,
 	error,

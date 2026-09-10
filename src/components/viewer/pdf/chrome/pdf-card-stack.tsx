@@ -153,7 +153,7 @@ export function PdfCardStack({
 			{translate.record && cardScreen ? (
 				<TranslateCard
 					screen={cardScreen}
-					preferRight={cardScreen.preferRight ?? true}
+					preferRight={cardScreen.preferRight ?? false}
 					result={translate.record.result ?? ""}
 					streaming={translate.streaming}
 					error={translate.error ?? translate.record.error ?? null}
