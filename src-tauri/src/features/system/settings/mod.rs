@@ -12,6 +12,7 @@
 
 use crate::core::error::AppError;
 use crate::core::paths::{self, settings_path};
+use crate::features::system::builtin;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -34,6 +35,21 @@ pub const GITHUB_MIRROR_PRESETS: &[&str] = &[
 pub const DEFAULT_CONNECTOR_PORT: u16 = 23119;
 /// Default loopback port for the optional MCP HTTP server.
 pub const DEFAULT_MCP_PORT: u16 = 8765;
+
+/// Built-in provider id, re-exported so the Host never re-types the literal.
+pub use agentero_core::features::translate::BUILTIN_PROVIDER_ID;
+
+/// `EmbeddingSettings::source` vocabulary. Empty means "unset" and is resolved
+/// from the stored BYOK fields by [`normalize`], so a legacy `settings.json`
+/// with a populated endpoint keeps working without a `source` key.
+const EMBEDDING_SOURCE_BUILTIN: &str = "builtin";
+const EMBEDDING_SOURCE_CUSTOM: &str = "custom";
+
+/// Whether `provider` names the built-in provider (credentials come from the
+/// build, never from `providerConfigs`).
+fn is_builtin_provider(provider: &str) -> bool {
+    provider.trim().eq_ignore_ascii_case(BUILTIN_PROVIDER_ID)
+}
 
 /// True when `key` is a UI mask of only `*` (length mirrors the real secret).
 /// Real secrets stay in the Host process / settings file; `settings_set` treats
@@ -178,10 +194,14 @@ pub struct PdfAskSettings {
     pub model_id: String,
 }
 
-/// OpenAI-compatible embedding endpoint (BYOK). All-empty = feature disabled.
+/// Embedding endpoint: the built-in provider, or a custom OpenAI-compatible
+/// one (BYOK). Custom with all-empty fields = feature disabled.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbeddingSettings {
+    /// `builtin` | `custom`; empty = unset and inferred from the fields below.
+    #[serde(default)]
+    pub source: String,
     #[serde(default)]
     pub base_url: String,
     #[serde(default)]
@@ -255,7 +275,8 @@ pub struct TranslateProviderConfig {
 pub struct LayoutSettings {
     #[serde(default = "default_layout_backend")]
     pub backend: String,
-    /// PAPER.md body-parse engine: `local` | `paddle` | `mineru` | `openaiCompatible`.
+    /// PAPER.md body-parse engine: `local` | `paddle` | `mineru` |
+    /// `openaiCompatible` | `agentero` (built-in).
     #[serde(default = "default_parser_backend")]
     pub parser_backend: String,
     #[serde(default)]
@@ -411,7 +432,11 @@ fn default_ai_response_language() -> String {
     "auto".into()
 }
 fn default_translate_provider() -> String {
-    "tencenttransmart".into()
+    if builtin::available() {
+        BUILTIN_PROVIDER_ID.to_string()
+    } else {
+        "tencenttransmart".into()
+    }
 }
 fn default_connector_port() -> u16 {
     DEFAULT_CONNECTOR_PORT
@@ -428,11 +453,18 @@ fn default_translate_target() -> String {
 fn default_translate_source() -> String {
     "auto".into()
 }
+/// Layout analysis stays on the bundled offline PP-DocLayoutV3 model: it is
+/// free, local, and a cloud backend would bill every PDF for no gain. The
+/// built-in provider is a *parser* (body-text) backend only.
 fn default_layout_backend() -> String {
     "local".into()
 }
 fn default_parser_backend() -> String {
-    "local".into()
+    if builtin::available() {
+        BUILTIN_PROVIDER_ID.to_string()
+    } else {
+        "local".into()
+    }
 }
 
 /// Domain reaction fired after settings are persisted. Receives the same
@@ -467,6 +499,22 @@ impl AppSettingsStore {
         Self {
             inner: Mutex::new(settings),
             path,
+            listeners: Mutex::new(Vec::new()),
+        }
+    }
+
+    /// In-memory store over `settings` for tests. The path is a scratch name
+    /// under the temp dir and is only written if the test calls [`set`](Self::set).
+    #[cfg(test)]
+    pub fn for_tests(settings: AppSettings) -> Self {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or_default();
+        Self {
+            inner: Mutex::new(settings),
+            path: std::env::temp_dir().join(format!("agentero-settings-for-tests-{nanos}.json")),
             listeners: Mutex::new(Vec::new()),
         }
     }
@@ -577,7 +625,14 @@ impl AppSettingsStore {
 
     /// Resolve a layout-provider API key by provider id (e.g. `paddle`).
     /// Used by the layout_remote commands so the WebView never needs the key.
+    ///
+    /// The built-in provider resolves here rather than in each caller: it has no
+    /// `providerConfigs` card (its key must never be persistable), so without
+    /// this the parser engine would see no credentials at all.
     pub fn layout_api_key(&self, provider: &str) -> Option<String> {
+        if is_builtin_provider(provider) {
+            return builtin::api_key().map(str::to_string);
+        }
         let key = layout_provider_settings_key(provider)?;
         let guard = self.inner.lock().ok()?;
         let cfg = guard.layout.provider_configs.get(key)?;
@@ -591,6 +646,9 @@ impl AppSettingsStore {
 
     /// Resolve a layout-provider base URL by provider id (empty → None).
     pub fn layout_base_url(&self, provider: &str) -> Option<String> {
+        if is_builtin_provider(provider) {
+            return Some(builtin::status().base_url);
+        }
         let key = layout_provider_settings_key(provider)?;
         let guard = self.inner.lock().ok()?;
         let cfg = guard.layout.provider_configs.get(key)?;
@@ -604,6 +662,9 @@ impl AppSettingsStore {
 
     /// Resolve a layout-provider model id by provider id (empty → None).
     pub fn layout_model(&self, provider: &str) -> Option<String> {
+        if is_builtin_provider(provider) {
+            return Some(builtin::status().ocr_model);
+        }
         let key = layout_provider_settings_key(provider)?;
         let guard = self.inner.lock().ok()?;
         let cfg = guard.layout.provider_configs.get(key)?;
@@ -657,10 +718,22 @@ impl AppSettingsStore {
             .unwrap_or(false)
     }
 
-    /// Resolve the configured embedding endpoint (base URL, API key, model).
-    /// Returns None unless base URL and model are both set.
+    /// Resolve the embedding endpoint (base URL, API key, model): the built-in
+    /// gateway unless the source is custom. None when a custom endpoint is
+    /// incomplete, which is what disables arXiv recommendations.
     pub fn embedding_config(&self) -> Option<(String, Option<String>, String)> {
         let guard = self.inner.lock().ok()?;
+        // Anything but an explicit custom endpoint uses the built-in gateway —
+        // but only when this build actually carries a key, so a build without
+        // one keeps the stored-values behaviour (and `recommend.no_embedding`).
+        if guard.embedding.source.trim() != EMBEDDING_SOURCE_CUSTOM && builtin::available() {
+            let status = builtin::status();
+            return Some((
+                status.base_url,
+                builtin::api_key().map(str::to_string),
+                status.embedding_model,
+            ));
+        }
         let base_url = guard.embedding.base_url.trim();
         let model = guard.embedding.model.trim();
         if base_url.is_empty() || model.is_empty() {
@@ -755,6 +828,9 @@ pub fn layout_provider_settings_key(provider: &str) -> Option<&'static str> {
         "paddle" => Some("paddle"),
         "mineru" => Some("mineru"),
         "openaicompatible" => Some("openaiCompatible"),
+        // No stored card: the getters above resolve it from the build, but the
+        // parser registry still needs a stable credentials-map key.
+        BUILTIN_PROVIDER_ID => Some(BUILTIN_PROVIDER_ID),
         _ => None,
     }
 }
@@ -965,6 +1041,7 @@ fn normalize(s: &mut AppSettings) {
     s.embedding.base_url = s.embedding.base_url.trim().to_string();
     s.embedding.api_key = s.embedding.api_key.trim().to_string();
     s.embedding.model = s.embedding.model.trim().to_string();
+    s.embedding.source = resolve_embedding_source(&s.embedding);
 
     normalize_translate_provider_configs(&mut s.translate.provider_configs);
     s.translate.agent_id = s.translate.agent_id.trim().to_string();
@@ -981,11 +1058,38 @@ fn normalize(s: &mut AppSettings) {
     if !LAYOUT_BACKENDS.contains(&s.layout.backend.as_str()) {
         s.layout.backend = default_layout_backend();
     }
-    const PARSER_BACKENDS: &[&str] = &["local", "paddle", "mineru", "openaiCompatible"];
+    // The whitelist is what makes a selection stick: normalize runs on every
+    // save, so an unlisted parser backend is silently reset and persisted.
+    const PARSER_BACKENDS: &[&str] = &[
+        "local",
+        "paddle",
+        "mineru",
+        "openaiCompatible",
+        BUILTIN_PROVIDER_ID,
+    ];
     if !PARSER_BACKENDS.contains(&s.layout.parser_backend.as_str()) {
         s.layout.parser_backend = default_parser_backend();
     }
     normalize_layout_provider_configs(&mut s.layout.provider_configs);
+}
+
+/// Migration rule for `EmbeddingSettings::source`, mirrored case-for-case by the
+/// frontend normalizer: an explicit value wins, otherwise any populated BYOK
+/// field (an all-`*` mask counts as populated) implies a custom endpoint and an
+/// all-empty triple implies the built-in one.
+fn resolve_embedding_source(settings: &EmbeddingSettings) -> String {
+    let explicit = settings.source.trim().to_ascii_lowercase();
+    if explicit == EMBEDDING_SOURCE_BUILTIN || explicit == EMBEDDING_SOURCE_CUSTOM {
+        return explicit;
+    }
+    let configured = !settings.base_url.trim().is_empty()
+        || !settings.api_key.trim().is_empty()
+        || !settings.model.trim().is_empty();
+    if configured {
+        EMBEDDING_SOURCE_CUSTOM.to_string()
+    } else {
+        EMBEDDING_SOURCE_BUILTIN.to_string()
+    }
 }
 
 fn normalize_layout_provider_configs(configs: &mut HashMap<String, LayoutProviderConfig>) {
@@ -1217,7 +1321,7 @@ mod tests {
             .provider_configs
             .insert("unknown".into(), LayoutProviderConfig::default());
         normalize(&mut s);
-        assert_eq!(s.layout.parser_backend, "local");
+        assert_eq!(s.layout.parser_backend, default_parser_backend());
         assert!(!s.layout.provider_configs.contains_key("unknown"));
         let cfg = s.layout.provider_configs.get("openaiCompatible").unwrap();
         assert_eq!(cfg.api_key, "sk-x");
@@ -1385,6 +1489,166 @@ mod tests {
             .find(|c| c.key == "authors")
             .unwrap();
         assert!(authors.visible);
+    }
+
+    /// `agentero` is a parser (body-text) backend only. Layout analysis stays on
+    /// the bundled offline PP-DocLayoutV3 model, so `LAYOUT_BACKENDS` must not
+    /// grow the built-in id and `default_layout_backend` must not consult it.
+    #[test]
+    fn layout_backend_never_becomes_builtin() {
+        assert_eq!(default_layout_backend(), "local");
+        assert_eq!(AppSettings::default().layout.backend, "local");
+
+        let mut s = AppSettings::default();
+        s.layout.backend = BUILTIN_PROVIDER_ID.into();
+        normalize(&mut s);
+        assert_eq!(s.layout.backend, "local");
+    }
+
+    #[test]
+    fn builtin_parser_backend_sticks_but_never_stores_a_key() {
+        let mut s = AppSettings::default();
+        s.layout.parser_backend = BUILTIN_PROVIDER_ID.into();
+        s.layout.provider_configs.insert(
+            BUILTIN_PROVIDER_ID.into(),
+            LayoutProviderConfig {
+                api_key: "sk-must-not-be-written".into(),
+                base_url: "https://gateway.test/v1".into(),
+                model: "some/ocr-model".into(),
+                ..Default::default()
+            },
+        );
+        normalize(&mut s);
+        // Listed in PARSER_BACKENDS, so normalize does not reset it.
+        assert_eq!(s.layout.parser_backend, BUILTIN_PROVIDER_ID);
+        // Unlisted in the provider-config whitelist, so the card is dropped.
+        assert!(s.layout.provider_configs.is_empty());
+
+        let store = AppSettingsStore::for_tests(AppSettings::default());
+        let mut incoming = AppSettings::default();
+        incoming.layout.parser_backend = BUILTIN_PROVIDER_ID.into();
+        incoming.layout.provider_configs.insert(
+            BUILTIN_PROVIDER_ID.into(),
+            LayoutProviderConfig {
+                api_key: "sk-must-not-be-written".into(),
+                ..Default::default()
+            },
+        );
+        store.set(incoming).expect("set");
+        let raw = fs::read_to_string(store.path()).expect("settings written");
+        assert!(!raw.contains("sk-must-not-be-written"));
+        assert!(raw.contains(BUILTIN_PROVIDER_ID), "parserBackend kept");
+        let _ = fs::remove_file(store.path());
+    }
+
+    #[test]
+    fn layout_getters_resolve_builtin_without_a_provider_card() {
+        let store = AppSettingsStore::for_tests(AppSettings::default());
+        let status = builtin::status();
+        assert_eq!(
+            store.layout_base_url(BUILTIN_PROVIDER_ID).as_deref(),
+            Some(status.base_url.as_str())
+        );
+        assert_eq!(
+            store.layout_model(BUILTIN_PROVIDER_ID).as_deref(),
+            Some(status.ocr_model.as_str())
+        );
+        assert_eq!(
+            store.layout_api_key(BUILTIN_PROVIDER_ID).is_some(),
+            builtin::available()
+        );
+        // Prompt/language/force-OCR stay unset: the VLM engine derives the
+        // prompt from the model id, and the other two are MinerU-only.
+        assert!(store.layout_prompt(BUILTIN_PROVIDER_ID).is_none());
+        assert!(store.layout_language(BUILTIN_PROVIDER_ID).is_none());
+        assert!(!store.layout_is_ocr(BUILTIN_PROVIDER_ID));
+        assert_eq!(
+            layout_provider_settings_key("Agentero"),
+            Some(BUILTIN_PROVIDER_ID)
+        );
+    }
+
+    #[test]
+    fn embedding_source_is_inferred_only_when_unset() {
+        let mut fresh = AppSettings::default();
+        normalize(&mut fresh);
+        assert_eq!(fresh.embedding.source, "builtin");
+
+        // Legacy file: BYOK fields populated, no `source` key at all.
+        let mut legacy: AppSettings = serde_json::from_str(
+            r#"{"embedding":{"baseUrl":"https://embed.test/v1","model":"bge-m3"}}"#,
+        )
+        .expect("deserialize");
+        assert_eq!(legacy.embedding.source, "");
+        normalize(&mut legacy);
+        assert_eq!(legacy.embedding.source, "custom");
+
+        // An explicit choice wins over inference from the other fields.
+        let mut explicit = AppSettings::default();
+        explicit.embedding.source = " BUILTIN ".into();
+        explicit.embedding.model = "bge-m3".into();
+        normalize(&mut explicit);
+        assert_eq!(explicit.embedding.source, "builtin");
+
+        // A `*` mask counts as configured, so a redacted round-trip stays custom.
+        let mut masked = AppSettings::default();
+        masked.embedding.api_key = "****".into();
+        normalize(&mut masked);
+        assert_eq!(masked.embedding.source, "custom");
+
+        // Unknown values are re-inferred.
+        let mut unknown = AppSettings::default();
+        unknown.embedding.source = "gateway".into();
+        normalize(&mut unknown);
+        assert_eq!(unknown.embedding.source, "builtin");
+    }
+
+    #[test]
+    fn embedding_config_prefers_builtin_unless_custom() {
+        let status = builtin::status();
+        let store = AppSettingsStore::for_tests(AppSettings::default());
+        match store.embedding_config() {
+            Some((base_url, api_key, model)) => {
+                assert!(builtin::available(), "no key compiled in → no config");
+                assert_eq!(base_url, status.base_url);
+                assert_eq!(model, status.embedding_model);
+                assert!(api_key.is_some());
+            }
+            None => {
+                assert!(!builtin::available());
+            }
+        }
+
+        let store = AppSettingsStore::for_tests(AppSettings {
+            embedding: EmbeddingSettings {
+                source: "custom".into(),
+                base_url: "https://embed.test/v1".into(),
+                api_key: "sk-custom-test".into(),
+                model: "bge-m3".into(),
+            },
+            ..AppSettings::default()
+        });
+        assert_eq!(
+            store.embedding_config(),
+            Some((
+                "https://embed.test/v1".into(),
+                Some("sk-custom-test".into()),
+                "bge-m3".into()
+            ))
+        );
+    }
+
+    #[test]
+    fn fresh_install_defaults_follow_builtin_availability() {
+        let s = AppSettings::default();
+        if builtin::available() {
+            assert_eq!(s.translate.provider, BUILTIN_PROVIDER_ID);
+            assert_eq!(s.layout.parser_backend, BUILTIN_PROVIDER_ID);
+        } else {
+            assert_eq!(s.translate.provider, "tencenttransmart");
+            assert_eq!(s.layout.parser_backend, "local");
+        }
+        assert_eq!(s.layout.backend, "local");
     }
 }
 

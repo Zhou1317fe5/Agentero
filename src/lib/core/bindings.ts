@@ -2318,8 +2318,13 @@ export type ElicitationResponseRequest = {
 	content?: { [key in string]: string } | null,
 };
 
-/**  OpenAI-compatible embedding endpoint (BYOK). All-empty = feature disabled. */
+/**
+ *  Embedding endpoint: the built-in provider, or a custom OpenAI-compatible
+ *  one (BYOK). Custom with all-empty fields = feature disabled.
+ */
 export type EmbeddingSettings = {
+	/**  `builtin` | `custom`; empty = unset and inferred from the fields below. */
+	source?: string,
 	baseUrl?: string,
 	apiKey?: string,
 	model?: string,
@@ -2910,7 +2915,10 @@ export type LayoutRemoteProgressEvent_Serialize = {
  */
 export type LayoutSettings = {
 	backend?: string,
-	/**  PAPER.md body-parse engine: `local` | `paddle` | `mineru` | `openaiCompatible`. */
+	/**
+	 *  PAPER.md body-parse engine: `local` | `paddle` | `mineru` |
+	 *  `openaiCompatible` | `agentero` (built-in).
+	 */
 	parserBackend?: string,
 	providerConfigs?: { [key in string]: LayoutProviderConfig },
 };
