@@ -411,7 +411,7 @@ export default function App() {
 									<aside
 										ref={sidebarAsideRef}
 										data-vault-sidebar
-										className="flex h-full min-h-0 flex-col overflow-hidden bg-muted/20"
+										className="flex h-full min-h-0 flex-col overflow-hidden bg-muted/20 isolate transform-gpu"
 									>
 										<VaultSidebar />
 									</aside>
