@@ -5,11 +5,9 @@ import {
 	ComposerImageAttachments,
 	ComposerSubmitControl,
 } from "@/components/agent/composer/composer-attachments";
-import {
-	ComposerContextChips,
-	ComposerSkillChips,
-} from "@/components/agent/composer/composer-context-chips";
+import { ComposerContextChips } from "@/components/agent/composer/composer-context-chips";
 import { ComposerDropTarget } from "@/components/agent/composer/composer-drop-target";
+import { ComposerInlineInput } from "@/components/agent/composer/composer-inline-input";
 import { ComposerMentionMenu } from "@/components/agent/composer/composer-mention-menu";
 import { ComposerQueue } from "@/components/agent/composer/composer-queue";
 import {
@@ -23,12 +21,10 @@ import {
 	PromptInput,
 	PromptInputBody,
 	PromptInputFooter,
-	PromptInputTextarea,
 	PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
 import { Popover, PopoverAnchor } from "@/components/ui/popover";
 import type { AgentSkill, PromptImage } from "@/lib/agent";
-import { AGENT_COMPOSER_INPUT_ATTR } from "@/lib/agent/composer-focus";
 import {
 	COMPOSER_IMAGE_ACCEPT,
 	COMPOSER_IMAGE_MAX_BYTES,
@@ -51,7 +47,7 @@ export type AgentComposerProps = {
 	composerText: string;
 	onComposerTextChange: (text: string) => void;
 	onSubmit: (text: string, images?: PromptImage[]) => Promise<void>;
-	onComposerKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) => void;
+	onComposerKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
 	onComposerDragOver: (e: ReactDragEvent) => void;
 	onComposerDrop: (e: ReactDragEvent) => void;
 	onDismissComposerMenu: () => void;
@@ -164,30 +160,28 @@ export function AgentComposer(props: AgentComposerProps) {
 				data-composer-drop-shell
 				className="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden"
 			>
-				{/* Short chips above the shell; hover expands a brief description. */}
-				{compact ? null : (
-					<div className="flex shrink-0 flex-wrap items-center gap-1.5 empty:hidden">
-						<ComposerContextChips
-							density="short"
-							currentFilePath={props.currentFilePath}
-							currentFileLabel={props.currentFileLabel}
-							mentionChipPaths={props.mentionChipPaths}
-							selectionChips={props.selectionChips}
-							onRemoveSelection={props.onRemoveSelection}
-							visualDrafts={visualDrafts}
-							onRemoveVisualDraft={props.onRemoveVisualDraft}
-							directoryPathSet={props.directoryPathSet}
-							paperPathSet={props.paperPathSet}
-							labelForPath={props.labelForPath}
-							onRemoveContextPath={props.onRemoveContextPath}
-						/>
-						<ComposerSkillChips
-							density="short"
-							selectedSkills={props.selectedSkills}
-							onRemoveSkill={props.onRemoveSkill}
-						/>
-					</div>
-				)}
+				{/* Block chips: current file / selection / visual only. @ and $ are inline. */}
+				<div
+					className={cn(
+						"flex shrink-0 items-center gap-1.5 empty:hidden",
+						compact ? "flex-nowrap overflow-hidden" : "flex-wrap",
+					)}
+				>
+					<ComposerContextChips
+						compact={compact}
+						currentFilePath={props.currentFilePath}
+						currentFileLabel={props.currentFileLabel}
+						mentionChipPaths={[]}
+						selectionChips={props.selectionChips}
+						onRemoveSelection={props.onRemoveSelection}
+						visualDrafts={visualDrafts}
+						onRemoveVisualDraft={props.onRemoveVisualDraft}
+						directoryPathSet={props.directoryPathSet}
+						paperPathSet={props.paperPathSet}
+						labelForPath={props.labelForPath}
+						onRemoveContextPath={props.onRemoveContextPath}
+					/>
+				</div>
 				<div className="relative min-h-0 flex-1">
 					<PromptInput
 						className={cn("h-full w-full", compact && "flex items-end")}
@@ -217,9 +211,10 @@ export function AgentComposer(props: AgentComposerProps) {
 						onDragLeave={onFileDragLeave}
 						onDragOver={onFileDragOver}
 						onDrop={onFileDropHighlightEnd}
-						onSubmit={async ({ text, files }) => {
+						onSubmit={async ({ files }) => {
 							const images = fileUiPartsToPromptImages(files);
-							await onSubmit(text, images.length ? images : undefined);
+							// Prefer controlled draft (includes inline token markers).
+							await onSubmit(composerText, images.length ? images : undefined);
 						}}
 					>
 						<PromptInputBody>
@@ -241,37 +236,6 @@ export function AgentComposer(props: AgentComposerProps) {
 										onVaultPathDragOver={onComposerDragOver}
 										onVaultPathDrop={onComposerDrop}
 									>
-										{/* Full chips inside the input body (with image attachments). */}
-										<div
-											className={cn(
-												"flex flex-wrap gap-1.5 empty:hidden",
-												compact
-													? "mb-0 max-w-[45%] shrink-0 flex-nowrap gap-1 overflow-hidden"
-													: "mb-2",
-											)}
-										>
-											<ComposerContextChips
-												density="full"
-												compact={compact}
-												currentFilePath={props.currentFilePath}
-												currentFileLabel={props.currentFileLabel}
-												mentionChipPaths={props.mentionChipPaths}
-												selectionChips={props.selectionChips}
-												onRemoveSelection={props.onRemoveSelection}
-												visualDrafts={visualDrafts}
-												onRemoveVisualDraft={props.onRemoveVisualDraft}
-												directoryPathSet={props.directoryPathSet}
-												paperPathSet={props.paperPathSet}
-												labelForPath={props.labelForPath}
-												onRemoveContextPath={props.onRemoveContextPath}
-											/>
-											<ComposerSkillChips
-												density="full"
-												compact={compact}
-												selectedSkills={props.selectedSkills}
-												onRemoveSkill={props.onRemoveSkill}
-											/>
-										</div>
 										<ComposerImageAttachments compact={compact} />
 										{/* The three menus stay in this Popover subtree on purpose — PopoverContent needs its context. */}
 										{showMentionMenu ? (
@@ -311,20 +275,21 @@ export function AgentComposer(props: AgentComposerProps) {
 												}
 											/>
 										) : null}
-										<PromptInputTextarea
-											{...{ [AGENT_COMPOSER_INPUT_ATTR]: "" }}
-											autoFocus={autoFocus || undefined}
-											className={cn(
-												"agentero-scroll min-h-0 flex-1 overflow-y-auto px-0 py-1 placeholder:text-muted-foreground/80",
-												compact
-													? "h-6 max-h-none min-w-0 py-0 text-sm leading-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-													: "text-base leading-5",
-											)}
+										<ComposerInlineInput
+											autoFocus={Boolean(autoFocus)}
+											compact={compact}
 											value={composerText}
-											onChange={(event) => {
-												onComposerTextChange(event.currentTarget.value);
-											}}
+											onValueChange={onComposerTextChange}
 											onKeyDown={onComposerKeyDown}
+											disabled={switching}
+											labelForPath={props.labelForPath}
+											skillLabel={(skillId) =>
+												props.selectedSkills.find((s) => s.id === skillId)
+													?.name ??
+												props.skillOptions.find((s) => s.id === skillId)
+													?.name ??
+												skillId
+											}
 											aria-expanded={
 												showMentionMenu || showSkillMenu || showSlashMenu
 											}
@@ -347,8 +312,6 @@ export function AgentComposer(props: AgentComposerProps) {
 															? `agent-slash-option-${slashActiveIndex}`
 															: undefined
 											}
-											role="combobox"
-											disabled={switching}
 											placeholder={
 												activeTabIsRunning ? "" : t("composer.placeholder")
 											}

@@ -206,7 +206,6 @@ export const AgentPanel = memo(function AgentPanel({
 		labelForPath,
 		removeContextPath,
 		selectedSkills,
-		setSelectedSkillIds,
 		showMentionMenu,
 		mentionBrowseRoot,
 		mentionOptions,
@@ -219,6 +218,7 @@ export const AgentPanel = memo(function AgentPanel({
 		skillOptions,
 		skillActiveIndex,
 		attachSkill,
+		removeSkill,
 		showSlashMenu,
 		slashOptions,
 		slashActiveIndex,
@@ -414,11 +414,7 @@ export const AgentPanel = memo(function AgentPanel({
 								labelForPath={labelForPath}
 								onRemoveContextPath={removeContextPath}
 								selectedSkills={selectedSkills}
-								onRemoveSkill={(skillId) =>
-									setSelectedSkillIds((prev) =>
-										prev.filter((id) => id !== skillId),
-									)
-								}
+								onRemoveSkill={removeSkill}
 								showMentionMenu={showMentionMenu}
 								mentionBrowseRoot={mentionBrowseRoot}
 								mentionOptions={mentionOptions}
