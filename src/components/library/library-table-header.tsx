@@ -356,10 +356,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 															}}
 															onMouseDown={(e) => e.stopPropagation()}
 														>
-															<Award
-																className="size-3.5 text-amber-500"
-																aria-hidden
-															/>
+															<Award className="size-3.5" aria-hidden />
 														</button>
 													</TooltipTrigger>
 													<TooltipContent side="bottom">
