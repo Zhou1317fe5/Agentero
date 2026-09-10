@@ -36,7 +36,8 @@ export async function loadBuiltinProviderStatus(): Promise<BuiltinProviderStatus
 			cached = status;
 			return status;
 		} catch {
-			cached = null;
+			// Deliberately not cached: a transient IPC failure must not hide
+			// the provider for the rest of the session.
 			return null;
 		} finally {
 			inflight = null;

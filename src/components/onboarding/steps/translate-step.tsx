@@ -10,7 +10,6 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChoiceCard } from "@/components/onboarding/choice-card";
 import type { OnboardingStepId } from "@/components/onboarding/flow";
-import { useBuiltinProviderAvailable } from "@/components/settings/use-builtin-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,7 +24,10 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { BUILTIN_PROVIDER_ID } from "@/lib/core/builtin";
+import {
+	BUILTIN_PROVIDER_ID,
+	loadBuiltinProviderStatus,
+} from "@/lib/core/builtin";
 import { cn } from "@/lib/core/utils";
 import type {
 	AppSettings,
@@ -119,7 +121,6 @@ export function TranslateStep({
 	const [mode, setMode] = useState<"choose" | "configure">("choose");
 	const [draft, setDraft] = useState<{ apiKey?: string; baseUrl?: string }>({});
 	const [probe, setProbe] = useState<ProbeStatus>("idle");
-	const builtinAvailable = useBuiltinProviderAvailable();
 
 	// Next is allowed once the user committed to the own-API flow ("use system
 	// default" advances immediately from the chooser instead).
@@ -136,13 +137,15 @@ export function TranslateStep({
 		}
 	};
 
-	const useSystemDefault = () => {
+	const chooseSystemDefault = async () => {
+		// Awaited at click time, not read from render state: the status starts
+		// unresolved, and guessing would clobber a compiled-in built-in provider
+		// with the static TS default.
+		const status = await loadBuiltinProviderStatus();
 		patch({
 			translate: {
 				...tr,
-				// Mirrors the Host's availability-gated default_translate_provider();
-				// the static TS default would clobber a compiled-in built-in provider.
-				provider: builtinAvailable
+				provider: status?.available
 					? BUILTIN_PROVIDER_ID
 					: DEFAULT_TRANSLATE_SETTINGS.provider,
 			},
@@ -209,7 +212,7 @@ export function TranslateStep({
 				<ChoiceCard
 					icon={<Sparkles className="size-5 text-muted-foreground" />}
 					title={t("translate.useDefault")}
-					onClick={useSystemDefault}
+					onClick={() => void chooseSystemDefault()}
 				/>
 			</div>
 		);

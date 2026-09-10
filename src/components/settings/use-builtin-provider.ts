@@ -4,6 +4,10 @@ import { loadBuiltinProviderStatus } from "@/lib/core/builtin";
 /**
  * Whether the built-in ("agentero") provider is compiled into this build.
  * Backed by a module-level cache, so every settings pane shares one IPC.
+ *
+ * Renders only: it starts `false` and settles asynchronously, so anything that
+ * *writes* a provider id must await `loadBuiltinProviderStatus()` directly
+ * instead of reading this.
  */
 export function useBuiltinProviderAvailable(): boolean {
 	const [available, setAvailable] = useState(false);

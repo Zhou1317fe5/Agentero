@@ -5,6 +5,7 @@ import {
 	SettingsGroup,
 	SettingsRow,
 } from "@/components/settings/settings-layout";
+import { useBuiltinProviderAvailable } from "@/components/settings/use-builtin-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,6 +33,7 @@ export function AgentEmbeddingBlock({
 	patch: (p: Partial<AppSettings>) => void;
 }) {
 	const { t } = useTranslation("settings");
+	const builtinAvailable = useBuiltinProviderAvailable();
 	// Embedding endpoint (BYOK) — local draft, committed on blur. apiKey may be a
 	// host `*` mask on load; sending it back unchanged keeps the stored secret.
 	const embedding = settings.embedding;
@@ -179,9 +181,11 @@ export function AgentEmbeddingBlock({
 							<SelectValue />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="builtin">
-								{t("agent.embedding.source.builtin")}
-							</SelectItem>
+							{builtinAvailable || embDraft.source === "builtin" ? (
+								<SelectItem value="builtin" disabled={!builtinAvailable}>
+									{t("agent.embedding.source.builtin")}
+								</SelectItem>
+							) : null}
 							<SelectItem value="custom">
 								{t("agent.embedding.source.custom")}
 							</SelectItem>
