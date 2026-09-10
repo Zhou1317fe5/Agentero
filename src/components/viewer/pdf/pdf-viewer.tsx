@@ -1041,7 +1041,7 @@ function PdfViewerInner({
 
 	const {
 		handleHighlight,
-		handleNote,
+		handleCommitSelectionNote,
 		handleCopy,
 		handleMenuAsk,
 		handleMenuAddToChat,
@@ -1051,9 +1051,9 @@ function PdfViewerInner({
 		setSelectionMenu,
 		closeSelectionMenu,
 		createHighlights,
+		updateHighlightComment,
 		selectionCap,
 		docId,
-		beginRailEdit,
 		startFromAnchor,
 		translateSelection,
 		paperRelPath,
@@ -1076,16 +1076,56 @@ function PdfViewerInner({
 		translateSelection(selectionMenu.anchor);
 	}, [autoTranslateSelection, selectionMenu, translateSelection]);
 
-	// Right-rail annotate chip for the active local selection (remote PDFs are
-	// read-only and keep only the floating toolbar actions).
-	const selectionCommentDraft = useMemo<SelectionCommentDraft | null>(() => {
-		if (isRemotePaper || !selectionMenu) return null;
-		return {
-			page: selectionMenu.anchor.page,
-			anchorY: selectionMenu.anchor.rects[0]?.y ?? 0,
-			quote: selectionMenu.anchor.quote ?? "",
-		};
+	// Sticky right-rail annotate chip. Hover focuses the field and EmbedPDF may
+	// clear the live selection; keep the snapped draft after the chip has been
+	// interacted with so leave-empty can collapse back to the icon card.
+	const [selectionCommentDraft, setSelectionCommentDraft] =
+		useState<SelectionCommentDraft | null>(null);
+	const selectionCommentInteractedRef = useRef(false);
+
+	useEffect(() => {
+		if (isRemotePaper) {
+			selectionCommentInteractedRef.current = false;
+			setSelectionCommentDraft(null);
+			return;
+		}
+		if (selectionMenu) {
+			selectionCommentInteractedRef.current = false;
+			setSelectionCommentDraft({
+				page: selectionMenu.anchor.page,
+				anchorY: selectionMenu.anchor.rects[0]?.y ?? 0,
+				quote: selectionMenu.anchor.quote ?? "",
+				pages: selectionMenu.pages,
+			});
+			return;
+		}
+		if (!selectionCommentInteractedRef.current) {
+			setSelectionCommentDraft(null);
+		}
 	}, [isRemotePaper, selectionMenu]);
+
+	const handleSelectionCommentActiveChange = useCallback((active: boolean) => {
+		if (active) selectionCommentInteractedRef.current = true;
+	}, []);
+
+	const handleDismissSelectionComment = useCallback(() => {
+		selectionCommentInteractedRef.current = false;
+		setSelectionCommentDraft(null);
+	}, []);
+
+	const handleCommitSelectionComment = useCallback(
+		(comment: string) => {
+			const draft = selectionCommentDraft;
+			selectionCommentInteractedRef.current = false;
+			setSelectionCommentDraft(null);
+			if (!draft) return;
+			handleCommitSelectionNote(
+				{ pages: draft.pages, quote: draft.quote },
+				comment,
+			);
+		},
+		[selectionCommentDraft, handleCommitSelectionNote],
+	);
 
 	// ---- In-PDF highlight selection menu ----
 
@@ -1285,7 +1325,9 @@ function PdfViewerInner({
 			onAddCommentToChat: handleAddCommentToChat,
 			onHoverComment: (comment) => setHoveredCommentId(comment.id),
 			onLeaveComment: () => setHoveredCommentId(null),
-			onActivateSelectionComment: handleNote,
+			onCommitSelectionComment: handleCommitSelectionComment,
+			onSelectionCommentActiveChange: handleSelectionCommentActiveChange,
+			onDismissSelectionComment: handleDismissSelectionComment,
 		}),
 		[
 			handleOpenPin,
@@ -1307,7 +1349,9 @@ function PdfViewerInner({
 			handleCopyCommentEmbed,
 			handleAddCommentToChat,
 			setHoveredCommentId,
-			handleNote,
+			handleCommitSelectionComment,
+			handleSelectionCommentActiveChange,
+			handleDismissSelectionComment,
 		],
 	);
 

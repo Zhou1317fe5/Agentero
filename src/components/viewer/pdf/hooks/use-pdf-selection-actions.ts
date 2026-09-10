@@ -2,10 +2,10 @@
  * Selection actions (highlight / note / copy / ask / add-to-chat / translate).
  *
  * Highlight / copy / ask / add-to-chat / translate are wired to the floating
- * selection toolbar; note is triggered from the right-rail selection comment
- * chip (hover expands, leave collapses; click / focus opens the rail editor).
- * Detection and menu state stay in {@link usePdfTextSelection}; each action's
- * real work belongs to its own cluster.
+ * selection toolbar; note is typed on the right-rail selection comment chip and
+ * committed from there. Detection and menu state stay in
+ * {@link usePdfTextSelection}; each action's real work belongs to its own
+ * cluster.
  */
 
 import type {
@@ -13,10 +13,7 @@ import type {
 	useSelectionCapability,
 } from "@embedpdf/plugin-selection/react";
 import { type Dispatch, type SetStateAction, useCallback, useRef } from "react";
-import type {
-	RailEditState,
-	SelectionMenuState,
-} from "@/components/viewer/pdf/types";
+import type { SelectionMenuState } from "@/components/viewer/pdf/types";
 import {
 	pinActiveSelection,
 	publishSelection,
@@ -43,11 +40,15 @@ export type UsePdfSelectionActionsOptions = {
 		color: HighlightColor,
 		quote: string,
 	) => { pageIndex: number; id: string }[];
+	/** Write the note body onto a freshly created highlight. */
+	updateHighlightComment: (
+		pageIndex: number,
+		id: string,
+		comment: string,
+	) => void;
 	/** EmbedPDF capability; owned by `PdfViewerInner` (plugin context). */
 	selectionCap: SelectionCapabilityProvides;
 	docId: string;
-	/** Note editor entry (opens the rail edit for the new note). */
-	beginRailEdit: (state: RailEditState) => void;
 	/** Ask cluster entry (creates an empty thread from the anchor). */
 	startFromAnchor: (anchor: PdfAskAnchor) => void;
 	/** Translate cluster entry (creates the record and starts the run). */
@@ -58,7 +59,17 @@ export type UsePdfSelectionActionsOptions = {
 
 export type PdfSelectionActions = {
 	handleHighlight: (color: HighlightColor) => void;
-	handleNote: () => void;
+	/**
+	 * Create a highlight + comment from a snapped selection draft. Used by the
+	 * right-rail chip so typing can survive EmbedPDF clearing the live selection.
+	 */
+	handleCommitSelectionNote: (
+		draft: {
+			pages: FormattedSelection[];
+			quote: string;
+		},
+		comment: string,
+	) => void;
 	handleCopy: () => void;
 	handleMenuAsk: () => void;
 	handleMenuAddToChat: () => void;
@@ -70,9 +81,9 @@ export function usePdfSelectionActions({
 	setSelectionMenu,
 	closeSelectionMenu,
 	createHighlights,
+	updateHighlightComment,
 	selectionCap,
 	docId,
-	beginRailEdit,
 	startFromAnchor,
 	translateSelection,
 	paperRelPath,
@@ -94,32 +105,32 @@ export function usePdfSelectionActions({
 		[createHighlights, closeSelectionMenu],
 	);
 
-	const handleNote = useCallback(() => {
-		const menu = selectionMenuRef.current;
-		if (!menu) return;
-		const quote = menu.anchor.quote ?? "";
-		const anchorPage = menu.pages[0];
-		const created = createHighlights(
-			menu.pages,
-			DEFAULT_HIGHLIGHT_COLOR,
-			quote,
-		);
-		const first = created[0];
-		setSelectionMenu(null);
-		selectionCap?.clear(docId);
-		if (!first || !anchorPage) return;
-		beginRailEdit({
-			id: first.id,
-			pageIndex: first.pageIndex,
-			kind: "highlight",
-			comment: "",
-			quote,
-			color: DEFAULT_HIGHLIGHT_COLOR,
-			anchorY: menu.anchor.rects[0]?.y ?? 0,
-			rects: menu.anchor.rects,
-			isNew: true,
-		});
-	}, [createHighlights, selectionCap, docId, setSelectionMenu, beginRailEdit]);
+	const handleCommitSelectionNote = useCallback(
+		(
+			draft: { pages: FormattedSelection[]; quote: string },
+			comment: string,
+		) => {
+			const trimmed = comment.trim();
+			if (!trimmed || !draft.pages.length) return;
+			const created = createHighlights(
+				draft.pages,
+				DEFAULT_HIGHLIGHT_COLOR,
+				draft.quote,
+			);
+			const first = created[0];
+			setSelectionMenu(null);
+			selectionCap?.clear(docId);
+			if (!first) return;
+			updateHighlightComment(first.pageIndex, first.id, trimmed);
+		},
+		[
+			createHighlights,
+			updateHighlightComment,
+			selectionCap,
+			docId,
+			setSelectionMenu,
+		],
+	);
 
 	const handleCopy = useCallback(() => {
 		selectionCap?.copyToClipboard(docId);
@@ -167,7 +178,7 @@ export function usePdfSelectionActions({
 
 	return {
 		handleHighlight,
-		handleNote,
+		handleCommitSelectionNote,
 		handleCopy,
 		handleMenuAsk,
 		handleMenuAddToChat,

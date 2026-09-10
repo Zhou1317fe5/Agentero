@@ -117,7 +117,7 @@ export type PdfPageMarksSlice = {
 	/** Id of the comment-rail card currently being hovered; null when idle. */
 	hoveredCommentId: string | null;
 	/**
-	 * Active text-selection comment chip (right rail). Null when idle or on a
+	 * Sticky text-selection comment chip (right rail). Null when idle or on a
 	 * read-only remote PDF.
 	 */
 	selectionCommentDraft: SelectionCommentDraft | null;
@@ -184,8 +184,12 @@ export type PdfPageHandlers = {
 	onHoverComment: (comment: PageAnnotationComment) => void;
 	/** Hover leaves a comment-rail card. */
 	onLeaveComment: () => void;
-	/** Create a note from the active selection comment chip. */
-	onActivateSelectionComment: () => void;
+	/** Commit a typed note from the selection comment chip. */
+	onCommitSelectionComment: (comment: string) => void;
+	/** Keep the sticky draft alive while the chip is interacted with. */
+	onSelectionCommentActiveChange: (active: boolean) => void;
+	/** Drop the sticky selection comment chip. */
+	onDismissSelectionComment: () => void;
 };
 
 export type PdfPageLayersProps = {
@@ -777,7 +781,11 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 					wikiTarget={marks.commentWikiTarget}
 					hoveredId={marks.hoveredCommentId}
 					selectionDraft={selectionDraftOnPage}
-					onActivateSelectionComment={handlers.onActivateSelectionComment}
+					onCommitSelectionComment={handlers.onCommitSelectionComment}
+					onSelectionCommentActiveChange={
+						handlers.onSelectionCommentActiveChange
+					}
+					onDismissSelectionComment={handlers.onDismissSelectionComment}
 					onOpen={handlers.onOpenComment}
 					onSave={handlers.onSaveComment}
 					onCancel={handlers.onCancelComment}

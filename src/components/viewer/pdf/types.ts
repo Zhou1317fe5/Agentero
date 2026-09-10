@@ -106,9 +106,9 @@ export type SelectionMenuState = {
 };
 
 /**
- * Transient right-rail chip while a text selection is active: collapsed icon
- * that expands on hover (leave collapses) and opens the rail editor on
- * click / focus.
+ * Sticky right-rail chip for annotating the current (or just-cleared) text
+ * selection. Hover enters edit; leave with empty text collapses to the icon
+ * card. Commit uses snapped `pages` even if EmbedPDF cleared the live selection.
  */
 export type SelectionCommentDraft = {
 	/** 1-based page number (matches `commentsByPage` keys). */
@@ -116,6 +116,8 @@ export type SelectionCommentDraft = {
 	/** Normalized Y of the selection top (0–1). */
 	anchorY: number;
 	quote: string;
+	/** EmbedPDF selection pages snapped when the chip was armed. */
+	pages: FormattedSelection[];
 };
 
 export type CitationPreviewState = {
