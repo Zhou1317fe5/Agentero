@@ -308,13 +308,18 @@ export function ComposerInlineInput({
 				aria-hidden
 				value={stripInlineTokens(value)}
 			/>
-			<div className="relative min-h-0 flex-1">
+			<div
+				className={cn(
+					"relative min-h-0",
+					compact ? "min-w-0 flex-1" : "flex-1",
+				)}
+			>
 				{isVisuallyEmpty && placeholder ? (
 					<div
 						aria-hidden
 						className={cn(
-							"pointer-events-none absolute inset-0 px-0 py-1 text-muted-foreground/80",
-							compact ? "py-0 text-sm leading-5" : "text-[15px] leading-5",
+							"pointer-events-none absolute inset-0 px-0 text-muted-foreground/80",
+							compact ? "py-0 text-sm leading-5" : "py-1 text-[15px] leading-5",
 						)}
 					>
 						{placeholder}
@@ -332,10 +337,10 @@ export function ComposerInlineInput({
 					suppressContentEditableWarning
 					data-slot="input-group-control"
 					className={cn(
-						"agentero-scroll relative min-h-0 flex-1 overflow-y-auto px-0 py-1 text-foreground outline-none",
+						"agentero-scroll relative min-h-0 overflow-y-auto px-0 text-foreground outline-none",
 						compact
-							? "h-6 max-h-none min-w-0 py-0 text-sm leading-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-							: "text-[15px] leading-5",
+							? "h-6 max-h-none min-w-0 flex-1 py-0 text-sm leading-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+							: "min-h-0 flex-1 py-1 text-[15px] leading-5",
 						disabled && "opacity-60",
 						className,
 					)}

@@ -161,30 +161,39 @@ export function AgentComposer(props: AgentComposerProps) {
 				className="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden"
 			>
 				{/* Block chips: current file / selection / visual only. @ and $ are inline. */}
+				{props.currentFilePath ||
+				props.selectionChips.length > 0 ||
+				visualDrafts.length > 0 ? (
+					<div
+						className={cn(
+							"flex shrink-0 items-center gap-1.5",
+							compact ? "flex-nowrap overflow-hidden" : "flex-wrap",
+						)}
+					>
+						<ComposerContextChips
+							compact={compact}
+							currentFilePath={props.currentFilePath}
+							currentFileLabel={props.currentFileLabel}
+							mentionChipPaths={[]}
+							selectionChips={props.selectionChips}
+							onRemoveSelection={props.onRemoveSelection}
+							visualDrafts={visualDrafts}
+							onRemoveVisualDraft={props.onRemoveVisualDraft}
+							directoryPathSet={props.directoryPathSet}
+							paperPathSet={props.paperPathSet}
+							labelForPath={props.labelForPath}
+							onRemoveContextPath={props.onRemoveContextPath}
+						/>
+					</div>
+				) : null}
 				<div
 					className={cn(
-						"flex shrink-0 items-center gap-1.5 empty:hidden",
-						compact ? "flex-nowrap overflow-hidden" : "flex-wrap",
+						"relative min-h-0",
+						compact ? "flex items-end" : "flex-1",
 					)}
 				>
-					<ComposerContextChips
-						compact={compact}
-						currentFilePath={props.currentFilePath}
-						currentFileLabel={props.currentFileLabel}
-						mentionChipPaths={[]}
-						selectionChips={props.selectionChips}
-						onRemoveSelection={props.onRemoveSelection}
-						visualDrafts={visualDrafts}
-						onRemoveVisualDraft={props.onRemoveVisualDraft}
-						directoryPathSet={props.directoryPathSet}
-						paperPathSet={props.paperPathSet}
-						labelForPath={props.labelForPath}
-						onRemoveContextPath={props.onRemoveContextPath}
-					/>
-				</div>
-				<div className="relative min-h-0 flex-1">
 					<PromptInput
-						className={cn("h-full w-full", compact && "flex items-end")}
+						className={cn("w-full", compact ? "flex items-end" : "h-full")}
 						inputGroupClassName={cn(
 							"!flex min-h-0 !flex-col overflow-hidden rounded-xl border border-border bg-background shadow-none transition-[background-color,box-shadow,border-color] duration-150",
 							compact ? "h-auto" : "!h-full",
@@ -228,10 +237,10 @@ export function AgentComposer(props: AgentComposerProps) {
 								<PopoverAnchor asChild>
 									<ComposerDropTarget
 										className={cn(
-											"relative flex min-h-0 w-full flex-1 overflow-hidden",
+											"relative flex w-full overflow-hidden",
 											compact
-												? "flex-row items-center gap-1 px-2 pt-2 pb-2.5"
-												: "flex-col px-3 pt-3",
+												? "min-h-0 flex-row items-center gap-1 px-2 py-1.5"
+												: "min-h-0 flex-1 flex-col px-3 pt-3",
 										)}
 										onVaultPathDragOver={onComposerDragOver}
 										onVaultPathDrop={onComposerDrop}
