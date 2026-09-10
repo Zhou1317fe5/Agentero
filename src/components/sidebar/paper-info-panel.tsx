@@ -30,11 +30,17 @@ import {
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { MathText } from "@/components/ui/math-text";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { copyTextToClipboard } from "@/lib/core/clipboard";
 import { cn } from "@/lib/core/utils";
 import type { PaperMetadata } from "@/lib/paper";
@@ -109,7 +115,7 @@ function CopyValue({
 			)}
 		>
 			{/* No `block` here: it sorts after line-clamp-* and would override display:-webkit-box. */}
-			<span className={cn("w-full", className)}>{text}</span>
+			<MathText text={text} className={cn("w-full", className)} />
 		</button>
 	);
 }
@@ -557,12 +563,12 @@ export function PaperInfoPanel({
 				onOpenChange={setOpen}
 				className="flex min-h-0 flex-1 flex-col"
 			>
-				<div className="flex h-8 min-h-8 shrink-0 items-center pr-1.5">
+				<div className="flex h-8 min-h-8 shrink-0 items-center gap-0.5 pr-1.5">
 					<CollapsibleTrigger
 						className={cn(
 							"flex min-w-0 flex-1 items-center gap-1.5 px-2 text-left outline-none",
 							"text-muted-foreground text-sm font-medium",
-							"hover:bg-muted/40 hover:text-foreground",
+							"hover:text-foreground",
 							"focus-visible:ring-1 focus-visible:ring-ring",
 						)}
 					>
@@ -586,14 +592,36 @@ export function PaperInfoPanel({
 							})}
 							onClick={() => void copyField(arxivId, t("paperInfo.arxivId"))}
 							className={cn(
-								"flex min-w-0 max-w-[55%] shrink cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5",
+								"min-w-0 max-w-[45%] shrink truncate px-1",
 								"text-caption text-muted-foreground tabular-nums transition-colors",
-								"hover:bg-muted hover:text-foreground",
+								"hover:text-foreground",
 								"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
 							)}
 						>
-							<span className="truncate">{arxivId}</span>
+							{arxivId}
 						</button>
+					) : null}
+					{canEditMeta && meta ? (
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<button
+									type="button"
+									aria-label={t("paperInfo.editMeta.title")}
+									onClick={() => setEditMetaDraft(meta)}
+									className={cn(
+										"inline-flex size-7 shrink-0 items-center justify-center rounded-md",
+										"text-muted-foreground transition-colors",
+										"hover:bg-muted hover:text-foreground",
+										"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+									)}
+								>
+									<Pencil className="size-3.5" aria-hidden />
+								</button>
+							</TooltipTrigger>
+							<TooltipContent side="top">
+								{t("paperInfo.editMeta.title")}
+							</TooltipContent>
+						</Tooltip>
 					) : null}
 				</div>
 				<CollapsibleContent className="flex min-h-0 flex-1 flex-col">
@@ -686,25 +714,6 @@ export function PaperInfoPanel({
 											}
 										/>
 									) : null}
-								</div>
-							) : null}
-							{canEditMeta ? (
-								<div className="px-3 pt-2">
-									<button
-										type="button"
-										onClick={() => setEditMetaDraft(meta)}
-										className={cn(
-											"flex h-7 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border bg-background px-2",
-											"text-xs leading-none text-muted-foreground transition-colors",
-											"hover:bg-muted hover:text-foreground",
-											"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-										)}
-									>
-										<Pencil className="size-3.5 shrink-0" aria-hidden />
-										<span className="truncate">
-											{t("paperInfo.editMeta.title")}
-										</span>
-									</button>
 								</div>
 							) : null}
 						</div>
