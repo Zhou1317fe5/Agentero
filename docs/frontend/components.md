@@ -25,7 +25,7 @@ Chat / Agent / 文件树 AI UI **统一使用** [AI Elements](https://elements.a
 | `components/wiki/` | 反链列表 / 引用近邻图（`graph-panel`） |
 | `components/settings/` | 设置页 |
 | `components/dialogs/` | 命令面板、权限、迁移等 |
-| `components/ui/` | shadcn 基础件 |
+| `components/ui/` | shadcn 基础件；`math-text.tsx` 用 KaTeX 渲染标题内联公式（`$\\pi$`） |
 
 ## 状态订阅
 
