@@ -41,6 +41,7 @@ export type {
 	AutoUpdateInternalLinks,
 	CommercialTranslateProviderId,
 	EmbeddingSettings,
+	EmbeddingSource,
 	LibraryColumnKey,
 	LibraryColumnPref,
 	LocalePreference,

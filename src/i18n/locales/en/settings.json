@@ -238,6 +238,11 @@
 		},
 		"embedding": {
 			"section": "Embedding model",
+			"source": {
+				"label": "Source",
+				"builtin": "Agentero built-in",
+				"custom": "Custom endpoint"
+			},
 			"baseUrl": {
 				"label": "Base URL"
 			},
@@ -374,6 +379,7 @@
 		"title": "Translate",
 		"provider": {
 			"label": "Default service",
+			"agentero": "Agentero built-in",
 			"deeplx": "DeepLX",
 			"huoshanweb": "Volcengine Web",
 			"tencenttransmart": "Tencent Transmart",
@@ -388,6 +394,9 @@
 			"probeOk": "Available",
 			"probeFail": "Unavailable",
 			"probeProbing": "Checking availability…"
+		},
+		"errors": {
+			"noBuiltinKey": "Built-in translation is not available in this build."
 		},
 		"targetLang": {
 			"label": "Target language",
@@ -453,6 +462,7 @@
 		"parserBackend": {
 			"label": "Body parse engine",
 			"local": "On-device",
+			"agentero": "Agentero built-in",
 			"paddle": "Paddle",
 			"mineru": "MinerU",
 			"openaiCompatible": "OpenAI-compatible"

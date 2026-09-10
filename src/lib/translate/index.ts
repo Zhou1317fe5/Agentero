@@ -1,4 +1,8 @@
 export {
+	displayTranslateError,
+	ERR_TRANSLATE_NO_BUILTIN_KEY,
+} from "@/lib/translate/errors";
+export {
 	langsFromSettings,
 	resolveTargetLangCode,
 	resolveTargetLangName,

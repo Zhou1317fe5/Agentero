@@ -39,7 +39,12 @@ export async function invokeTranslateText(args: {
 		timeoutMs: args.timeoutMs ?? null,
 	});
 	if (!res.ok || !res.data) {
-		throw new Error(res.error?.message ?? "translate failed");
+		// A domain marker (e.g. `translate.no_builtin_key`) is surfaced verbatim so
+		// `displayTranslateError` can map it to i18n; ordinary failures keep the
+		// Host's human message (their code is the generic `"message"`).
+		const code = res.error?.code;
+		const marker = code && code !== "message" ? code : null;
+		throw new Error(marker ?? res.error?.message ?? "translate failed");
 	}
 	return res.data.text;
 }

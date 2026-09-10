@@ -59,6 +59,7 @@ import {
 	recommendArxiv,
 	recommendArxivLast,
 } from "@/lib/recommend";
+import type { EmbeddingSettings } from "@/lib/settings";
 import { loadSettings, subscribeSettings } from "@/lib/settings/store";
 import { openSettingsWindow } from "@/lib/shell/settings-window";
 import { runTranslate } from "@/lib/translate";
@@ -100,10 +101,12 @@ type EmptyReason =
 type ProbeStatus = "pending" | "unconfigured" | "ok" | "failed";
 
 /** Snapshot of the embedding config used to decide whether to re-probe. */
+function embeddingProbeKey(e: EmbeddingSettings): string {
+	return `${e.source}|${e.baseUrl}|${e.apiKey}|${e.model}`;
+}
+
 function readEmbeddingKey(): string {
-	const s = loadSettings();
-	const e = s.embedding;
-	return `${e.baseUrl}|${e.apiKey}|${e.model}`;
+	return embeddingProbeKey(loadSettings().embedding);
 }
 
 export function PlazaArxivRecView({ className }: { className?: string }) {
@@ -229,8 +232,7 @@ export function PlazaArxivRecView({ className }: { className?: string }) {
 	// Re-probe when the user edits the embedding config in Settings.
 	useEffect(() => {
 		return subscribeSettings((next) => {
-			const e = next.embedding;
-			const key = `${e.baseUrl}|${e.apiKey}|${e.model}`;
+			const key = embeddingProbeKey(next.embedding);
 			if (key === lastEmbeddingKeyRef.current) return;
 			lastEmbeddingKeyRef.current = key;
 			// Drop any visible stored cache so we don't flash stale results

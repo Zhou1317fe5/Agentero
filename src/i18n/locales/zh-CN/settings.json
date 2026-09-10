@@ -238,6 +238,11 @@
 		},
 		"embedding": {
 			"section": "Embedding 模型",
+			"source": {
+				"label": "来源",
+				"builtin": "Agentero 内置",
+				"custom": "自定义接口"
+			},
 			"baseUrl": {
 				"label": "Base URL"
 			},
@@ -374,6 +379,7 @@
 		"title": "翻译",
 		"provider": {
 			"label": "默认服务",
+			"agentero": "Agentero 内置",
 			"deeplx": "DeepLX",
 			"huoshanweb": "火山翻译 Web",
 			"tencenttransmart": "腾讯交互翻译",
@@ -388,6 +394,9 @@
 			"probeOk": "可用",
 			"probeFail": "不可用",
 			"probeProbing": "正在检测可用性…"
+		},
+		"errors": {
+			"noBuiltinKey": "当前构建未启用内置翻译。"
 		},
 		"targetLang": {
 			"label": "目标语言",
@@ -453,6 +462,7 @@
 		"parserBackend": {
 			"label": "正文解析引擎",
 			"local": "本地解析",
+			"agentero": "Agentero 内置",
 			"paddle": "Paddle",
 			"mineru": "MinerU",
 			"openaiCompatible": "OpenAI 兼容"

@@ -60,6 +60,7 @@ import type { PdfTranslateRecord } from "@/lib/pdf/translate/types";
 import { loadSettings } from "@/lib/settings";
 import {
 	buildTranslatePrompt,
+	displayTranslateError,
 	prepareTranslateTask,
 	resolveTranslateAgent,
 	runTranslate,
@@ -363,7 +364,7 @@ export function usePdfSelectionTranslate({
 					setTranslateStreaming(false);
 					setTranslateError(null);
 				} catch (e) {
-					const message = errorText(e);
+					const message = displayTranslateError(errorText(e));
 					notifyError(message);
 					markTranslateFailure(rec.id, message);
 				}

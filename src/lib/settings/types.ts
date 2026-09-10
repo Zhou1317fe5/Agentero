@@ -295,8 +295,19 @@ export type PdfAskSettings = {
 	modelId: string;
 };
 
+/**
+ * Embedding credential source: the built-in provider (Host-injected) or a
+ * custom OpenAI-compatible BYOK endpoint.
+ */
+export type EmbeddingSource = "builtin" | "custom";
+
 /** OpenAI-compatible embedding endpoint (BYOK). All-empty = disabled. */
 export type EmbeddingSettings = {
+	/**
+	 * Credential source. The Host wire type is a plain string (empty = unset);
+	 * `normalizeEmbeddingSettings` narrows it to this union at the boundary.
+	 */
+	source: EmbeddingSource;
 	/** Endpoint base, e.g. `https://api.openai.com/v1`. Empty = unset. */
 	baseUrl: string;
 	/** BYOK secret; masked (`*`) when echoed back from the Host. */
