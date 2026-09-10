@@ -134,10 +134,11 @@ export function AgentComposer(props: AgentComposerProps) {
 			className={cn(
 				// Queue sits in normal flow above the shell; fixed height applies only
 				// to the input shell so the waitlist never covers the composer.
-				// Keep px-3 in both modes so the InputGroup width does not jump
+				// Keep the same horizontal inset and bottom gap in both modes so
+				// the InputGroup width / distance to the panel bottom do not jump
 				// when crossing the compact height threshold.
-				"flex shrink-0 flex-col border-t bg-muted/10 px-3",
-				compact ? "gap-1 py-2" : "gap-2 py-3",
+				"flex shrink-0 flex-col border-t bg-muted/10 px-3 pb-3",
+				compact ? "gap-1 pt-2" : "gap-2 pt-3",
 			)}
 		>
 			{hasQueuedMessages ? (
