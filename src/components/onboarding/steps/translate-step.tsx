@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChoiceCard } from "@/components/onboarding/choice-card";
 import type { OnboardingStepId } from "@/components/onboarding/flow";
+import { useBuiltinProviderAvailable } from "@/components/settings/use-builtin-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +25,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { BUILTIN_PROVIDER_ID } from "@/lib/core/builtin";
 import { cn } from "@/lib/core/utils";
 import type {
 	AppSettings,
@@ -117,6 +119,7 @@ export function TranslateStep({
 	const [mode, setMode] = useState<"choose" | "configure">("choose");
 	const [draft, setDraft] = useState<{ apiKey?: string; baseUrl?: string }>({});
 	const [probe, setProbe] = useState<ProbeStatus>("idle");
+	const builtinAvailable = useBuiltinProviderAvailable();
 
 	// Next is allowed once the user committed to the own-API flow ("use system
 	// default" advances immediately from the chooser instead).
@@ -137,7 +140,11 @@ export function TranslateStep({
 		patch({
 			translate: {
 				...tr,
-				provider: DEFAULT_TRANSLATE_SETTINGS.provider,
+				// Mirrors the Host's availability-gated default_translate_provider();
+				// the static TS default would clobber a compiled-in built-in provider.
+				provider: builtinAvailable
+					? BUILTIN_PROVIDER_ID
+					: DEFAULT_TRANSLATE_SETTINGS.provider,
 			},
 		});
 		onUseDefault();
