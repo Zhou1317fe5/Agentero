@@ -24,9 +24,16 @@ const COMPOSER_DEFAULT_HEIGHT_PX = 208;
 const COMPOSER_MIN_HEIGHT_PX = 88;
 const COMPOSER_MAX_HEIGHT_PX = 360;
 const COMPOSER_COMPACT_THRESHOLD_PX = 160;
-/** App window shorter than this forces compact composer in the Agent rail. */
+/** Below this app window height, prefer compact as the starting composer size. */
 const WINDOW_COMPACT_THRESHOLD_PX = 600;
 const TRANSCRIPT_MIN_HEIGHT_PX = 160;
+
+function initialComposerHeightPx(): number {
+	if (typeof window === "undefined") return COMPOSER_DEFAULT_HEIGHT_PX;
+	return window.innerHeight < WINDOW_COMPACT_THRESHOLD_PX
+		? COMPOSER_COMPACT_THRESHOLD_PX
+		: COMPOSER_DEFAULT_HEIGHT_PX;
+}
 
 export type { AgentPanelProps } from "@/components/agent/types";
 
@@ -59,12 +66,13 @@ export const AgentPanel = memo(function AgentPanel({
 	});
 	const bodyRef = useRef<HTMLDivElement>(null);
 	const [composerHeightPx, setComposerHeightPx] = useState(
-		COMPOSER_DEFAULT_HEIGHT_PX,
+		initialComposerHeightPx,
 	);
-	const [windowHeightPx, setWindowHeightPx] = useState(() =>
-		typeof window !== "undefined"
-			? window.innerHeight
-			: WINDOW_COMPACT_THRESHOLD_PX,
+	// Track short-window edge so we only auto-collapse once when crossing below
+	// the threshold — never lock the user out of dragging back to expanded.
+	const windowWasShortRef = useRef(
+		typeof window !== "undefined" &&
+			window.innerHeight < WINDOW_COMPACT_THRESHOLD_PX,
 	);
 
 	const clampComposerHeight = useCallback((height: number) => {
@@ -84,8 +92,15 @@ export const AgentPanel = memo(function AgentPanel({
 
 	useEffect(() => {
 		const handleResize = () => {
-			setWindowHeightPx(window.innerHeight);
-			setComposerHeightPx((height) => clampComposerHeight(height));
+			const short = window.innerHeight < WINDOW_COMPACT_THRESHOLD_PX;
+			const crossedIntoShort = short && !windowWasShortRef.current;
+			windowWasShortRef.current = short;
+			setComposerHeightPx((height) => {
+				const next = crossedIntoShort
+					? Math.min(height, COMPOSER_COMPACT_THRESHOLD_PX)
+					: height;
+				return clampComposerHeight(next);
+			});
 		};
 		handleResize();
 		window.addEventListener("resize", handleResize);
@@ -154,9 +169,9 @@ export const AgentPanel = memo(function AgentPanel({
 		},
 		[clampComposerHeight],
 	);
-	const composerCompact =
-		composerHeightPx <= COMPOSER_COMPACT_THRESHOLD_PX ||
-		windowHeightPx < WINDOW_COMPACT_THRESHOLD_PX;
+	// Compact is driven only by composer height so the resize handle can always
+	// leave or re-enter compact, even when the app window is short.
+	const composerCompact = composerHeightPx <= COMPOSER_COMPACT_THRESHOLD_PX;
 	// Compact mode hugs content (no fixed height) so the shell does not leave a
 	// empty band under the single-line input. Non-compact keeps the resize budget.
 	const composerDisplayHeightPx = composerCompact
