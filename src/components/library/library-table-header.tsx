@@ -3,11 +3,12 @@
  *
  * Per-column sort button, title-header inline search, metadata refresh,
  * and the tags-filter popover; right-click customizes column order +
- * visibility. When `compact` (scrolled away from top), search + action
- * icons hide so only column labels remain. Transient drag state
- * (dragKey/dragOverKey) lives here — the parent only receives committed
- * reorder events. Memoized so scrolling the virtualized body does not
- * re-render the header unless compact/props change.
+ * visibility. When `compact` (table is actively scrolling), search +
+ * action icons hide so only column labels remain; row height stays
+ * fixed (`h-9`). Transient drag state (dragKey/dragOverKey) lives here —
+ * the parent only receives committed reorder events. Memoized so
+ * scrolling the virtualized body does not re-render the header unless
+ * compact/props change.
  */
 import { Award, ListFilter, RefreshCw, Search, X } from "lucide-react";
 import { memo, useEffect, useState } from "react";
@@ -60,8 +61,8 @@ type LibraryTableHeaderProps = {
 	sortDir: SortDir;
 	onSort: (key: SortKey) => void;
 	/**
-	 * Scrolled away from top: hide search input and header action icons,
-	 * keep column label text (and active sort chevron).
+	 * Actively scrolling: hide search input and header action icons,
+	 * keep column label text (and active sort chevron). Idle restores.
 	 */
 	compact?: boolean;
 	/** Inline title search; hidden when the shared query is not controlled. */
@@ -228,7 +229,8 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 										setDragOverKey(null);
 									}}
 								>
-									<div className="flex min-w-0 items-center gap-1 px-3 py-1.5">
+									{/* Fixed h-9 so compact (hide search/actions) never changes header height. */}
+									<div className="flex h-9 min-w-0 items-center gap-1 px-3">
 										<button
 											type="button"
 											className={cn(
@@ -253,8 +255,15 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 												/>
 											) : null}
 										</button>
-										{showActions && isTitle && searchEnabled ? (
-											<div className="relative ml-1 min-w-0 flex-1">
+										{isTitle && searchEnabled ? (
+											<div
+												className={cn(
+													"relative ml-1 min-w-0 flex-1",
+													!showActions &&
+														"invisible max-w-0 flex-none overflow-hidden pointer-events-none",
+												)}
+												aria-hidden={!showActions}
+											>
 												<Search
 													className="pointer-events-none absolute top-1/2 left-1.5 size-3 -translate-y-1/2 text-muted-foreground"
 													aria-hidden
@@ -264,6 +273,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 													value={inputValue}
 													onChange={(e) => onInputChange(e.target.value)}
 													aria-label={t("papersLibrary.search")}
+													tabIndex={showActions ? undefined : -1}
 													className="h-6 border-transparent bg-muted/50 pl-6 pr-1.5 text-xs shadow-none focus-visible:border-input focus-visible:bg-background"
 													onMouseDown={(e) => e.stopPropagation()}
 													onClick={(e) => e.stopPropagation()}
@@ -271,17 +281,22 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 												/>
 											</div>
 										) : null}
-										{showActions && isPublication && canRefreshMetadata ? (
+										{isPublication && canRefreshMetadata ? (
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<button
 														type="button"
 														data-library-header-action
+														tabIndex={showActions ? undefined : -1}
 														className={cn(
-															"ml-1 flex size-6 shrink-0 items-center justify-center rounded-sm",
+															"flex shrink-0 items-center justify-center rounded-sm",
 															"hover:bg-muted/60 hover:text-foreground",
 															"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+															showActions
+																? "ml-1 size-6"
+																: "invisible size-0 overflow-hidden pointer-events-none",
 														)}
+														aria-hidden={!showActions}
 														aria-label={t("papersLibrary.refreshMetadata")}
 														onClick={(e) => {
 															e.stopPropagation();
@@ -297,20 +312,25 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 												</TooltipContent>
 											</Tooltip>
 										) : null}
-										{showActions && isTags ? (
+										{isTags ? (
 											<>
 												<Tooltip>
 													<TooltipTrigger asChild>
 														<button
 															type="button"
 															data-library-header-action
-															disabled={!canFetchRanks}
+															disabled={!canFetchRanks || !showActions}
+															tabIndex={showActions ? undefined : -1}
 															className={cn(
-																"ml-1 flex size-6 shrink-0 items-center justify-center rounded-sm",
+																"flex shrink-0 items-center justify-center rounded-sm",
 																"hover:bg-muted/60 hover:text-foreground",
 																"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
 																"disabled:pointer-events-none disabled:opacity-50",
+																showActions
+																	? "ml-1 size-6"
+																	: "invisible size-0 overflow-hidden pointer-events-none",
 															)}
+															aria-hidden={!showActions}
 															aria-label={t(
 																"papersLibrary.easyScholar.fetchRank",
 															)}
@@ -341,13 +361,19 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 																<button
 																	type="button"
 																	data-library-header-action
+																	tabIndex={showActions ? undefined : -1}
 																	className={cn(
-																		"ml-auto flex size-6 shrink-0 items-center justify-center rounded-sm",
+																		"flex shrink-0 items-center justify-center rounded-sm",
 																		"hover:bg-muted/60 hover:text-foreground",
 																		"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-																		tagFilterActive &&
+																		showActions
+																			? "ml-auto size-6"
+																			: "invisible size-0 overflow-hidden pointer-events-none",
+																		showActions &&
+																			tagFilterActive &&
 																			"bg-muted/60 text-foreground",
 																	)}
+																	aria-hidden={!showActions}
 																	aria-label={t("papersLibrary.filterTags")}
 																	aria-pressed={tagFilterActive}
 																	onClick={(e) => e.stopPropagation()}

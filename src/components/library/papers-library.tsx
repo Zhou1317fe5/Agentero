@@ -82,6 +82,8 @@ export type PapersLibraryProps = {
  * full catalog (and re-render workspace subscribers of `query`).
  */
 const SEARCH_DEBOUNCE_MS = 250;
+/** Hide header search/actions while scrolling; restore after this idle gap. */
+const HEADER_SCROLL_IDLE_MS = 180;
 
 export function PapersLibrary({
 	papers,
@@ -269,7 +271,7 @@ export function PapersLibrary({
 
 	const scrollRef = useRef<HTMLDivElement | null>(null);
 	const detachScrollRef = useRef<(() => void) | null>(null);
-	/** Leave top → hide header search/actions; back at top → restore. */
+	/** True only while the table is scrolling; idle restores search/actions. */
 	const [headerCompact, setHeaderCompact] = useState(false);
 	/** Bind scroll listener when the table scroller mounts (after loading). */
 	const setScrollEl = useCallback((el: HTMLDivElement | null) => {
@@ -280,13 +282,20 @@ export function PapersLibrary({
 			setHeaderCompact(false);
 			return;
 		}
+		let idleTimer: ReturnType<typeof setTimeout> | null = null;
 		const onScroll = () => {
-			const next = el.scrollTop > 0;
-			setHeaderCompact((prev) => (prev === next ? prev : next));
+			setHeaderCompact((prev) => (prev ? prev : true));
+			if (idleTimer) clearTimeout(idleTimer);
+			idleTimer = setTimeout(() => {
+				idleTimer = null;
+				setHeaderCompact(false);
+			}, HEADER_SCROLL_IDLE_MS);
 		};
-		onScroll();
 		el.addEventListener("scroll", onScroll, { passive: true });
-		detachScrollRef.current = () => el.removeEventListener("scroll", onScroll);
+		detachScrollRef.current = () => {
+			if (idleTimer) clearTimeout(idleTimer);
+			el.removeEventListener("scroll", onScroll);
+		};
 	}, []);
 	useEffect(
 		() => () => {
