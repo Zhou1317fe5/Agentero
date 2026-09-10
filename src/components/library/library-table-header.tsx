@@ -3,12 +3,14 @@
  *
  * Per-column sort button, title-header inline search, metadata refresh,
  * and the tags-filter popover; right-click customizes column order +
- * visibility. Transient drag state (dragKey/dragOverKey) lives here — the
- * parent only receives committed reorder events. Memoized so scrolling the
- * virtualized body does not re-render the header.
+ * visibility. When `compact` (scrolled away from top), search + action
+ * icons hide so only column labels remain. Transient drag state
+ * (dragKey/dragOverKey) lives here — the parent only receives committed
+ * reorder events. Memoized so scrolling the virtualized body does not
+ * re-render the header unless compact/props change.
  */
 import { Award, ListFilter, RefreshCw, Search, X } from "lucide-react";
-import { memo, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { COLUMN_META, SortIcon } from "@/components/library/library-columns";
 import type {
 	CellT,
@@ -57,6 +59,11 @@ type LibraryTableHeaderProps = {
 	sortKey: SortKey;
 	sortDir: SortDir;
 	onSort: (key: SortKey) => void;
+	/**
+	 * Scrolled away from top: hide search input and header action icons,
+	 * keep column label text (and active sort chevron).
+	 */
+	compact?: boolean;
 	/** Inline title search; hidden when the shared query is not controlled. */
 	searchEnabled: boolean;
 	inputValue: string;
@@ -88,6 +95,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 	sortKey,
 	sortDir,
 	onSort,
+	compact = false,
 	searchEnabled,
 	inputValue,
 	onInputChange,
@@ -111,6 +119,11 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 	const [tagFilterOpen, setTagFilterOpen] = useState(false);
 	const [rankBusy, setRankBusy] = useState(false);
 
+	useEffect(() => {
+		if (compact) setTagFilterOpen(false);
+	}, [compact]);
+
+	const showActions = !compact;
 	const canFetchRanks = Boolean(vaultPath) && !rankBusy && papers.length > 0;
 
 	const fetchAllRanks = async () => {
@@ -230,9 +243,17 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 											})}
 										>
 											<span className="truncate">{t(meta.labelKey)}</span>
-											<SortIcon active={active} dir={sortDir} />
+											{showActions || active ? (
+												<SortIcon active={active} dir={sortDir} />
+											) : null}
+											{!showActions && isTags && tagFilterActive ? (
+												<span
+													className="size-1.5 shrink-0 rounded-full bg-primary"
+													aria-hidden
+												/>
+											) : null}
 										</button>
-										{isTitle && searchEnabled ? (
+										{showActions && isTitle && searchEnabled ? (
 											<div className="relative ml-1 min-w-0 flex-1">
 												<Search
 													className="pointer-events-none absolute top-1/2 left-1.5 size-3 -translate-y-1/2 text-muted-foreground"
@@ -250,7 +271,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 												/>
 											</div>
 										) : null}
-										{isPublication && canRefreshMetadata ? (
+										{showActions && isPublication && canRefreshMetadata ? (
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<button
@@ -276,7 +297,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 												</TooltipContent>
 											</Tooltip>
 										) : null}
-										{isTags ? (
+										{showActions && isTags ? (
 											<>
 												<Tooltip>
 													<TooltipTrigger asChild>

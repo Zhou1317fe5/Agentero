@@ -267,7 +267,34 @@ export function PapersLibrary({
 		[sortKey, sortDir, tagFilter],
 	);
 
-	const scrollRef = useRef<HTMLDivElement>(null);
+	const scrollRef = useRef<HTMLDivElement | null>(null);
+	const detachScrollRef = useRef<(() => void) | null>(null);
+	/** Leave top → hide header search/actions; back at top → restore. */
+	const [headerCompact, setHeaderCompact] = useState(false);
+	/** Bind scroll listener when the table scroller mounts (after loading). */
+	const setScrollEl = useCallback((el: HTMLDivElement | null) => {
+		detachScrollRef.current?.();
+		detachScrollRef.current = null;
+		scrollRef.current = el;
+		if (!el) {
+			setHeaderCompact(false);
+			return;
+		}
+		const onScroll = () => {
+			const next = el.scrollTop > 0;
+			setHeaderCompact((prev) => (prev === next ? prev : next));
+		};
+		onScroll();
+		el.addEventListener("scroll", onScroll, { passive: true });
+		detachScrollRef.current = () => el.removeEventListener("scroll", onScroll);
+	}, []);
+	useEffect(
+		() => () => {
+			detachScrollRef.current?.();
+			detachScrollRef.current = null;
+		},
+		[],
+	);
 	const uiScale = useUiScale();
 	const rowVirtualizer = useVirtualizer({
 		count: rows.length,
@@ -313,7 +340,7 @@ export function PapersLibrary({
 		body = (
 			<>
 				<div
-					ref={scrollRef}
+					ref={setScrollEl}
 					className={cn(
 						"agentero-scroll-both min-w-0",
 						empty ? "h-auto" : "min-h-0 flex-1",
@@ -338,6 +365,7 @@ export function PapersLibrary({
 							sortKey={sortKey}
 							sortDir={sortDir}
 							onSort={handleSort}
+							compact={headerCompact}
 							searchEnabled={Boolean(onQueryChange)}
 							inputValue={inputValue}
 							onInputChange={onSearchInputChange}
