@@ -884,11 +884,11 @@ function PdfViewerInner({
 		toggleLayoutTranslate,
 	]);
 
-	// Sticky overlays (selection menu / pin card) and an in-progress drag-select
-	// suppress ephemeral link previews so the pointer cannot stack multiple
-	// cards while sweeping across citation / crossref hit targets (#430).
-	const suppressLinkPreviews =
-		Boolean(selectionMenu) || Boolean(activeCard) || isSelecting;
+	// Drag-select and pin cards suppress ephemeral link previews so the pointer
+	// cannot stack cards while sweeping across citation / crossref hit targets
+	// (#430). The selection action menu alone does not suppress — after the
+	// drag ends, hovering a citation should still open its preview.
+	const suppressLinkPreviews = Boolean(activeCard) || isSelecting;
 
 	useEffect(() => {
 		if (!suppressLinkPreviews) return;
