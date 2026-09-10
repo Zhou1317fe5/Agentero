@@ -1072,7 +1072,7 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
   - **`error` 只在真正失败时出现**（解析失败 / 正文为空 / 写 `PAPER.md` 失败），跳过与取消不算失败；云端引擎失败自动回退本地并把原因写进 `messages`。JobCenter 的 `parseBody` job 见到 `error` 会标记 `Failed` 并把它作为失败原因，任务面板因此能展示真实原因（例如找不到 PDFium 动态库）；否则标记 `Succeeded`。
   - liteparse 依赖运行时 `dlopen` 的 PDFium，随安装包分发，见 [paper-import.md](paper-import.md) § PDFium 随包分发。
 
-> **正文生成时机**：魔棒 / 本地 PDF 导入 / 下载资产 / Library 导入 / Zotero 迁移 / 打开论文时，前端检查到该 paper 有 PDF、无 TeX、无 `PAPER.md`，就会入队 `paper_parse_body` 作为独立后台任务。原 `paper_download_assets` / 魔棒入库命令不再内联等待解析完成。
+> **正文 / 版面生成时机**：魔棒 / 本地 PDF 导入 / 下载资产 / Library 导入 / Zotero 迁移 / 打开论文时，**确认本地已有 PDF** 且无 TeX、无 `PAPER.md` 后，才入队 `paper_parse_body`；版面分析同理，必须等 PDF 落地（`DownloadAssets` 成功后由 Host runner 串联，或魔棒结果里 `pdf=true` 才入队）。缺 PDF 时不得抢先入队，否则会报 `No local PDF`。原 `paper_download_assets` / 魔棒入库命令不再内联等待解析完成。
 
 #### `paper_analyze_pdf`（规划中）
 
