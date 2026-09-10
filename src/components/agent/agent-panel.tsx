@@ -24,6 +24,8 @@ const COMPOSER_DEFAULT_HEIGHT_PX = 208;
 const COMPOSER_MIN_HEIGHT_PX = 88;
 const COMPOSER_MAX_HEIGHT_PX = 360;
 const COMPOSER_COMPACT_THRESHOLD_PX = 160;
+/** App window shorter than this forces compact composer in the Agent rail. */
+const WINDOW_COMPACT_THRESHOLD_PX = 600;
 const TRANSCRIPT_MIN_HEIGHT_PX = 160;
 
 export type { AgentPanelProps } from "@/components/agent/types";
@@ -59,6 +61,11 @@ export const AgentPanel = memo(function AgentPanel({
 	const [composerHeightPx, setComposerHeightPx] = useState(
 		COMPOSER_DEFAULT_HEIGHT_PX,
 	);
+	const [windowHeightPx, setWindowHeightPx] = useState(() =>
+		typeof window !== "undefined"
+			? window.innerHeight
+			: WINDOW_COMPACT_THRESHOLD_PX,
+	);
 
 	const clampComposerHeight = useCallback((height: number) => {
 		const bodyHeight = bodyRef.current?.getBoundingClientRect().height ?? 0;
@@ -76,8 +83,10 @@ export const AgentPanel = memo(function AgentPanel({
 	}, []);
 
 	useEffect(() => {
-		const handleResize = () =>
+		const handleResize = () => {
+			setWindowHeightPx(window.innerHeight);
 			setComposerHeightPx((height) => clampComposerHeight(height));
+		};
 		handleResize();
 		window.addEventListener("resize", handleResize);
 		return () => window.removeEventListener("resize", handleResize);
@@ -145,7 +154,9 @@ export const AgentPanel = memo(function AgentPanel({
 		},
 		[clampComposerHeight],
 	);
-	const composerCompact = composerHeightPx <= COMPOSER_COMPACT_THRESHOLD_PX;
+	const composerCompact =
+		composerHeightPx <= COMPOSER_COMPACT_THRESHOLD_PX ||
+		windowHeightPx < WINDOW_COMPACT_THRESHOLD_PX;
 	// Compact mode hugs content (no fixed height) so the shell does not leave a
 	// empty band under the single-line input. Non-compact keeps the resize budget.
 	const composerDisplayHeightPx = composerCompact
