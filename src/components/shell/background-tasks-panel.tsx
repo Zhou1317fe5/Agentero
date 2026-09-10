@@ -147,7 +147,7 @@ function TaskRow({ task }: { task: BackgroundTask }) {
 								#{task.queueIndex}
 							</span>
 						) : null}
-						<span className="truncate font-medium text-xs leading-tight">
+						<span className="truncate font-medium text-sm leading-tight">
 							{task.title}
 						</span>
 						{task.progress != null &&
@@ -539,7 +539,7 @@ export function BackgroundTasksPanel({ className }: { className?: string }) {
 				{detailOpen ? (
 					<div className="w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg">
 						<div className="flex h-8 items-center gap-1 border-b bg-muted/40 px-2">
-							<span className="min-w-0 flex-1 truncate px-1 font-medium text-xs">
+							<span className="min-w-0 flex-1 truncate px-1 font-medium text-sm">
 								{t("tasks.title")}
 								{active.length > 0 ? (
 									<span className="ml-1.5 text-muted-foreground tabular-nums">

@@ -495,8 +495,8 @@
 	--dv-tabs-and-actions-container-background-color: var(--muted);
 	/* Match PaneHeader (`h-10`) so the workspace aligns with side-pane headers. */
 	--dv-tabs-and-actions-container-height: 2.5rem;
-	/* Callout 12 — align with text-xs chrome, not Body 13 table density. */
-	--dv-tabs-and-actions-container-font-size: 0.75rem;
+	/* Body 13 — match PaneHeader / sidebar so tab titles sit on the same rung. */
+	--dv-tabs-and-actions-container-font-size: 0.8125rem;
 	--dv-activegroup-visiblepanel-tab-background-color: var(--background);
 	--dv-activegroup-hiddenpanel-tab-background-color: color-mix(
 		in oklab,

@@ -76,7 +76,7 @@ function MetaRow({
 			<Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
 			<div className="min-w-0 flex-1">
 				<span className="sr-only">{label}</span>
-				<div className="text-xs leading-snug text-foreground">{children}</div>
+				<div className="text-sm leading-snug text-foreground">{children}</div>
 			</div>
 		</div>
 	);
@@ -561,7 +561,7 @@ export function PaperInfoPanel({
 					<CollapsibleTrigger
 						className={cn(
 							"flex min-w-0 flex-1 items-center gap-1.5 px-2 text-left outline-none",
-							"text-muted-foreground text-xs font-medium",
+							"text-muted-foreground text-sm font-medium",
 							"hover:bg-muted/40 hover:text-foreground",
 							"focus-visible:ring-1 focus-visible:ring-ring",
 						)}

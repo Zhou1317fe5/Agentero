@@ -200,7 +200,7 @@ export function DocWindowRoot() {
 						data-tauri-drag-region
 					/>
 					<div
-						className="min-w-0 flex-1 truncate px-2 text-xs font-medium text-muted-foreground"
+						className="min-w-0 flex-1 truncate px-2 text-sm font-medium text-muted-foreground"
 						data-tauri-drag-region
 					>
 						{title}
