@@ -36,11 +36,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { copyTextToClipboard } from "@/lib/core/clipboard";
 import { cn } from "@/lib/core/utils";
 import type { PaperMetadata } from "@/lib/paper";
@@ -576,7 +571,7 @@ export function PaperInfoPanel({
 				onOpenChange={setOpen}
 				className="flex min-h-0 flex-1 flex-col"
 			>
-				<div className="flex h-8 min-h-8 shrink-0 items-center gap-0.5 pr-1.5">
+				<div className="flex h-8 min-h-8 shrink-0 items-center pr-1.5">
 					<CollapsibleTrigger
 						className={cn(
 							"flex min-w-0 flex-1 items-center gap-1.5 px-2 text-left outline-none",
@@ -605,7 +600,7 @@ export function PaperInfoPanel({
 							})}
 							onClick={() => void copyField(arxivId, t("paperInfo.arxivId"))}
 							className={cn(
-								"min-w-0 max-w-[45%] shrink truncate px-1",
+								"min-w-0 max-w-[55%] shrink truncate px-1",
 								"text-caption text-muted-foreground tabular-nums transition-colors",
 								"hover:text-foreground",
 								"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
@@ -613,28 +608,6 @@ export function PaperInfoPanel({
 						>
 							{arxivId}
 						</button>
-					) : null}
-					{canEditMeta && meta ? (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<button
-									type="button"
-									aria-label={t("paperInfo.editMeta.title")}
-									onClick={() => setEditMetaDraft(meta)}
-									className={cn(
-										"inline-flex size-7 shrink-0 items-center justify-center rounded-md",
-										"text-muted-foreground transition-colors",
-										"hover:bg-muted hover:text-foreground",
-										"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-									)}
-								>
-									<Pencil className="size-3.5" aria-hidden />
-								</button>
-							</TooltipTrigger>
-							<TooltipContent side="top">
-								{t("paperInfo.editMeta.title")}
-							</TooltipContent>
-						</Tooltip>
 					) : null}
 				</div>
 				{/* forceMount: keep body mounted so the outer height transition
@@ -736,6 +709,25 @@ export function PaperInfoPanel({
 											}
 										/>
 									) : null}
+								</div>
+							) : null}
+							{canEditMeta ? (
+								<div className="px-3 pt-2">
+									<button
+										type="button"
+										onClick={() => setEditMetaDraft(meta)}
+										className={cn(
+											"flex h-7 w-full cursor-pointer items-center justify-center gap-1.5 rounded-md border bg-background px-2",
+											"text-xs leading-none text-muted-foreground transition-colors",
+											"hover:bg-muted hover:text-foreground",
+											"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+										)}
+									>
+										<Pencil className="size-3.5 shrink-0" aria-hidden />
+										<span className="truncate">
+											{t("paperInfo.editMeta.title")}
+										</span>
+									</button>
 								</div>
 							) : null}
 						</div>

@@ -132,33 +132,24 @@ export function AgentComposer(props: AgentComposerProps) {
 	return (
 		<div
 			className={cn(
-				// Keep overflow visible so the waiting-send queue can float above the shell.
-				"relative flex shrink-0 flex-col border-t bg-muted/10",
+				// Queue sits in normal flow above the shell; fixed height applies only
+				// to the input shell so the waitlist never covers the composer.
+				"flex shrink-0 flex-col border-t bg-muted/10",
 				compact ? "gap-1.5 px-2 pt-2 pb-3" : "gap-2 p-3",
 			)}
-			style={heightPx ? { height: heightPx } : undefined}
 		>
 			{hasQueuedMessages ? (
-				<div
-					className={cn(
-						"pointer-events-none absolute inset-x-0 bottom-full z-20",
-						compact ? "px-2 pb-1.5" : "px-3 pb-2",
-					)}
-				>
-					<div className="pointer-events-auto">
-						<ComposerQueue
-							compact={compact}
-							floating
-							messageQueue={props.messageQueue}
-							onRemoveQueuedMessage={props.onRemoveQueuedMessage}
-						/>
-					</div>
-				</div>
+				<ComposerQueue
+					compact={compact}
+					messageQueue={props.messageQueue}
+					onRemoveQueuedMessage={props.onRemoveQueuedMessage}
+				/>
 			) : null}
 			<div
 				ref={shellRef}
 				data-composer-drop-shell
-				className="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden"
+				className="relative flex min-h-0 flex-col gap-1.5 overflow-hidden"
+				style={heightPx ? { height: heightPx } : undefined}
 			>
 				{/* Block chips: current file / selection / visual only. @ and $ are inline. */}
 				{props.currentFilePath ||
