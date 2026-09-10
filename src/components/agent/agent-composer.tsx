@@ -238,7 +238,9 @@ export function AgentComposer(props: AgentComposerProps) {
 										className={cn(
 											"relative flex w-full overflow-hidden",
 											compact
-												? "min-h-0 flex-row items-center gap-1 px-2 py-1"
+												? // Single-line row; match footer insets (px-3 / pb-2.5)
+													// so the send button keeps the same corner as expanded.
+													"min-h-0 flex-row items-end gap-1 px-3 pt-1 pb-2.5"
 												: "min-h-0 flex-1 flex-col px-3 pt-3",
 										)}
 										onVaultPathDragOver={onComposerDragOver}
