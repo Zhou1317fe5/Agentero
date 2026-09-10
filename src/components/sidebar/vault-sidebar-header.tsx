@@ -542,7 +542,7 @@ export const VaultSidebarHeader = memo(function VaultSidebarHeader({
 										<span className="min-w-0 flex-1">
 											<span className="flex items-center gap-1.5 truncate text-sm">
 												<span className="truncate">{name}</span>
-												<span className="shrink-0 rounded bg-muted px-1 py-0.5 text-[0.625rem] text-muted-foreground">
+												<span className="shrink-0 rounded bg-muted px-1 py-0.5 text-caption text-muted-foreground">
 													{t("app:vault.remoteBadge")}
 												</span>
 											</span>

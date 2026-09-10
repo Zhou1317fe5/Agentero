@@ -25,7 +25,7 @@ export function StatusBadge({
 		<span
 			title={title}
 			className={cn(
-				"inline-flex shrink-0 items-center justify-center gap-1 rounded px-1.5 py-0.5 text-[0.6875rem] font-medium leading-none",
+				"inline-flex shrink-0 items-center justify-center gap-1 rounded px-1.5 py-0.5 text-caption font-medium leading-none",
 				tone === "ok" &&
 					"bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
 				tone === "warn" && "bg-amber-500/15 text-amber-800 dark:text-amber-400",

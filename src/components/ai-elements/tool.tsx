@@ -73,7 +73,7 @@ const statusIcons: Record<ToolPart["state"], ReactNode> = {
 
 export const getStatusBadge = (status: ToolPart["state"], label: string) => (
 	<Badge
-		className="h-5 gap-1 rounded-full bg-black/5 px-1.5 py-0 text-[10px] font-normal text-foreground dark:bg-white/10"
+		className="h-5 gap-1 rounded-full bg-black/5 px-1.5 py-0 text-caption font-normal text-foreground dark:bg-white/10"
 		variant="secondary"
 	>
 		<span className="[&>svg]:size-3">{statusIcons[status]}</span>
@@ -159,7 +159,7 @@ export const ToolInput = ({ className, input, ...props }: ToolInputProps) => {
 
 	return (
 		<div className={cn("space-y-1 overflow-hidden", className)} {...props}>
-			<h4 className="font-medium text-[10px] text-muted-foreground uppercase tracking-wide">
+			<h4 className="font-medium text-caption text-muted-foreground uppercase tracking-wide">
 				{t("tool.parameters")}
 			</h4>
 			<div className="rounded bg-muted/50 text-xs">
@@ -198,12 +198,12 @@ export const ToolOutput = ({
 
 	return (
 		<div className={cn("space-y-1", className)} {...props}>
-			<h4 className="font-medium text-[10px] text-muted-foreground uppercase tracking-wide">
+			<h4 className="font-medium text-caption text-muted-foreground uppercase tracking-wide">
 				{errorText ? t("tool.error") : t("tool.result")}
 			</h4>
 			<div
 				className={cn(
-					"overflow-x-auto rounded text-[11px] [&_table]:w-full",
+					"overflow-x-auto rounded text-caption [&_table]:w-full",
 					errorText
 						? "bg-destructive/10 text-destructive"
 						: "bg-muted/50 text-foreground",

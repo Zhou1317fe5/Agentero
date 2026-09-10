@@ -78,7 +78,7 @@ export function TranslateCard({
 			) : null}
 
 			{showResult ? (
-				<MessageResponse className="min-w-0 whitespace-pre-wrap break-words text-[13px] text-foreground leading-relaxed">
+				<MessageResponse className="min-w-0 whitespace-pre-wrap break-words text-sm text-foreground leading-relaxed">
 					{result}
 				</MessageResponse>
 			) : null}

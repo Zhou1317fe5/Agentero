@@ -299,7 +299,7 @@ const CommentCard = memo(function CommentCard({
 						)}
 						<textarea
 							ref={textareaRef}
-							className="mt-1 max-h-60 w-full resize-none bg-transparent p-0 text-[13px] text-foreground/80 leading-relaxed outline-none placeholder:text-muted-foreground/70 select-text"
+							className="mt-1 max-h-60 w-full resize-none bg-transparent p-0 text-sm text-foreground/80 leading-relaxed outline-none placeholder:text-muted-foreground/70 select-text"
 							placeholder={t("annotations.placeholder")}
 							aria-label={t("annotations.editorLabel")}
 							defaultValue={item.comment}
@@ -358,7 +358,7 @@ const CommentCard = memo(function CommentCard({
 						)}
 						<p
 							className={cn(
-								"mt-1 line-clamp-3 whitespace-pre-wrap break-words text-[13px] leading-relaxed",
+								"mt-1 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-relaxed",
 								item.comment.trim()
 									? "text-foreground/80"
 									: "text-muted-foreground/70",
@@ -373,7 +373,7 @@ const CommentCard = memo(function CommentCard({
 										<p
 											key={m.id}
 											className={cn(
-												"whitespace-pre-wrap break-words text-[11px] leading-relaxed",
+												"whitespace-pre-wrap break-words text-caption leading-relaxed",
 												m.role === "assistant"
 													? "text-muted-foreground"
 													: "text-foreground/80",
@@ -428,7 +428,7 @@ const CommentCard = memo(function CommentCard({
 											onCopyEmbed(item);
 										}}
 									>
-										<span className="font-mono text-[10px] leading-none">
+										<span className="font-mono text-caption leading-none">
 											![[
 										</span>
 									</Button>

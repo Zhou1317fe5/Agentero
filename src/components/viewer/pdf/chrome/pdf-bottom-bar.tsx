@@ -78,7 +78,7 @@ export function PdfBottomBar({
 										className="size-3.5 shrink-0 text-[#B31B1B]"
 										aria-hidden
 									/>
-									<span className="whitespace-nowrap text-[11px] font-medium">
+									<span className="whitespace-nowrap text-caption font-medium">
 										{t("pdf.remoteMode")}
 									</span>
 								</div>

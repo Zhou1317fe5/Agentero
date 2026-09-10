@@ -318,7 +318,7 @@ export function PlazaArxivRecView({ className }: { className?: string }) {
 					<span
 						key={category}
 						className={cn(
-							"group inline-flex items-center gap-0.5 rounded-full border border-primary/40 bg-primary/10 py-0.5 pl-2 pr-0.5 font-mono text-[11px] text-foreground",
+							"group inline-flex items-center gap-0.5 rounded-full border border-primary/40 bg-primary/10 py-0.5 pl-2 pr-0.5 font-mono text-caption text-foreground",
 							(busy || !probeOk) && "opacity-60",
 						)}
 					>
@@ -344,7 +344,7 @@ export function PlazaArxivRecView({ className }: { className?: string }) {
 				/>
 				<span className="ml-auto flex items-center gap-1.5">
 					{computedAt && probeOk ? (
-						<span className="text-muted-foreground text-[11px]">
+						<span className="text-muted-foreground text-caption">
 							{new Date(computedAt).toLocaleString()}
 						</span>
 					) : null}
@@ -470,7 +470,7 @@ function EmptyState({
 					{t("plaza.arxivRec.probeFailed")}
 				</p>
 				{probeError ? (
-					<p className="max-w-sm text-muted-foreground/70 text-[11px] leading-relaxed">
+					<p className="max-w-sm text-muted-foreground/70 text-caption leading-relaxed">
 						{probeError}
 					</p>
 				) : null}

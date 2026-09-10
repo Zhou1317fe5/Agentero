@@ -40,8 +40,8 @@ export function DoctorSection({
 	return (
 		<div className={showDivider ? "mb-2 pb-6" : "mb-5"}>
 			<div className="mb-1 flex items-center gap-3 px-0.5">
-				<p className="min-w-0 flex-1 font-medium text-[13px]">{title}</p>
-				<span className="flex shrink-0 items-center gap-1.5 text-[13px]">
+				<p className="min-w-0 flex-1 font-medium text-sm">{title}</p>
+				<span className="flex shrink-0 items-center gap-1.5 text-sm">
 					{ok ? (
 						<CheckCircle2 className="size-4 text-emerald-600" />
 					) : (
@@ -88,7 +88,7 @@ export function IssueRows({ issues }: { issues: DoctorIssue[] }) {
 					key={`${issue.code}:${issue.path ?? ""}:${issue.message}`}
 					className="border-b px-3.5 py-2.5 last:border-b-0"
 				>
-					<p className="text-[13px] leading-snug">{issue.message}</p>
+					<p className="text-sm leading-snug">{issue.message}</p>
 					{issue.path ? (
 						<p className="mt-0.5 truncate text-muted-foreground text-xs">
 							{issue.path}

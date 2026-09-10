@@ -95,7 +95,7 @@ function AgentCard({ agent }: { agent: AgentAcpDiagnostic }) {
 				)}
 				<div className="min-w-0 flex-1">
 					<div className="flex items-baseline justify-between gap-3">
-						<p className="truncate font-medium text-[13px]" title={agent.name}>
+						<p className="truncate font-medium text-sm" title={agent.name}>
 							{agent.name}
 							{agent.template !== "custom" ? (
 								<span className="ml-1.5 font-normal text-muted-foreground text-xs">

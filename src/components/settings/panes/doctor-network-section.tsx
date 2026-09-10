@@ -52,7 +52,7 @@ function EndpointRow({ endpoint }: { endpoint: NetworkEndpointDiagnostic }) {
 			<StatusDot status={endpoint.status} />
 			<div className="min-w-0 flex-1">
 				<div className="flex items-baseline justify-between gap-3">
-					<p className="font-medium text-[13px]">
+					<p className="font-medium text-sm">
 						{t(`doctor.network.endpoints.${endpoint.id}`)}
 					</p>
 					<p

@@ -78,11 +78,11 @@ function CitationPreviewRow({
 		>
 			<div className="flex items-center justify-between gap-2">
 				{citation.display ? (
-					<span className="shrink-0 font-medium text-[10px] text-muted-foreground tabular-nums">
+					<span className="shrink-0 font-medium text-caption text-muted-foreground tabular-nums">
 						{citation.display}
 					</span>
 				) : (
-					<span className="shrink-0 font-medium text-[10px] text-muted-foreground tabular-nums">
+					<span className="shrink-0 font-medium text-caption text-muted-foreground tabular-nums">
 						{citation.id.replace(/^ref-?/i, "") || citation.id}
 					</span>
 				)}
@@ -132,11 +132,11 @@ function CitationPreviewRow({
 					) : null}
 				</span>
 			</div>
-			<p className="mt-1 line-clamp-2 text-[13px] leading-snug text-foreground">
+			<p className="mt-1 line-clamp-2 text-sm leading-snug text-foreground">
 				{m.title ?? citation.raw ?? citation.rawKey ?? citation.id}
 			</p>
 			{metaParts.length ? (
-				<p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+				<p className="mt-0.5 truncate text-caption text-muted-foreground">
 					{metaParts.join(" · ")}
 				</p>
 			) : null}

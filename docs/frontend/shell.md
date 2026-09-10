@@ -12,6 +12,10 @@
 
 实现：`src/components/shell/`、`src/lib/shell/ui-store.ts`、`src/lib/shell/leaf.ts`、`src/lib/shell/feature-window.ts`、`hooks/use-shell-layout.ts`。
 
+## 字号
+
+壳层（顶栏、左右栏、PaneHeader、Dock 页签、底栏任务条）与库表 / Agent chrome 共用 Appearance 字号阶梯：`body` 默认 `text-sm`（13），次要 `text-xs`（12），密集元数据 `text-caption`（11）。细则见 [settings.md](settings.md)。
+
 ## 欢迎页与多窗口
 
 - 无 Vault：最近路径 MRU、打开 / 创建 / 从 Zotero 迁移。

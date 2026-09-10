@@ -20,7 +20,7 @@ function ToolRow({ label, tool }: { label: string; tool: HostToolDiagnostic }) {
 			<StatusIcon ok={available} />
 			<div className="min-w-0 flex-1">
 				<div className="flex items-baseline justify-between gap-3">
-					<p className="font-medium text-[13px]">{label}</p>
+					<p className="font-medium text-sm">{label}</p>
 					<p
 						className={cn(
 							"shrink-0 text-xs",

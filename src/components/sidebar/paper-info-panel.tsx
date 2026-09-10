@@ -132,7 +132,7 @@ function LinkChip({
 			title={label}
 			className={cn(
 				"inline-flex items-center gap-1 rounded-md border bg-background px-1.5 py-0.5",
-				"h-6 min-w-0 flex-1 justify-center text-[0.6875rem] leading-none text-muted-foreground transition-colors",
+				"h-6 min-w-0 flex-1 justify-center text-caption leading-none text-muted-foreground transition-colors",
 				"hover:bg-muted hover:text-foreground",
 				"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
 			)}
@@ -195,7 +195,7 @@ function ServiceLinkChip({
 			title={label}
 			className={cn(
 				"inline-flex h-6 min-w-0 flex-1 items-center justify-center gap-1 rounded-md border bg-background px-1.5",
-				"text-[0.6875rem] leading-none text-muted-foreground transition-colors",
+				"text-caption leading-none text-muted-foreground transition-colors",
 				"hover:bg-muted hover:text-foreground",
 				"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
 			)}
@@ -286,7 +286,7 @@ function TagsEditor({
 						placeholder={t("paperInfo.addTag")}
 						aria-label={t("paperInfo.addTag")}
 						disabled={busy}
-						className="h-6 border-dashed py-0 pr-7 pl-1.5 text-[0.6875rem]"
+						className="h-6 border-dashed py-0 pr-7 pl-1.5 text-caption"
 					/>
 					<Popover open={colorOpen} onOpenChange={setColorOpen}>
 						<PopoverTrigger asChild>
@@ -587,7 +587,7 @@ export function PaperInfoPanel({
 							onClick={() => void copyField(arxivId, t("paperInfo.arxivId"))}
 							className={cn(
 								"flex min-w-0 max-w-[55%] shrink cursor-pointer items-center gap-1 rounded-md px-1.5 py-0.5",
-								"text-[0.6875rem] text-muted-foreground tabular-nums transition-colors",
+								"text-caption text-muted-foreground tabular-nums transition-colors",
 								"hover:bg-muted hover:text-foreground",
 								"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
 							)}

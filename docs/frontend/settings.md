@@ -58,11 +58,11 @@
 - 36 个 tweakcn 预设：`src/themes/tweakcn.json`；`src/lib/ui/theme.ts` 注入 CSS 变量。
 - 刷新主题数据：`node scripts/fetch-tweakcn-themes.mjs`。
 - `uiScale`：80%–150% 五档，改 `html` font-size（基数仍为 **16×scale**，与编辑器字号/行距正交；不把根字号改成 13，以免 rem 间距在 Windows 125% 等缩放下整体被压扁）。
-- 字号阶梯（对齐 macOS HIG Body/Callout/Title 3，见 `src/index.css` `@theme`）：
-  - `text-sm` → **13px**（Body，侧栏/表/设置行/默认按钮）
-  - `text-xs` → **12px**（Callout，次要控件与说明）
-  - `text-base` → **15px**（Title 3，设置页标题、对话框标题）
-  - 更密的 caption 用 `0.6875rem`（11px），避免再堆 `px` 字面量。
+- 字号阶梯（对齐 macOS HIG Body/Callout/Title 3，见 `src/index.css` `@theme`；`body` 默认 `text-sm`，PaneHeader / 侧栏 / 底栏 / 顶栏 / Dock / 库表 / Agent chrome 共用）：
+  - `text-sm` → **13px**（Body，主 chrome）
+  - `text-xs` → **12px**（Callout，次要控件、快捷键、辅助说明）
+  - `text-base` → **15px**（Title 3，设置/对话框标题）
+  - `text-caption` → **11px**（Subhead/Caption，chip、密集元数据；禁止再写 9/10px）
 - 字体（Appearance → Fonts，对齐 Obsidian 三分法）：
   - `interfaceFontFamily`：界面 chrome（`--font-sans` / `--font-heading`）。
   - `textFontFamily`：Markdown/笔记正文（仅编辑器根节点）。

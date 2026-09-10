@@ -380,7 +380,7 @@ export const LibraryTableHeader = memo(function LibraryTableHeader({
 																				aria-hidden
 																			>
 																				{selected ? (
-																					<span className="text-[9px] leading-none">
+																					<span className="text-caption leading-none">
 																						✓
 																					</span>
 																				) : null}

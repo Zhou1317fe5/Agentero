@@ -143,7 +143,7 @@ function TaskRow({ task }: { task: BackgroundTask }) {
 				<div className="min-w-0 flex-1">
 					<div className="flex items-baseline gap-1.5">
 						{task.queueIndex > 0 ? (
-							<span className="shrink-0 font-mono text-[10px] text-muted-foreground tabular-nums">
+							<span className="shrink-0 font-mono text-caption text-muted-foreground tabular-nums">
 								#{task.queueIndex}
 							</span>
 						) : null}
@@ -152,7 +152,7 @@ function TaskRow({ task }: { task: BackgroundTask }) {
 						</span>
 						{task.progress != null &&
 						(task.status === "running" || task.status === "queued") ? (
-							<span className="ml-auto shrink-0 font-mono text-[10px] text-muted-foreground tabular-nums">
+							<span className="ml-auto shrink-0 font-mono text-caption text-muted-foreground tabular-nums">
 								{Math.round(task.progress)}%
 							</span>
 						) : null}
@@ -160,7 +160,7 @@ function TaskRow({ task }: { task: BackgroundTask }) {
 					{task.detail ? (
 						<div
 							className={cn(
-								"mt-0.5 flex min-w-0 items-baseline gap-1 text-[11px] leading-snug text-muted-foreground",
+								"mt-0.5 flex min-w-0 items-baseline gap-1 text-caption leading-snug text-muted-foreground",
 								task.status === "failed" && "text-destructive",
 							)}
 							title={task.detail}
@@ -299,14 +299,14 @@ function ProgressRing({
 		// progress phase
 		if (activeCount > 1) {
 			return (
-				<span className="relative font-mono font-medium text-[11px] tabular-nums">
+				<span className="relative font-mono font-medium text-caption tabular-nums">
 					{activeCount}
 				</span>
 			);
 		}
 		if (normalizedProgress != null) {
 			return (
-				<span className="relative font-mono font-medium text-[9px] tabular-nums leading-none text-foreground">
+				<span className="relative font-mono font-medium text-caption tabular-nums leading-none text-foreground">
 					{Math.round(normalizedProgress)}%
 				</span>
 			);

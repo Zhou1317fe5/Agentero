@@ -23,7 +23,7 @@ function ChipHoverDescription({ text }: { text: string }) {
 		>
 			<span className="min-w-0 overflow-hidden">
 				<span
-					className="ml-1.5 block max-w-40 truncate whitespace-nowrap text-[11px] text-muted-foreground leading-none"
+					className="ml-1.5 block max-w-40 truncate whitespace-nowrap text-caption text-muted-foreground leading-none"
 					title={trimmed}
 				>
 					{trimmed}

@@ -79,10 +79,10 @@ export function PdfCrossrefPreview({
 			onPointerLeave={handlePointerLeave}
 		>
 			<div className="mb-1.5 flex items-center justify-between gap-2 px-1">
-				<span className="font-medium text-[11px] text-foreground">
+				<span className="font-medium text-caption text-foreground">
 					{kindLabel}
 				</span>
-				<span className="text-[10px] text-muted-foreground tabular-nums">
+				<span className="text-caption text-muted-foreground tabular-nums">
 					{t("figures.page", { page })}
 				</span>
 			</div>

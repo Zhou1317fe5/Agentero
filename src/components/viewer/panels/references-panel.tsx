@@ -275,7 +275,7 @@ function ReferenceCardBody({
 	return (
 		<>
 			<div className="flex items-center gap-1.5">
-				<span className="shrink-0 font-medium text-[10px] text-muted-foreground tabular-nums">
+				<span className="shrink-0 font-medium text-caption text-muted-foreground tabular-nums">
 					{citation.display ?? `[${ordinal}]`}
 				</span>
 				{matched ? (
@@ -287,14 +287,14 @@ function ReferenceCardBody({
 			</div>
 			<p
 				className={cn(
-					"mt-1 line-clamp-2 text-[13px] leading-snug",
+					"mt-1 line-clamp-2 text-sm leading-snug",
 					m.title ? "text-foreground" : "text-muted-foreground",
 				)}
 			>
 				{m.title ?? citation.raw ?? citation.rawKey ?? citation.id}
 			</p>
 			{metaParts.length > 0 ? (
-				<p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+				<p className="mt-0.5 truncate text-caption text-muted-foreground">
 					{metaParts.join(" · ")}
 				</p>
 			) : null}

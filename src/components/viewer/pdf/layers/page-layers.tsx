@@ -231,7 +231,7 @@ const PageTranslateTab = memo(function PageTranslateTab({
 		<button
 			type="button"
 			className={cn(
-				"absolute top-3 right-0 z-[6] flex translate-x-full flex-col items-center justify-center gap-1 rounded-r-md border border-l-0 border-border/80 bg-background/95 px-1 py-2 font-medium text-[11px] text-foreground shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 dark:ring-white/10",
+				"absolute top-3 right-0 z-[6] flex translate-x-full flex-col items-center justify-center gap-1 rounded-r-md border border-l-0 border-border/80 bg-background/95 px-1 py-2 font-medium text-caption text-foreground shadow-sm ring-1 ring-black/5 backdrop-blur-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 dark:ring-white/10",
 				active && "border-primary/30 bg-primary/10 text-primary",
 			)}
 			style={{
@@ -472,7 +472,7 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 									aria-hidden="true"
 								>
 									<span
-										className="absolute top-0 left-0 max-w-full truncate rounded-br-sm px-1 py-px font-medium text-[10px] text-white leading-4"
+										className="absolute top-0 left-0 max-w-full truncate rounded-br-sm px-1 py-px font-medium text-caption text-white leading-4"
 										style={{
 											backgroundColor: layoutKindHex(region.kind),
 										}}
@@ -559,7 +559,7 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 									/>
 									{showHint ? (
 										<span
-											className="pointer-events-none absolute top-1 right-1 max-w-[calc(100%-0.5rem)] truncate rounded border border-border/60 bg-background/90 px-1.5 py-0.5 font-medium text-[10px] text-foreground/90 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+											className="pointer-events-none absolute top-1 right-1 max-w-[calc(100%-0.5rem)] truncate rounded border border-border/60 bg-background/90 px-1.5 py-0.5 font-medium text-caption text-foreground/90 opacity-0 shadow-sm backdrop-blur-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
 											aria-hidden="true"
 										>
 											{t("figures.clickAnnotateHint")}

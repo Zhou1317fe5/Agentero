@@ -499,7 +499,7 @@ export function TranslatePane({
 								<div className="mb-2 flex items-center justify-between gap-2">
 									<div className="flex min-w-0 items-center gap-1.5">
 										<ProviderStatusDot kind={statusKind} label={statusLabel} />
-										<p className="min-w-0 truncate font-medium text-[13px]">
+										<p className="min-w-0 truncate font-medium text-sm">
 											{t(
 												`translate.provider.${id}` as "translate.provider.google",
 											)}

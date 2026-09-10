@@ -203,13 +203,16 @@
 	--font-sans: var(--agentero-font-sans);
 	--font-mono: var(--agentero-font-mono);
 	/*
-	 * macOS HIG-ish chrome scale at 16px rem root:
-	 * text-sm = Body 13, text-xs = Callout 12, text-base = Title 3 ≈ 15.
+	 * macOS HIG-ish chrome scale at 16px rem root (Windows-safe rem, not px):
+	 * text-sm = Body 13, text-xs = Callout 12, text-base = Title 3 ≈ 15,
+	 * text-caption = Subhead/Caption 11 (chips, dense meta — avoid 10px).
 	 */
 	--text-sm: 0.8125rem;
 	--text-sm--line-height: 1.25;
 	--text-base: 0.9375rem;
 	--text-base--line-height: 1.35;
+	--text-caption: 0.6875rem;
+	--text-caption--line-height: 1.25;
 	--color-sidebar-ring: var(--sidebar-ring);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -336,7 +339,8 @@
 		overflow: hidden;
 	}
 	body {
-		@apply bg-background text-foreground;
+		/* Inherit Body 13 across chrome; surfaces opt into text-xs / text-caption. */
+		@apply bg-background text-foreground text-sm;
 	}
 	html {
 		@apply font-sans;
@@ -491,6 +495,7 @@
 	--dv-tabs-and-actions-container-background-color: var(--muted);
 	/* Match PaneHeader (`h-10`) so the workspace aligns with side-pane headers. */
 	--dv-tabs-and-actions-container-height: 2.5rem;
+	/* Callout 12 — align with text-xs chrome, not Body 13 table density. */
 	--dv-tabs-and-actions-container-font-size: 0.75rem;
 	--dv-activegroup-visiblepanel-tab-background-color: var(--background);
 	--dv-activegroup-hiddenpanel-tab-background-color: color-mix(

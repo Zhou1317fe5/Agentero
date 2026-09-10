@@ -374,7 +374,7 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 				{/* Free-text only: skip empty bubble when the turn is image/visual-only. */}
 				{userDisplay ? (
 					<MessageContent className="rounded-2xl px-4 py-2.5">
-						<MessageResponse className="text-[15px] leading-relaxed">
+						<MessageResponse className="text-base leading-relaxed">
 							{userDisplay}
 						</MessageResponse>
 					</MessageContent>

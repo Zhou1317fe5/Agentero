@@ -49,8 +49,8 @@ export function ShortcutRow({ def }: { def: ShortcutDef }) {
 			: t(`labels.${def.id}`);
 	return (
 		<div className="flex items-center justify-between gap-4 border-b px-3.5 py-2.5 last:border-b-0">
-			<span className="text-[13px]">{label}</span>
-			<kbd className="rounded-md border bg-muted/60 px-1.5 py-0.5 font-medium font-sans text-[12px] text-foreground tracking-wide">
+			<span className="text-sm">{label}</span>
+			<kbd className="rounded-md border bg-muted/60 px-1.5 py-0.5 font-medium font-sans text-xs text-foreground tracking-wide">
 				{formatShortcut(def)}
 			</kbd>
 		</div>
