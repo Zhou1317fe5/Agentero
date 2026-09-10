@@ -58,11 +58,14 @@
 - 36 个 tweakcn 预设：`src/themes/tweakcn.json`；`src/lib/ui/theme.ts` 注入 CSS 变量。
 - 刷新主题数据：`node scripts/fetch-tweakcn-themes.mjs`。
 - `uiScale`：80%–150% 五档，改 `html` font-size（基数仍为 **16×scale**，与编辑器字号/行距正交；不把根字号改成 13，以免 rem 间距在 Windows 125% 等缩放下整体被压扁）。
-- 字号阶梯（对齐 macOS HIG Body/Callout/Title 3，见 `src/index.css` `@theme`；`body` 默认 `text-sm`，PaneHeader / 侧栏 / 底栏 / 顶栏 / Dock / 库表 / Agent chrome 共用）：
-  - `text-sm` → **13px**（Body，主 chrome）
-  - `text-xs` → **12px**（Callout，次要控件、快捷键、辅助说明）
-  - `text-base` → **15px**（Title 3，设置/对话框标题）
-  - `text-caption` → **11px**（Subhead/Caption，chip、密集元数据；禁止再写 9/10px）
+- 字号阶梯（Apple UI 光学字阶，见 `src/index.css` `@theme`；`body` 默认 `text-sm`，PaneHeader / 侧栏 / 底栏 / 顶栏 / Dock / 库表 / Agent chrome 共用）。每档是 **字号 + 行高 + 字距** 一组，不是只改 size：
+  - `text-caption` → **11px**（Caption；行高 1.35，字距 +0.012em；chip / 密集元数据；禁止再写 9/10px）
+  - `text-xs` → **12px**（Callout；行高 1.35，字距 +0.006em；次要控件、快捷键）
+  - `text-sm` → **13px**（Body；行高 ≈1.385，字距 0；主 chrome）
+  - `text-base` → **15px**（Title 3；行高 1.25，字距 −0.012em；设置/对话框标题）
+  - `text-lg` → **17px**（Title 2；行高 1.2，字距 −0.018em；欢迎页等大标题）
+- 字重：正文 `font-normal`（400）；强调用 `font-medium`（510）/ `font-semibold`（590）；chrome 少用 `font-bold`。可变字体（SF Pro / Geist）吃得到中间档，Segoe 等会落到最近可用字重。
+- 圆角基值 `--radius`：**0.5rem（8px）**；PaneHeader / Dock 页签栏高度：**2.25rem（h-9）**。
 - 字体（Appearance → Fonts，对齐 Obsidian 三分法）：
   - `interfaceFontFamily`：界面 chrome（`--font-sans` / `--font-heading`）。
   - `textFontFamily`：Markdown/笔记正文（仅编辑器根节点）。

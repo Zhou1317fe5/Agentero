@@ -14,7 +14,7 @@
 
 ## 字号
 
-壳层（顶栏、左右栏、PaneHeader、Dock 页签、底栏任务条）与库表 / Agent chrome 共用 Appearance 字号阶梯：`body` 默认 `text-sm`（13），次要 `text-xs`（12），密集元数据 `text-caption`（11）。Dock 页签字号变量为 `0.8125rem`（与 Body 同档）。细则见 [settings.md](settings.md)。
+壳层（顶栏、左右栏、PaneHeader、Dock 页签、底栏任务条）与库表 / Agent chrome 共用 Appearance 字号阶梯：`body` 默认 `text-sm`（13 / 行高约 1.385），次要 `text-xs`（12），密集元数据 `text-caption`（11，略开字距）。Dock 页签字号为 `0.8125rem`（与 Body 同档）；PaneHeader / Dock 页签栏高度均为 `2.25rem`（`h-9`）。细则见 [settings.md](settings.md)。
 
 ## 欢迎页与多窗口
 
