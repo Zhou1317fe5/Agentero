@@ -88,6 +88,7 @@ Doctor 聚合本地 Vault 的只读完整性检查，并为论文别名、双链
 
 - `node` / `npm`：解析路径 + `--version`（5s 超时），状态 `available / missing / unusable`；
 - `npm prefix -g`：追加进环境 PATH 后再查 node（覆盖 npm 全局安装但 GUI PATH 缺失的场景）。
+- Windows：探测子进程一律带 `CREATE_NO_WINDOW`（`diagnostic_command` 统一收口）。应用是 GUI 子系统二进制，缺该标志时 Windows 会给每个控制台子进程新建可见控制台——表现为每次打开/刷新问题诊断，每探测一个工具就多一个黑窗（标题即该工具路径，两个 hermes 条目就是两个黑窗）。
 
 Codex 登录状态不再放在主机运行环境；改由 Agent 卡片第三行展示（见下）。
 
