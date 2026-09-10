@@ -98,7 +98,7 @@ export function TranslateCard({
 						type="button"
 						size="sm"
 						variant="outline"
-						className="h-7 gap-1.5 px-2 text-xs"
+						className="h-7 gap-1.5 px-2 text-sm"
 						onClick={onOpenSettings}
 					>
 						<Settings2Icon className="size-3.5" />

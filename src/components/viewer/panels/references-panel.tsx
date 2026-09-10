@@ -162,7 +162,7 @@ export function ReferencesPanel({
 						value={filter}
 						onChange={(e) => setFilter(e.target.value)}
 						placeholder={t("references.filterPlaceholder")}
-						className="h-7 text-xs"
+						className="h-7 text-sm"
 						spellCheck={false}
 					/>
 				</div>
@@ -294,7 +294,7 @@ function ReferenceCardBody({
 				{m.title ?? citation.raw ?? citation.rawKey ?? citation.id}
 			</p>
 			{metaParts.length > 0 ? (
-				<p className="mt-0.5 truncate text-caption text-muted-foreground">
+				<p className="mt-0.5 truncate text-xs text-muted-foreground">
 					{metaParts.join(" · ")}
 				</p>
 			) : null}

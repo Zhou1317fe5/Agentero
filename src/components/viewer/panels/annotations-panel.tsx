@@ -101,7 +101,7 @@ export function AnnotationsPanel({
 					{asks.length > 0 ? (
 						<section aria-label={t("annotations.sectionAsks")}>
 							{multiSection ? (
-								<h3 className="mb-1.5 px-1 font-medium text-caption text-muted-foreground uppercase tracking-wider">
+								<h3 className="mb-1.5 px-1 font-medium text-xs text-muted-foreground uppercase tracking-wider">
 									{t("annotations.sectionAsks")}
 								</h3>
 							) : null}
@@ -122,7 +122,7 @@ export function AnnotationsPanel({
 					{visualTraces.length > 0 ? (
 						<section aria-label={t("annotations.sectionVisual")}>
 							{multiSection ? (
-								<h3 className="mb-1.5 px-1 font-medium text-caption text-muted-foreground uppercase tracking-wider">
+								<h3 className="mb-1.5 px-1 font-medium text-xs text-muted-foreground uppercase tracking-wider">
 									{t("annotations.sectionVisual")}
 								</h3>
 							) : null}
@@ -177,7 +177,7 @@ function AskCard({
 						className="size-3 shrink-0 text-muted-foreground"
 						aria-hidden
 					/>
-					<span className="font-medium text-caption text-muted-foreground uppercase tracking-wider tabular-nums">
+					<span className="font-medium text-xs text-muted-foreground uppercase tracking-wider tabular-nums">
 						{t("annotations.pageLabel", { page: ask.page })}
 					</span>
 					{ask.messageCount > 0 ? (
@@ -248,7 +248,7 @@ function VisualTraceListCard({
 						className="size-3 shrink-0 text-violet-600 dark:text-violet-400"
 						aria-hidden
 					/>
-					<span className="font-medium text-caption text-muted-foreground uppercase tracking-wider tabular-nums">
+					<span className="font-medium text-xs text-muted-foreground uppercase tracking-wider tabular-nums">
 						{t("annotations.pageLabel", { page: trace.page })}
 					</span>
 				</div>

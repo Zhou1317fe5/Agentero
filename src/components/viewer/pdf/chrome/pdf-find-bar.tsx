@@ -46,7 +46,7 @@ export function PdfFindBar({
 				<input
 					ref={inputRef}
 					type="text"
-					className="w-40 bg-transparent text-xs outline-none"
+					className="w-40 bg-transparent text-sm outline-none"
 					placeholder={t("pdf.findPlaceholder")}
 					value={query}
 					onChange={(e) => onQueryChange(e.target.value)}

@@ -119,7 +119,7 @@ export function PdfToolbar({
 							title={t("pdf.zoomPercentage")}
 							size={Math.max(zoomField.length, 1)}
 							style={{ width: `${Math.max(zoomField.length, 1)}ch` }}
-							className="h-6 min-w-[1ch] rounded border border-transparent bg-transparent p-0 text-center font-medium text-muted-foreground text-xs leading-6 tabular-nums outline-none hover:border-border focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+							className="h-6 min-w-[1ch] rounded border border-transparent bg-transparent p-0 text-center font-medium text-muted-foreground text-sm leading-6 tabular-nums outline-none hover:border-border focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
 							onChange={(event) => onZoomFieldChange(event.target.value)}
 							onFocus={(event) => {
 								zoomFieldFocusedRef.current = true;
@@ -147,7 +147,7 @@ export function PdfToolbar({
 						/>
 						<span
 							aria-hidden="true"
-							className="select-none text-muted-foreground text-xs leading-none"
+							className="select-none text-muted-foreground text-sm leading-none"
 						>
 							%
 						</span>

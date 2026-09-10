@@ -153,7 +153,7 @@ function FigureCard({
 			<div className={cn("px-2", isFormula ? "py-1" : "py-1.5")}>
 				<p
 					className={cn(
-						"font-medium text-xs",
+						"font-medium text-sm",
 						caption ? "line-clamp-2" : "truncate",
 					)}
 					title={title}
@@ -195,7 +195,7 @@ function Section({
 				}
 				onClick={() => setOpen((v) => !v)}
 			>
-				<span className="flex min-w-0 items-center gap-1 font-medium text-xs uppercase tracking-wide">
+				<span className="flex min-w-0 items-center gap-1 font-medium text-sm uppercase tracking-wide">
 					<ChevronRight
 						className={cn(
 							"size-3 shrink-0 transition-transform",

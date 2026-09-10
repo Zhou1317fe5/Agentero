@@ -90,7 +90,7 @@ export function PdfBottomBar({
 						<input
 							type="text"
 							inputMode="numeric"
-							className="min-w-6 rounded bg-transparent px-0.5 text-center font-medium text-foreground text-xs tabular-nums outline-none focus:bg-muted"
+							className="min-w-6 rounded bg-transparent px-0.5 text-center font-medium text-foreground text-sm tabular-nums outline-none focus:bg-muted"
 							style={{ width: `${pageDigits + 1}ch` }}
 							aria-label={t("pdf.goToPage")}
 							value={pageField}
@@ -113,7 +113,7 @@ export function PdfBottomBar({
 								onCommitPageField();
 							}}
 						/>
-						<span className="shrink-0 px-0.5 text-muted-foreground text-xs tabular-nums">
+						<span className="shrink-0 px-0.5 text-muted-foreground text-sm tabular-nums">
 							/ {totalPages}
 						</span>
 					</div>
