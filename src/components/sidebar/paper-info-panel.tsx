@@ -602,7 +602,7 @@ export function PaperInfoPanel({
 							{t("paperInfo.selectPrompt")}
 						</p>
 					) : (
-						<div className="agentero-scroll min-h-0 flex-1 overflow-y-auto pb-2">
+						<div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
 							<MetaRow icon={BookOpen} label={t("paperInfo.title")}>
 								<CopyValue
 									text={meta.title}
