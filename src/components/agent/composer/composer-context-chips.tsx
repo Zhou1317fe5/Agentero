@@ -1,4 +1,4 @@
-import { ScanSearch, TextSelect, X } from "lucide-react";
+import { ScanSearch, Sparkles, TextSelect, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ContextPathIcon } from "@/components/agent/context-path-icon";
 import type { AgentSkill } from "@/lib/agent";
@@ -6,6 +6,13 @@ import type { SelectionContext } from "@/lib/agent/selection-store";
 import type { PdfVisualDraft } from "@/lib/agent/visual-context-store";
 import { basenameOf } from "@/lib/core/path";
 import { cn } from "@/lib/core/utils";
+
+function cleanSkillDisplayName(name: string): string {
+	return name
+		.trim()
+		.replace(/^[/$]+/, "")
+		.replace(/^skill\s*:\s*/i, "");
+}
 
 /**
  * Icon-first chip: hover / focus animates width open to reveal a short label + X.
@@ -204,8 +211,14 @@ export function ComposerSkillChips({
 						skill: skill.name,
 					})}
 				>
-					<span className="font-mono text-muted-foreground">$</span>
-					<ChipExpandTrail label={skill.name} withRemove />
+					<Sparkles
+						className="size-3 shrink-0 text-muted-foreground"
+						aria-hidden
+					/>
+					<ChipExpandTrail
+						label={cleanSkillDisplayName(skill.name)}
+						withRemove
+					/>
 				</button>
 			))}
 		</>

@@ -90,6 +90,50 @@ function appendPrefixLabel(
 	chip.append(prefixEl, label);
 }
 
+/** Strip trigger / "skill :" chrome — chip shows the bare skill name. */
+function cleanSkillDisplayName(name: string): string {
+	return name
+		.trim()
+		.replace(/^[/$]+/, "")
+		.replace(/^skill\s*:\s*/i, "");
+}
+
+/** Lucide `sparkles` glyph (skill affordance) for contenteditable chips. */
+function appendSkillIcon(chip: HTMLElement) {
+	const ns = "http://www.w3.org/2000/svg";
+	const svg = document.createElementNS(ns, "svg");
+	svg.setAttribute("viewBox", "0 0 24 24");
+	svg.setAttribute("fill", "none");
+	svg.setAttribute("stroke", "currentColor");
+	svg.setAttribute("stroke-width", "2");
+	svg.setAttribute("stroke-linecap", "round");
+	svg.setAttribute("stroke-linejoin", "round");
+	svg.setAttribute("class", "size-3 shrink-0 text-muted-foreground");
+	svg.setAttribute("aria-hidden", "true");
+	const paths = [
+		"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z",
+		"M20 3v4",
+		"M22 5h-4",
+		"M4 17v2",
+		"M5 18H3",
+	];
+	for (const d of paths) {
+		const path = document.createElementNS(ns, "path");
+		path.setAttribute("d", d);
+		svg.appendChild(path);
+	}
+	chip.appendChild(svg);
+}
+
+function appendSkillLabel(chip: HTMLElement, name: string, skillId: string) {
+	appendSkillIcon(chip);
+	const label = document.createElement("span");
+	label.className = "min-w-0 truncate";
+	label.textContent = cleanSkillDisplayName(name);
+	label.title = skillId;
+	chip.appendChild(label);
+}
+
 function placeCaretAtEnd(el: HTMLElement) {
 	const selection = window.getSelection();
 	if (!selection) return;
@@ -192,15 +236,18 @@ export function ComposerInlineInput({
 				} else if (part.type === "skill") {
 					chip.dataset.skillId = part.skillId;
 					const name = skillLabel(part.skillId);
-					appendPrefixLabel(chip, "$", name, part.skillId);
+					appendSkillLabel(chip, name, part.skillId);
 					chip.setAttribute(
 						"aria-label",
-						t("composer.removeSkill", { skill: name }),
+						t("composer.removeSkill", {
+							skill: cleanSkillDisplayName(name),
+						}),
 					);
 				} else {
 					chip.dataset.commandName = part.name;
-					appendPrefixLabel(chip, "/", part.name);
-					chip.setAttribute("aria-label", `/${part.name}`);
+					const commandLabel = cleanSkillDisplayName(part.name);
+					appendPrefixLabel(chip, "/", commandLabel);
+					chip.setAttribute("aria-label", `/${commandLabel}`);
 				}
 				root.appendChild(chip);
 			}
