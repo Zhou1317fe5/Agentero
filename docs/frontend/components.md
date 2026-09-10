@@ -11,7 +11,7 @@ Chat / Agent / 文件树 AI UI **统一使用** [AI Elements](https://elements.a
 
 常用：`conversation`、`message`、`prompt-input`、`sources`、`reasoning`、`file-tree`、queue 等。
 
-Agent / Reasoning 消息里的 Markdown：`Streamdown` + `PlainTable` / `PlainCodeBlock`（悬停复制/下载；代码块无外侧卡片，见 [agent.md](agent.md)#消息-markdown-渲染）。
+Agent / Reasoning 消息里的 Markdown：`Streamdown` + `PlainTable` / `PlainCodeBlock`（代码块左上角语言标签，悬停复制/下载；无外侧卡片，见 [agent.md](agent.md)#消息-markdown-渲染）。
 
 ## 业务组件目录
 

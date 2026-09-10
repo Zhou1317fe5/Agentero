@@ -93,7 +93,7 @@ Skill 语法由 Host 按 provider 分流（Claude `/id`，其它注入 `SKILL.md
 | 块 | 组件 | 悬停操作 |
 |---|---|---|
 | 表格 | `PlainTable` | 复制（Markdown / CSV / TSV）、下载（CSV / Markdown）、全屏 |
-| 代码块 | `PlainCodeBlock` | 复制、下载（按语言后缀）；无外侧卡片、无全屏；`mermaid` 仍走 Streamdown 图渲染 |
+| 代码块 | `PlainCodeBlock` | 左上角语言小标签；悬停复制/下载（按语言后缀）；无外侧卡片、无全屏；`mermaid` 仍走 Streamdown 图渲染 |
 
 落盘：`src/components/ai-elements/plain-table.tsx`、`plain-code-block.tsx`。
 

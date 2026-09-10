@@ -156,57 +156,65 @@ function PlainCodeBlockView({
 
 	const iconButtonClass =
 		"size-7 opacity-70 hover:opacity-100 focus-visible:opacity-100";
+	const label = (language || "text").toLowerCase();
 
 	return (
 		<div className="group/code relative my-4 overflow-x-auto">
 			<div className="overflow-hidden rounded-md border bg-background">
+				<div className="flex h-8 items-center justify-between gap-2 border-b border-border/60 bg-muted/30 px-2.5">
+					<span
+						className="truncate font-mono text-[11px] lowercase leading-none text-muted-foreground"
+						title={label}
+					>
+						{label}
+					</span>
+					<div
+						className={cn(
+							"flex shrink-0 items-center gap-0.5",
+							"opacity-0 transition-opacity group-hover/code:opacity-100",
+							"focus-within:opacity-100",
+						)}
+					>
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										className={iconButtonClass}
+										aria-label={t("code.copy")}
+										onClick={handleCopy}
+									>
+										<Copy className="size-4" />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>{t("code.copy")}</p>
+								</TooltipContent>
+							</Tooltip>
+
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										type="button"
+										variant="ghost"
+										size="icon"
+										className={iconButtonClass}
+										aria-label={t("code.download")}
+										onClick={handleDownload}
+									>
+										<Download className="size-4" />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>{t("code.download")}</p>
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					</div>
+				</div>
 				<CodeBlockContent code={code} language={lang} showLineNumbers={false} />
-			</div>
-
-			<div
-				className={cn(
-					"absolute right-2 top-2 flex items-center gap-1 rounded-md border bg-background/95 p-1 shadow-sm",
-					"opacity-0 transition-opacity group-hover/code:opacity-100",
-					"focus-within:opacity-100",
-				)}
-			>
-				<TooltipProvider>
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon"
-								className={iconButtonClass}
-								aria-label={t("code.copy")}
-								onClick={handleCopy}
-							>
-								<Copy className="size-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							<p>{t("code.copy")}</p>
-						</TooltipContent>
-					</Tooltip>
-
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon"
-								className={iconButtonClass}
-								aria-label={t("code.download")}
-								onClick={handleDownload}
-							>
-								<Download className="size-4" />
-							</Button>
-						</TooltipTrigger>
-						<TooltipContent>
-							<p>{t("code.download")}</p>
-						</TooltipContent>
-					</Tooltip>
-				</TooltipProvider>
 			</div>
 		</div>
 	);
