@@ -196,7 +196,10 @@ export function DocWindowRoot() {
 	return (
 		<div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
 			{isMac ? (
-				<header className="flex h-8 shrink-0 items-center border-b bg-muted/40 select-none">
+				<header
+					data-titlebar
+					className="flex h-8 shrink-0 items-center border-b border-border/60 bg-background/80 backdrop-blur-sm supports-backdrop-blur:bg-background/70 select-none"
+				>
 					<div
 						className="w-[92px] shrink-0 self-stretch"
 						data-tauri-drag-region

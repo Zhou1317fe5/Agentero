@@ -166,6 +166,15 @@
 	}
 }
 
+/* Frost translucent chrome when the OS asks for reduced transparency. */
+@media (prefers-reduced-transparency: reduce) {
+	[data-titlebar] {
+		background-color: var(--background);
+		backdrop-filter: none;
+		-webkit-backdrop-filter: none;
+	}
+}
+
 /*
  * Runtime-overridable font stacks (Settings → Appearance → Fonts).
  * @theme inline bakes token values into utilities, so the theme tokens must
@@ -188,11 +197,14 @@
 		"Liberation Mono", "Courier New", monospace;
 
 	/*
-	 * Motion tokens — single source of truth for custom CSS. Component classes
-	 * mirror them: 100 = micro feedback (hover/press), 150 = overlay enter/exit,
-	 * 200 = layout choreography (rails, panels). Keep RAIL_ANIMATION_MS in
-	 * use-shell-layout.ts in sync with --motion-duration-normal.
+	 * Motion tokens — single source of truth for custom CSS + JS (see
+	 * lib/core/motion.ts). Keep RAIL_ANIMATION_MS in use-shell-layout.ts in
+	 * sync with --motion-duration-normal.
+	 *   micro  100ms — press / hover feedback (Button, tabs, rings)
+	 *   fast   150ms — overlay enter/exit, chrome color fades
+	 *   normal 200ms — layout choreography (rails, panels, task HUD)
 	 */
+	--motion-duration-micro: 100ms;
 	--motion-duration-fast: 150ms;
 	--motion-duration-normal: 200ms;
 	--motion-ease-out: cubic-bezier(0.25, 1, 0.5, 1);
@@ -523,7 +535,12 @@
 .agentero-dockview,
 .agentero-dockview-theme {
 	--dv-group-view-background-color: var(--background);
-	--dv-tabs-and-actions-container-background-color: var(--muted);
+	/* Soften the strip so the active tab can lift off it. */
+	--dv-tabs-and-actions-container-background-color: color-mix(
+		in oklab,
+		var(--muted) 72%,
+		var(--background)
+	);
 	/* Match PaneHeader (`h-9` / 2.25rem) so the workspace aligns with side-pane headers. */
 	--dv-tabs-and-actions-container-height: 2.25rem;
 	/* Body 13 — match PaneHeader / sidebar so tab titles sit on the same rung. */
@@ -531,8 +548,8 @@
 	--dv-activegroup-visiblepanel-tab-background-color: var(--background);
 	--dv-activegroup-hiddenpanel-tab-background-color: color-mix(
 		in oklab,
-		var(--muted) 80%,
-		transparent
+		var(--muted) 55%,
+		var(--background)
 	);
 	--dv-inactivegroup-visiblepanel-tab-background-color: var(--background);
 	--dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
@@ -646,8 +663,8 @@ body.agentero-dockview-dragging * {
 	flex-shrink: 0;
 	position: relative;
 	z-index: 2;
-	/* Divider vs. the toolbar/content below (#408). */
-	border-bottom: 1px solid var(--border);
+	/* Soft edge vs. content — prefer mask over a hard 1px when possible. */
+	border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
 	-webkit-user-select: none;
 	user-select: none;
 }
@@ -665,7 +682,12 @@ body.agentero-dockview-dragging * {
 	/* Tab chrome fades like every other row; content still switches instantly. */
 	transition:
 		background-color var(--motion-duration-fast) var(--motion-ease-out),
-		color var(--motion-duration-fast) var(--motion-ease-out);
+		color var(--motion-duration-fast) var(--motion-ease-out),
+		opacity var(--motion-duration-micro) var(--motion-ease-out);
+}
+
+.agentero-dockview .dv-tab:active {
+	opacity: 0.85;
 }
 
 .agentero-dockview .dv-tab .dv-default-tab {
