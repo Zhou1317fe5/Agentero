@@ -2,9 +2,10 @@
 
 use super::{AgentUserAgentResponse, EnabledResponse};
 use crate::core::error::{map_err, ApiResult, AppError};
+#[cfg(not(target_os = "ios"))]
+use crate::features::agent::models::AgentTemplate;
 use crate::features::agent::models::{
-    AgentListResponse, AgentOnly, AgentSkill, AgentTemplate, CatalogScanResponse, ProbeResult,
-    UpsertAgentRequest,
+    AgentListResponse, AgentOnly, AgentSkill, CatalogScanResponse, ProbeResult, UpsertAgentRequest,
 };
 use crate::features::agent::remote_host::RemoteAgentHosts;
 use crate::features::agent::service::{self, emit_registry_changed};
@@ -385,6 +386,7 @@ pub async fn agent_probe_catalog(
 /// fails with the ACP auth-required error: the login TUI closes itself once
 /// `agy models` succeeds, then the user retries the prompt in chat. The
 /// terminal uses the usual Enter-to-confirm UX (nothing runs silently).
+#[cfg(not(target_os = "ios"))]
 #[tauri::command]
 #[specta::specta]
 pub fn agent_login_terminal(registry: State<'_, AgentRegistry>, id: String) -> ApiResult<bool> {

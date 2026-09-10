@@ -12,6 +12,7 @@ use liteparse::config::{ImageMode, LiteParseConfig, OutputFormat};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use liteparse::LiteParse;
 use serde::{Deserialize, Serialize};
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::collections::HashSet;
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::ffi::{OsStr, OsString};
@@ -19,6 +20,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::process::Stdio;
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::sync::{Arc, Mutex, OnceLock};
 #[cfg(not(any(target_os = "ios", target_os = "android")))]
 use std::time::Duration;
