@@ -537,7 +537,7 @@ function PdfViewerInner({
 	// ---- Text selection → floating action menu ----
 	// Placed after hostRef/zoomRef: the hook anchors the menu against the page
 	// element and needs both refs injected.
-	const { selectionMenu, setSelectionMenu, closeSelectionMenu } =
+	const { selectionMenu, setSelectionMenu, isSelecting, closeSelectionMenu } =
 		usePdfTextSelection({
 			selectionCap,
 			docCap,
@@ -884,10 +884,11 @@ function PdfViewerInner({
 		toggleLayoutTranslate,
 	]);
 
-	// Sticky overlays (selection menu / visual draft / pin card) suppress
-	// ephemeral link previews so the pointer cannot stack multiple cards (#430).
-	// Declared after visualDraftEditor is available from the layout cluster.
-	const suppressLinkPreviews = Boolean(selectionMenu) || Boolean(activeCard);
+	// Sticky overlays (selection menu / pin card) and an in-progress drag-select
+	// suppress ephemeral link previews so the pointer cannot stack multiple
+	// cards while sweeping across citation / crossref hit targets (#430).
+	const suppressLinkPreviews =
+		Boolean(selectionMenu) || Boolean(activeCard) || isSelecting;
 
 	useEffect(() => {
 		if (!suppressLinkPreviews) return;

@@ -65,6 +65,12 @@ export type UsePdfTextSelectionOptions = {
 export type PdfTextSelection = {
 	selectionMenu: SelectionMenuState | null;
 	setSelectionMenu: Dispatch<SetStateAction<SelectionMenuState | null>>;
+	/**
+	 * True while the pointer is mid drag-select (between EmbedPDF begin/end).
+	 * Used to suppress ephemeral link previews that would otherwise pop while
+	 * the selection sweeps across citation / crossref hit targets.
+	 */
+	isSelecting: boolean;
 	/** Dismiss the menu and drop the underlying PDFium selection. */
 	closeSelectionMenu: () => void;
 };
@@ -82,6 +88,7 @@ export function usePdfTextSelection({
 	const [selectionMenu, setSelectionMenu] = useState<SelectionMenuState | null>(
 		null,
 	);
+	const [isSelecting, setIsSelecting] = useState(false);
 
 	const closeSelectionMenu = useCallback(() => {
 		setSelectionMenu(null);
@@ -92,9 +99,13 @@ export function usePdfTextSelection({
 	useEffect(() => {
 		if (!selectionCap || !docCap) return;
 		const scope = selectionCap.forDocument(docId);
+		const offBegin = scope.onBeginSelection(() => {
+			setIsSelecting(true);
+		});
 		const offEnd = scope.onEndSelection(() => {
 			const pages = selectionCap.getFormattedSelection(docId);
 			if (!pages.length) {
+				setIsSelecting(false);
 				setSelectionMenu(null);
 				return;
 			}
@@ -110,15 +121,23 @@ export function usePdfTextSelection({
 					: undefined) ??
 				pages[pages.length - 1] ??
 				pages[0];
-			if (!anchorPage) return;
+			if (!anchorPage) {
+				setIsSelecting(false);
+				return;
+			}
 
 			const pageEl = pageElByIndex(hostRef.current, anchorPage.pageIndex);
-			if (!pageEl) return;
+			if (!pageEl) {
+				setIsSelecting(false);
+				return;
+			}
 			const screen = rectTopCenterScreen(
 				pageEl,
 				anchorPage.rect,
 				zoomRef.current,
 			);
+			// Keep isSelecting true across the async quote extract so link
+			// previews cannot flash between mouseup and the selection menu.
 			void (async () => {
 				let quote = "";
 				try {
@@ -135,8 +154,12 @@ export function usePdfTextSelection({
 					"selection",
 					anchorPage.pageIndex,
 				);
-				if (!anchor) return;
+				if (!anchor) {
+					setIsSelecting(false);
+					return;
+				}
 				setSelectionMenu({ screen, anchor, pages });
+				setIsSelecting(false);
 				publishSelection({
 					text: quote,
 					sourcePath: paperRelPath ?? paperAbsPath ?? "PDF",
@@ -149,13 +172,16 @@ export function usePdfTextSelection({
 		});
 		const offChange = scope.onSelectionChange((sel) => {
 			if (!sel) {
+				setIsSelecting(false);
 				setSelectionMenu(null);
 				clearActiveSelection("pdf");
 			}
 		});
 		return () => {
+			offBegin();
 			offEnd();
 			offChange();
+			setIsSelecting(false);
 			clearActiveSelection("pdf");
 		};
 	}, [
@@ -208,6 +234,7 @@ export function usePdfTextSelection({
 	return {
 		selectionMenu,
 		setSelectionMenu,
+		isSelecting,
 		closeSelectionMenu,
 	};
 }
