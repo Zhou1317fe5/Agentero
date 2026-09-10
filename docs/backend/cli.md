@@ -102,6 +102,9 @@ agentero translate "Hello world" --to zh-CN --json
 定位跑在与 `PAPER.md` 解析同一套隔离 worker 子进程里（`--agentero-internal-pdf-locate-worker`，
 30s 硬超时），PDFium 卡死不会拖住 CLI。翻译只用免费引擎（`translate_text` 的 FREE_PROVIDERS，
 zh 目标走并行竞速）；商业 BYOK Key 只在桌面 settings 里，CLI 拿不到也不去读。
+内置 provider `agentero` **刻意不在** FREE_PROVIDERS 里，所以 `--provider agentero` 会被拒：
+`--provider` 就是拿这个清单门控的，随后又以 `api_key: None` 调用，加进去等于让 CLI 接受一个
+它无法认证的 provider。内置凭证只编在桌面 Host 二进制里（见 [builtin-provider.md](builtin-provider.md)）。
 
 阅读器侧：打开论文时导入 `annotations.json`，并监听该文件的**外部**变更增量导入，
 所以论文开着时跑 CLI 也能在 1~2 秒内看到黄底（见 [frontend/pdf.md](../frontend/pdf.md)）。

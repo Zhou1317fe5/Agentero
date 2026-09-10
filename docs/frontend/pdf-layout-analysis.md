@@ -103,7 +103,7 @@ LayoutAnalysisPluginPackage: {
 
 ### 后端选择（本地 ONNX / 远程 Provider）
 
-设置 →「版面解析」可选择检测后端（`settings.layout.backend`），选项由前端注册表 `LAYOUT_PROVIDERS`（`src/lib/pdf/layout/providers.ts`）驱动；下拉只列出本地 + 已配置（apiKey 非空）的 provider，可选项 ≤1 时保留 Select 外观但 disabled、不弹出菜单（正文解析引擎 `parserBackend` 同理，避免换成纯文本导致布局抖动）。配置卡里清空 API Key 会立即清除已存密钥（无需点确认）；若当前后端指向该 provider 则回退本地：
+设置 →「版面解析」可选择检测后端（`settings.layout.backend`），选项由前端注册表 `LAYOUT_PROVIDERS`（`src/lib/pdf/layout/providers.ts`）驱动；下拉只列出本地 + 已配置（apiKey 非空）的 provider，可选项 ≤1 时保留 Select 外观但 disabled、不弹出菜单（正文解析引擎 `parserBackend` 同理，避免换成纯文本导致布局抖动）。**内置 provider（`agentero`）没有 apiKey，因此必须和 `local` 一样豁免这条过滤**，否则它会整个从 `parserBackend` 下拉里消失、用户根本选不到：它改由 Host 可用性（`useBuiltinProviderAvailable`）门控，不可用时**若已被选中仍留在列表里但渲染为 disabled**，而不是凭空消失。凭证卡片一侧由 `isProviderCardConfigurable` 过滤掉没有任何可编辑字段的卡片，所以内置 parser 不会渲染出空卡或只有一个 Confirm 的卡。配置卡里清空 API Key 会立即清除已存密钥（无需点确认）；若当前后端指向该 provider 则回退本地：
 
 | 后端 | 值 | 说明 |
 |---|---|---|
@@ -111,7 +111,9 @@ LayoutAnalysisPluginPackage: {
 | Paddle API | `paddle` | AI Studio 托管 PP-StructureV3 **异步任务** API，**整份 PDF 会上传到云端**；端点固定（`supportsBaseUrl: false`） |
 | MinerU（云端 API） | `mineru` | mineru.net 批量解析 API，**整份 PDF 会上传到云端**；支持 Base URL 覆盖（https-only，loopback 例外）、语言（默认 `ch` 中英文，可选纯英文）与强制 OCR 选项（`supportsLanguage` / `supportsOcr`） |
 
-每个 provider 描述符带 `kind` / `requiresApiKey` / `supportsBaseUrl` / `sidecarMode`（MinerU 另有 `supportsLanguage` / `supportsOcr`）：设置面板与 Onboarding 据此显隐 API Key / Base URL / 语言 / 强制 OCR 输入（保存 / 掩码 / 连通性测试逻辑共用 `provider-config.ts`）；`run-analysis.ts` 用 `layoutProviderFor(backend)` + `isRemoteLayoutProvider` 判定走远程分支（`startRemoteLayoutAnalysis`，按 `provider.id` 分发到 Host engine 注册表）。
+**`agentero` 刻意不在这张表里**：内置 provider 只是**正文解析**（`parserBackend`）后端，不是版面分析后端。版面分析继续跑上表的 `local`（随包 PP-DocLayoutV3 ONNX，首次使用下载到 XDG cache，经 `agentero-model://` 喂给 webview）——已经免费且离线，切到云端网关只会让每个 PDF 都产生费用而无收益。Host 侧 `LAYOUT_BACKENDS` 白名单不含它，`default_layout_backend()` 无条件返回 `local`；把它写进 `backend` 会在下次保存时被重置。理由与实现见 [../backend/builtin-provider.md](../backend/builtin-provider.md) §版面分析不走内置。
+
+每个 provider 描述符带 `kind` / `requiresApiKey` / `supportsBaseUrl` / `sidecarMode`（MinerU 另有 `supportsLanguage` / `supportsOcr`）：设置面板与 Onboarding 据此显隐 API Key / Base URL / 语言 / 强制 OCR 输入（保存 / 掩码 / 连通性测试逻辑共用 `provider-config.ts`）；`run-analysis.ts` 用 `layoutProviderFor(backend)` + `isRemoteLayoutProvider` 判定走远程分支（`startRemoteLayoutAnalysis`，按 `provider.id` 分发到 Host engine 注册表）。内置 provider 的描述符只在 `PARSER_PROVIDERS` 里（`LAYOUT_PROVIDERS` 不含它），且 `requiresApiKey` / `supportsBaseUrl` / `supportsModel` / `supportsPrompt` / `supportsLanguage` / `supportsOcr` **全为 false**——VLM 引擎只读 model 与 prompt，而这两项都由构建期凭证给出，所以面板不为它渲染任何凭证输入或连通性测试。
 
 远程 provider 共用流程（`src/lib/pdf/layout/paddle.ts` IPC 封装 + `run-analysis.ts`）：
 

@@ -810,17 +810,19 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
     text: string;
     sourceLang?: string;     // default "auto"
     targetLang: string;      // e.g. "zh-CN" | "en"
-    provider?: string;       // tencenttransmart (default) | huoshanweb | deeplx | googleapi | google | deepl | azure | googleCloud | openaiCompatible
-    apiKey?: string | null;  // 商用 BYOK；可省略或传同长度 "*" 掩码，Host 从 settings 注入真实密钥
-    baseUrl?: string | null; // 商用 provider endpoint override（可选）
+    provider?: string;       // agentero (内置；注入 key 的构建里的默认) | tencenttransmart | huoshanweb | deeplx | googleapi | google | deepl | azure | googleCloud | openaiCompatible
+    apiKey?: string | null;  // 商用 BYOK；可省略或传同长度 "*" 掩码，Host 从 settings 注入真实密钥。provider 为 agentero 时被 Host 用构建期凭证**覆写**，调用方传什么都无效
+    baseUrl?: string | null; // 商用 provider endpoint override（可选）；agentero 同样被覆写
     region?: string | null;  // azure 必填
-    model?: string | null;   // openaiCompatible 必填
+    model?: string | null;   // openaiCompatible 必填；agentero 被覆写为构建期 translate model
     timeoutMs?: number | null;   // optional; clamped 1s–30s server-side (default 30s); settings probe uses 5000
   }
   ```
 
 - **返回**：`{ ok: true; data: { text: string; provider: string } }`
-- **约束**：单次约 ≤ 5000 字符（CNKI ≤800）；默认超时约 30s。无付费 API Key；免费引擎为非官方网页接口。设置页打开默认服务下拉时，对全部免费引擎并行 probe（`timeoutMs=5000`，不含 Agent）。
+- **约束**：单次约 ≤ 5000 字符（CNKI ≤800）；默认超时约 30s。免费引擎为非官方网页接口，会挂会限流；商用 BYOK 与内置 provider 需要各自的 key（前者用户填，后者构建期注入）。设置页打开默认服务下拉时，对全部免费引擎并行 probe（`timeoutMs=5000`，不含 Agent，也不含内置 provider）。
+- **结构化错误**：`translate.no_builtin_key` —— provider 为 `agentero` 但本次构建没有编译进 key（`AppError::domain`，在任何 `.await` 之前返回）。前端按标记转 i18n 文案，不裸露标记串。
+- 内置 provider 的模板、`[[n]]` Host 侧拆分与语言映射见 [builtin-provider.md](builtin-provider.md) §翻译：Hunyuan-MT。
 
 ### 3.5b Zotero Connector 兼容服务
 
@@ -1048,7 +1050,7 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
 
 #### `paper_parse_body`
 
-把 paper 文件夹下的本地 PDF 解析为 `PAPER.md`。引擎由 `settings.layout.parserBackend` 决定（默认本地 liteparse 隔离子进程；可选 `mineru` / `paddle` / `openaiCompatible` 云端引擎，失败自动回退本地，见 [paper-import.md](paper-import.md) § 正文解析引擎）。可作为独立后台任务调用；已有 `PAPER.md` 且无 `force` 时直接跳过。
+把 paper 文件夹下的本地 PDF 解析为 `PAPER.md`。引擎由 `settings.layout.parserBackend` 决定（默认取构建是否注入内置 provider key：注入则 `agentero`，否则本地 liteparse 隔离子进程；另可选 `mineru` / `paddle` / `openaiCompatible` 云端引擎，失败自动回退本地，见 [paper-import.md](paper-import.md) § 正文解析引擎）。`agentero` 复用 `openaiCompatible` 的 VLM 引擎，只是凭证来自构建期网关，见 [builtin-provider.md](builtin-provider.md)。可作为独立后台任务调用；已有 `PAPER.md` 且无 `force` 时直接跳过。
 
 - **参数**（invoke 字段名 `args`）：
 
@@ -2196,6 +2198,17 @@ snapshot 保存所有 Wiki target 的 size+mtime stat 指纹（不读文件内�
 
 Windows：未设 `XDG_CONFIG_HOME` 时回退 `%APPDATA%/agentero/`。旧版 macOS 路径 `~/Library/Application Support/agentero/` 在首次启动时 **best-effort 复制** 到 XDG 路径。
 
+#### `builtin_provider_status`（已实现）
+
+内置 provider（翻译 / embedding / 正文 OCR）的能力查询。凭证在**构建期**编入 Host，本命令只回非秘密字段，供前端决定是否显示 / 禁用内置选项。见 [builtin-provider.md](builtin-provider.md)。
+
+- **参数**：无
+- **返回** `ApiResult<BuiltinProviderStatus>`：`{ available, baseUrl, translateModel, embeddingModel, ocrModel }`
+- **`available`**：本次构建是否编译进了 `AGENTERO_BUILTIN_API_KEY`。`false` 时前端隐藏或禁用内置选项，默认回落到 `tencenttransmart` / `local`，embedding 穿透到已存值。
+- **不含任何 key 派生物**：无前缀、无长度、无 `*` 掩码、无 hash。内置 key 也不写 `AppSettings`，因此既不出现在 `settings_get` 里也不出现在 `settings.json` 里。
+- **同步命令**：纯读编译期常量，无 IO；AGENTS.md 对同步命令的警告只针对在其中 build `WebviewWindow`。
+- 前端只消费 `available`；`baseUrl` 与三个 model id 供 Host 内部解析凭证，不显示到 UI。
+
 ### 3.10.1 版面模型（PP-DocLayoutV3）
 
 - **路径**：`$XDG_CACHE_HOME/agentero/models/pp-doclayoutv3.onnx`
@@ -2223,8 +2236,8 @@ Windows：未设 `XDG_CONFIG_HOME` 时回退 `%APPDATA%/agentero/`。旧版 macO
 ```jsonc
 {
   "layout": {
-    "backend": "local", // "local"（默认，ONNX）| "paddle"（AI Studio 异步任务）| "mineru"（MinerU 云 API）
-    "parserBackend": "local", // PAPER.md 正文解析引擎："local"（默认）| "paddle" | "mineru" | "openaiCompatible"
+    "backend": "local", // "local"（默认，ONNX；**无条件**，不含内置 provider）| "paddle"（AI Studio 异步任务）| "mineru"（MinerU 云 API）
+    "parserBackend": "local", // PAPER.md 正文解析引擎："local" | "paddle" | "mineru" | "openaiCompatible" | "agentero"（内置）。默认取构建是否注入内置 provider key：注入则 "agentero"，否则 "local"
     "providerConfigs": {
       "paddle": { "apiKey": "***", "baseUrl": "", "model": "", "prompt": "", "language": "", "isOcr": false },
       "mineru": { "apiKey": "***", "baseUrl": "", "model": "", "prompt": "", "language": "ch", "isOcr": false }, // baseUrl 空 → 官方 https://mineru.net
@@ -2234,14 +2247,16 @@ Windows：未设 `XDG_CONFIG_HOME` 时回退 `%APPDATA%/agentero/`。旧版 macO
 }
 ```
 
+- **`agentero` 没有 `providerConfigs` 条目**：它的 endpoint / key / model 由 `layout_api_key` / `layout_base_url` / `layout_model` 在 getter 层解析到构建期凭证；`normalize_layout_provider_configs` 的 `PROVIDERS` 白名单（`paddle` / `mineru` / `openaiCompatible`）会在每次保存时丢掉任何 `agentero` 卡片，所以编译进去的 key 不可能落盘。`prompt` / `language` / `isOcr` 对它不特判（分别是 model id 推导与 MinerU 专用）。
+- **`backend` 与 `parserBackend` 的白名单不对称**：`LAYOUT_BACKENDS` 不含 `agentero`（把它写进 `backend` 会在下次保存时被重置为 `local`），`PARSER_BACKENDS` 含它。版面分析跑随包离线 ONNX，切云端只会让每个 PDF 都产生费用；理由见 [builtin-provider.md](builtin-provider.md) §版面分析不走内置。
 - `apiKey` 与翻译 BYOK 同一套掩码机制：`settings_get` 返回 `*` 掩码，`settings_set` 收到掩码时保留已存密钥。Paddle key 在 AI Studio 访问令牌页获取；MinerU token 在 mineru.net API 管理页获取；OpenAI 兼容 key 在服务商控制台获取（如硅基流动，前端 `LAYOUT_PROVIDER_DOCS_URLS`）。
 - `baseUrl` 为可选端点覆盖：paddle 端点固定（不支持覆盖）；mineru 支持覆盖且强制 https（loopback `http://localhost` 等除外）；openaiCompatible 默认硅基流动。
 - `model` 供正文解析引擎使用：openaiCompatible 预设 `PaddlePaddle/PaddleOCR-VL-1.5` / `deepseek-ai/DeepSeek-OCR`（空 → 前者）；paddle 正文预设 `PaddleOCR-VL-1.6` / `PaddleOCR-VL-1.5`（空 → 前者；版面分析固定用 `PP-StructureV3`，不读该字段）。
 - `prompt` 仅 openaiCompatible 使用：OCR 提示词覆盖，空 → 按 model id 自动选择。注意 `PaddleOCR-VL` 只接受固定任务提示词，自定义提示词请配指令型 VLM（详见 [paper-import.md](paper-import.md) § 正文解析引擎）。
 - `language` 仅 mineru 使用：OCR 语言包（API `language` 参数，顶层字段）。白名单校验（`ch` / `en` / `japan` / `korean` 等 16 个语言包，含仅 Host 侧保留的 `ch_server`），未知值回落 `ch`；UI 只提供「中英文」（`ch`，默认，涵盖简体/繁体/混排）与「纯英文」（`en`）。
 - `isOcr` 仅 mineru 使用：强制对所有页面执行 OCR（API `files[].is_ocr`）。默认 `false`，由 MinerU 按文本层自动判断；扫描件文本层缺失/乱码时开启。
-- `parserBackend` 与版面 `backend` 独立选择，但共用 `providerConfigs` 凭据池；正文引擎详见 [paper-import.md](paper-import.md) § 正文解析引擎。
-- 设置 UI：Settings →「版面解析 / Layout」（版面后端由前端 `LAYOUT_PROVIDERS`、正文引擎由 `PARSER_PROVIDERS` 注册表驱动；所有远程 provider 平铺为配置卡，`mergeProviderCards` 按 provider 合并、按 `requiresApiKey` / `supportsBaseUrl` / `supportsModel` / `supportsPrompt` / `supportsLanguage` / `supportsOcr` 显隐 API Key / Base URL / Model / Prompt / 语言 / 强制 OCR 输入 + 连通性测试；Model / Base URL 空值时预填引擎默认值，语言预填 `ch`（中英文）。两个 backend 选择只提供本地 + 已配置（apiKey 非空）的 provider；可选项 ≤1 时保留 Select 外观但 disabled（不弹出下拉，避免换成纯文本导致布局抖动）。清空 API Key 输入框会立即落盘清除密钥（无需点确认）；若当前 `backend` / `parserBackend` 指向该 provider 则回退 `local`，下拉随之移除该项）。
+- `parserBackend` 与版面 `backend` 独立选择；`paddle` / `mineru` / `openaiCompatible` 共用 `providerConfigs` 凭据池，内置 `agentero` 的凭据来自构建期注入、不进凭据池。正文引擎详见 [paper-import.md](paper-import.md) § 正文解析引擎。
+- 设置 UI：Settings →「版面解析 / Layout」（版面后端由前端 `LAYOUT_PROVIDERS`、正文引擎由 `PARSER_PROVIDERS` 注册表驱动；所有远程 provider 平铺为配置卡，`mergeProviderCards` 按 provider 合并、按 `requiresApiKey` / `supportsBaseUrl` / `supportsModel` / `supportsPrompt` / `supportsLanguage` / `supportsOcr` 显隐 API Key / Base URL / Model / Prompt / 语言 / 强制 OCR 输入 + 连通性测试；Model / Base URL 空值时预填引擎默认值，语言预填 `ch`（中英文）。两个 backend 选择只提供本地 + 已配置（apiKey 非空）的 provider；`local` 与内置 `agentero` 豁免这条过滤（后者没有 apiKey，不豁免就会整个从 `parserBackend` 下拉里消失），内置的描述符 `requiresApiKey` / `supports*` 全 false，因此不渲染任何凭证输入或连通性测试；可选项 ≤1 时保留 Select 外观但 disabled（不弹出下拉，避免换成纯文本导致布局抖动）。清空 API Key 输入框会立即落盘清除密钥（无需点确认）；若当前 `backend` / `parserBackend` 指向该 provider 则回退 `local`，下拉随之移除该项）。
 
 #### `layout_remote_analyze_pdf`（已实现）
 
@@ -2345,9 +2360,9 @@ CLI 对照：`agentero usage which|timeline|summary|clear`（见 [cli.md](cli.md
 | `recommend_arxiv_last` | `{ vaultPath }` → 上次结果或 `null`，只读不算 |
 
 - **陈旧短路**：非 `force` 且 `computed_at` 为当天、分类集合一致时，直接返回存量，不发任何网络请求。所以 `vault:opened` 的预热调用通常是零成本的。
-- **缓存**：`embed_cache(text_hash, model, dim, vector)` 按 sha256(title+abstract)+model 存小端 f32 向量，语料只 embed 一次；`arxiv_rec_state` 单行存上次运行。均在 catalog schema v6。
-- **凭据**：读设置 `embedding`（Base URL / API Key / Model），`POST {baseUrl}/embeddings`。
-- **结构化错误**（前端转空态）：`recommend.no_embedding` 未配置端点、`recommend.empty_corpus` 库里没摘要、`recommend.no_candidates` 分类下无新论文。
+- **缓存**：`embed_cache(text_hash, model, dim, vector)` 按 sha256(title+abstract)+model 存小端 f32 向量，语料只 embed 一次；主键含 model，所以换 embedding 模型不会读到旧向量。`arxiv_rec_state` 单行存上次运行，**不按 model 建键**：切换 embedding 来源后的当天首次运行仍会复用存量结果，除非 `force`（既存行为）。均在 catalog schema v6。
+- **凭据**：读设置 `embedding`。`source`（`"builtin"` | `"custom"`）决定用哪一套：非 `custom` 且本次构建注入了内置 provider key 时用构建期网关三元组，否则用已存的 Base URL / API Key / Model。请求都是 `POST {baseUrl}/embeddings`（OpenAI 兼容）。见 [builtin-provider.md](builtin-provider.md) §Embedding。
+- **结构化错误**（前端转空态）：`recommend.no_embedding` 端点未配置（自定义来源缺字段，或构建无内置 key 且未填 BYOK）、`recommend.empty_corpus` 库里没摘要、`recommend.no_candidates` 分类下无新论文。
 
 前端入口：`src/lib/recommend/`。
 

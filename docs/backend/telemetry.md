@@ -7,7 +7,7 @@
 三层门控，任一不满足即整体 no-op：
 
 1. **编译期**：构建时环境变量 `AGENTERO_POSTHOG_KEY` 注入 PostHog Project API Key；未设置（或为空）时功能完全禁用——本地 / 开源构建默认不上报。
-   - Key 来源（`build.rs` 的 `forward_posthog_key()`）：显式环境变量优先；否则回退读仓库根 `.env`（gitignored）。
+   - Key 来源（`build.rs` 的 `forward_build_env()`，同时转发 `AGENTERO_BUILTIN_*`，见 [builtin-provider.md](builtin-provider.md)）：显式环境变量优先；否则回退读仓库根 `.env`（gitignored）。
    - 官方发布：`release.yml` 的 tauri-action 步骤从 GitHub Secret `POSTHOG_KEY` 注入；secret 缺失时为空串，遥测编译为 no-op。
    - Ingestion host 使用 posthog-rs 默认 `https://us.i.posthog.com`（US 项目）；换 EU / 自建需改用 `ClientOptionsBuilder().host(...)`。
 2. **构建类型**：debug 构建（`cfg!(debug_assertions)`，含 `pnpm tauri dev`）不上报，避免开发数据污染。

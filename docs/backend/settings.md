@@ -17,6 +17,18 @@
 - 旧 localStorage 键一次性迁移。
 - Agent 注册表等同目录管理。
 
+## 内置 provider 凭证解析
+
+settings 不存内置 provider 的任何凭证；它只在**读取时**把 id `agentero` 解析到构建期注入的凭证（见 [builtin-provider.md](builtin-provider.md)）。
+
+- **`embedding.source`**（`"builtin"` | `"custom"`）：普通 `#[serde(default)]`，空串即「未设置」，**不是**返回 `"builtin"` 的 default fn——否则一个填了 BYOK 端点但没有 `source` 键的旧 `settings.json`，与「用户显式选了内置」无法区分。`normalize()` 里的 `resolve_embedding_source()` 推断：显式值优先 → `baseUrl`/`apiKey`/`model` 任一非空（全 `*` 掩码也算非空）⇒ `custom` → 三项全空 ⇒ `builtin`。该规则必须与前端 `normalizeEmbeddingSettings` **逐条一致**（它在 Host load、legacy 迁移、每次保存、`settings_set` 回显、`settings:changed` 时都会跑）。已填过自定义端点的老用户不会被静默切走。
+- **`embedding_config()`**：source 非 `custom` 且 `builtin::available()` 时返回网关三元组；无编译期 key 时穿透到已存值，仍为空则 `None`，让 `recommend.no_embedding` 照常触发。
+- **`layout_api_key` / `layout_base_url` / `layout_model`** 在 **getter 层**特判内置 id，这样所有调用方（`body_engines/mod.rs`、`layout/hosted/commands.rs`）自动正确，不必各自加分支。`layout_prompt` / `layout_language` / `layout_is_ocr` **不特判** → `None` / `None` / `false`：提示词由 VLM 引擎按 model id 推导，后两项是 MinerU 专用。
+- **`layout_provider_settings_key("agentero")`** 返回 `"agentero"`，只为给 parser 凭证 `HashMap` 一个稳定的键；它不对应任何落盘卡片。
+- **`PARSER_BACKENDS` vs `LAYOUT_BACKENDS`**：前者含 `agentero`，后者**不含**。`normalize()` 在每次保存时都会跑并把未列入的 backend 重置为默认值、由 `persist` 写盘，所以白名单就是「选择能否留存」的开关。`default_layout_backend()` 无条件 `"local"`；`default_translate_provider()` 与 `default_parser_backend()` 在 `builtin::available()` 时返回 `agentero`。
+- **新装默认值由 Rust 决定**：没有 `settings.json` 时 `read_file` 返回 `AppSettings::default()`，走的是上面的 `default_*()`。前端 TS 的 defaults 只在浏览器 dev（不可能有 key）里生效，因此刻意保持在非内置值上，两边不需要一致。
+- **key 收敛**：`normalize_layout_provider_configs` 的 `PROVIDERS` 白名单是 `["paddle", "mineru", "openaiCompatible"]` + `retain`，任何 `agentero` 卡片都会在保存时被丢弃，所以编译进去的 key 不可能被写进 `settings.json`（有测试断言）。
+
 ## 耦合契约（schema 无关配置层）
 
 settings 只提供读/写/持久化/广播能力，**不 import 任何域 feature**（出边仅 `core/*`）：
@@ -30,6 +42,7 @@ settings 只提供读/写/持久化/广播能力，**不 import 任何域 featur
   - tunnel：与 MCP 同域，但凭据从 settings store 原值读取（不通过 redacted 快照传递），启动/停止由 `mcp_tunnel_start` / `mcp_tunnel_stop` 命令驱动
   - jobs：`apply_layout_backend` + `apply_import_concurrency` + `drain_and_spawn`（layout / 导入并发上限）
 - 反序列化期需要的域默认值（如 `DEFAULT_CONNECTOR_PORT`）定义在 settings，由属主域 re-export（方向 `connector → settings`，不成环）。
+- **一处反向例外**：`BUILTIN_PROVIDER_ID` 由 settings `pub use agentero_core::features::translate::BUILTIN_PROVIDER_ID`，方向是 `settings → translate`（与上一条相反），目的是让 Host 不再手打这个字面量。它是纯常量、没有函数调用，因此不成环。另外 settings 会调 `crate::features::system::builtin`（`available()` / `api_key()` / `status()`）——那是 `system` 域内的兄弟模块，不是跨域出边。
 
 前端：[../frontend/settings.md](../frontend/settings.md)  
 代码：`src-tauri/src/features/system/settings/`

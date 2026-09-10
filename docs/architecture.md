@@ -139,4 +139,4 @@ Host `tauri-plugin-log` + 前端 `logger` + CLI `env_logger`。详见 [backend/l
 
 ### 翻译服务
 
-可插拔 `TranslateService`（免费 MT + BYOA Agent）。详见 [frontend/translate.md](frontend/translate.md) / [backend/translate.md](backend/translate.md)。
+可插拔 `TranslateService`（内置 provider + 免费 MT + 商用 BYOK + BYOA Agent）。内置 provider（id `agentero`）的凭证在构建期编入 Host，走 Hunyuan-MT，详见 [backend/builtin-provider.md](backend/builtin-provider.md)。其余见 [frontend/translate.md](frontend/translate.md) / [backend/translate.md](backend/translate.md)。
