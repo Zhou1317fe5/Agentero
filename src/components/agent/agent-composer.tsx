@@ -154,33 +154,30 @@ export function AgentComposer(props: AgentComposerProps) {
 				className="relative flex min-h-0 flex-1 flex-col gap-1.5 overflow-hidden"
 				style={heightPx && hasQueuedMessages ? { height: heightPx } : undefined}
 			>
-				{/* Context / skill chips sit above the bordered prompt shell. */}
-				<div
-					className={cn(
-						"flex shrink-0 items-center gap-1.5 empty:hidden",
-						compact ? "flex-nowrap overflow-hidden" : "flex-wrap",
-					)}
-				>
-					<ComposerContextChips
-						compact={compact}
-						currentFilePath={props.currentFilePath}
-						currentFileLabel={props.currentFileLabel}
-						mentionChipPaths={props.mentionChipPaths}
-						selectionChips={props.selectionChips}
-						onRemoveSelection={props.onRemoveSelection}
-						visualDrafts={visualDrafts}
-						onRemoveVisualDraft={props.onRemoveVisualDraft}
-						directoryPathSet={props.directoryPathSet}
-						paperPathSet={props.paperPathSet}
-						labelForPath={props.labelForPath}
-						onRemoveContextPath={props.onRemoveContextPath}
-					/>
-					<ComposerSkillChips
-						compact={compact}
-						selectedSkills={props.selectedSkills}
-						onRemoveSkill={props.onRemoveSkill}
-					/>
-				</div>
+				{/* Short chips above the shell; hover expands a brief description. */}
+				{compact ? null : (
+					<div className="flex shrink-0 flex-wrap items-center gap-1.5 empty:hidden">
+						<ComposerContextChips
+							density="short"
+							currentFilePath={props.currentFilePath}
+							currentFileLabel={props.currentFileLabel}
+							mentionChipPaths={props.mentionChipPaths}
+							selectionChips={props.selectionChips}
+							onRemoveSelection={props.onRemoveSelection}
+							visualDrafts={visualDrafts}
+							onRemoveVisualDraft={props.onRemoveVisualDraft}
+							directoryPathSet={props.directoryPathSet}
+							paperPathSet={props.paperPathSet}
+							labelForPath={props.labelForPath}
+							onRemoveContextPath={props.onRemoveContextPath}
+						/>
+						<ComposerSkillChips
+							density="short"
+							selectedSkills={props.selectedSkills}
+							onRemoveSkill={props.onRemoveSkill}
+						/>
+					</div>
+				)}
 				<div className="relative min-h-0 flex-1">
 					<PromptInput
 						className={cn("h-full w-full", compact && "flex items-end")}
@@ -234,6 +231,37 @@ export function AgentComposer(props: AgentComposerProps) {
 										onVaultPathDragOver={onComposerDragOver}
 										onVaultPathDrop={onComposerDrop}
 									>
+										{/* Full chips inside the input body (with image attachments). */}
+										<div
+											className={cn(
+												"flex flex-wrap gap-1.5 empty:hidden",
+												compact
+													? "mb-0 max-w-[45%] shrink-0 flex-nowrap gap-1 overflow-hidden"
+													: "mb-2",
+											)}
+										>
+											<ComposerContextChips
+												density="full"
+												compact={compact}
+												currentFilePath={props.currentFilePath}
+												currentFileLabel={props.currentFileLabel}
+												mentionChipPaths={props.mentionChipPaths}
+												selectionChips={props.selectionChips}
+												onRemoveSelection={props.onRemoveSelection}
+												visualDrafts={visualDrafts}
+												onRemoveVisualDraft={props.onRemoveVisualDraft}
+												directoryPathSet={props.directoryPathSet}
+												paperPathSet={props.paperPathSet}
+												labelForPath={props.labelForPath}
+												onRemoveContextPath={props.onRemoveContextPath}
+											/>
+											<ComposerSkillChips
+												density="full"
+												compact={compact}
+												selectedSkills={props.selectedSkills}
+												onRemoveSkill={props.onRemoveSkill}
+											/>
+										</div>
 										<ComposerImageAttachments compact={compact} />
 										{/* The three menus stay in this Popover subtree on purpose — PopoverContent needs its context. */}
 										{showMentionMenu ? (
