@@ -121,9 +121,13 @@ mod tests {
     #[test]
     fn availability_follows_the_compiled_in_key() {
         assert_eq!(available(), api_key().is_some());
-        if option_env!("AGENTERO_BUILTIN_API_KEY").is_none() {
-            assert!(api_key().is_none());
-            assert!(!available());
+        match option_env!("AGENTERO_BUILTIN_API_KEY") {
+            // Presence is not enough: a whitespace-only value counts as unset.
+            Some(raw) => assert_eq!(available(), !raw.trim().is_empty()),
+            None => {
+                assert!(api_key().is_none());
+                assert!(!available());
+            }
         }
     }
 

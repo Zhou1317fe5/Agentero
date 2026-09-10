@@ -718,15 +718,22 @@ impl AppSettingsStore {
             .unwrap_or(false)
     }
 
+    /// Whether [`Self::embedding_config`] resolves to the built-in gateway.
+    /// Callers that accept endpoint overrides must ignore them in this case:
+    /// the key is shared rather than the user's own, so honouring an override
+    /// would let any webview redirect it to an arbitrary host.
+    pub fn embedding_is_builtin(&self) -> bool {
+        self.inner
+            .lock()
+            .is_ok_and(|guard| embedding_uses_builtin(&guard.embedding))
+    }
+
     /// Resolve the embedding endpoint (base URL, API key, model): the built-in
     /// gateway unless the source is custom. None when a custom endpoint is
     /// incomplete, which is what disables arXiv recommendations.
     pub fn embedding_config(&self) -> Option<(String, Option<String>, String)> {
         let guard = self.inner.lock().ok()?;
-        // Anything but an explicit custom endpoint uses the built-in gateway —
-        // but only when this build actually carries a key, so a build without
-        // one keeps the stored-values behaviour (and `recommend.no_embedding`).
-        if guard.embedding.source.trim() != EMBEDDING_SOURCE_CUSTOM && builtin::available() {
+        if embedding_uses_builtin(&guard.embedding) {
             let status = builtin::status();
             return Some((
                 status.base_url,
@@ -1068,7 +1075,10 @@ fn normalize(s: &mut AppSettings) {
         BUILTIN_PROVIDER_ID,
     ];
     if !PARSER_BACKENDS.contains(&s.layout.parser_backend.as_str()) {
-        s.layout.parser_backend = default_parser_backend();
+        // Not default_parser_backend(): on a keyed build that is the billed
+        // gateway, and an invalid stored value means an existing user, not a
+        // fresh install.
+        s.layout.parser_backend = "local".to_string();
     }
     normalize_layout_provider_configs(&mut s.layout.provider_configs);
 }
@@ -1090,6 +1100,13 @@ fn resolve_embedding_source(settings: &EmbeddingSettings) -> String {
     } else {
         EMBEDDING_SOURCE_BUILTIN.to_string()
     }
+}
+
+/// Anything but an explicit custom endpoint uses the built-in gateway — but
+/// only when this build actually carries a key, so a build without one keeps
+/// the stored-values behaviour (and `recommend.no_embedding`).
+fn embedding_uses_builtin(settings: &EmbeddingSettings) -> bool {
+    settings.source.trim() != EMBEDDING_SOURCE_CUSTOM && builtin::available()
 }
 
 fn normalize_layout_provider_configs(configs: &mut HashMap<String, LayoutProviderConfig>) {
@@ -1321,7 +1338,7 @@ mod tests {
             .provider_configs
             .insert("unknown".into(), LayoutProviderConfig::default());
         normalize(&mut s);
-        assert_eq!(s.layout.parser_backend, default_parser_backend());
+        assert_eq!(s.layout.parser_backend, "local");
         assert!(!s.layout.provider_configs.contains_key("unknown"));
         let cfg = s.layout.provider_configs.get("openaiCompatible").unwrap();
         assert_eq!(cfg.api_key, "sk-x");
@@ -1537,6 +1554,11 @@ mod tests {
         store.set(incoming).expect("set");
         let raw = fs::read_to_string(store.path()).expect("settings written");
         assert!(!raw.contains("sk-must-not-be-written"));
+        // The secret that actually matters is the compiled-in one; guarded
+        // because it exists only in a keyed build.
+        if let Some(key) = builtin::api_key() {
+            assert!(!raw.contains(key), "built-in key reached settings.json");
+        }
         assert!(raw.contains(BUILTIN_PROVIDER_ID), "parserBackend kept");
         let _ = fs::remove_file(store.path());
     }
@@ -1635,6 +1657,29 @@ mod tests {
                 Some("sk-custom-test".into()),
                 "bge-m3".into()
             ))
+        );
+    }
+
+    #[test]
+    fn embedding_is_builtin_tracks_the_resolved_endpoint() {
+        // `probe_embedding` suppresses webview-supplied endpoint overrides
+        // exactly when this is true; the two must never disagree.
+        let store = AppSettingsStore::for_tests(AppSettings::default());
+        assert_eq!(store.embedding_is_builtin(), builtin::available());
+
+        let custom = AppSettingsStore::for_tests(AppSettings {
+            embedding: EmbeddingSettings {
+                source: "custom".into(),
+                base_url: "https://embed.test/v1".into(),
+                api_key: "sk-custom-test".into(),
+                model: "bge-m3".into(),
+            },
+            ..AppSettings::default()
+        });
+        assert!(!custom.embedding_is_builtin());
+        assert_eq!(
+            custom.embedding_config().map(|(base, _, _)| base),
+            Some("https://embed.test/v1".into())
         );
     }
 
