@@ -1,11 +1,10 @@
 /**
- * Selection-menu actions (highlight / note / copy / ask / add-to-chat /
- * translate).
+ * Selection actions (highlight / note / copy / ask / add-to-chat / translate).
  *
- * Only the six menu handlers live here: detection, placement and menu state are
- * owned by {@link usePdfTextSelection}; each action's real work belongs to its
- * own cluster (highlights, note editor, ask threads, translate), whose entry
- * points are injected.
+ * Highlight / copy / ask / add-to-chat / translate are wired to the floating
+ * selection toolbar; note is triggered from the right-rail selection comment
+ * chip. Detection and menu state stay in {@link usePdfTextSelection}; each
+ * action's real work belongs to its own cluster.
  */
 
 import type {
