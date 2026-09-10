@@ -27,6 +27,7 @@ import {
 import {
 	anchorFromEmbedSelection,
 	pageElByIndex,
+	rectBottomRightScreen,
 	rectTopCenterScreen,
 } from "@/components/viewer/pdf/coords";
 import {
@@ -131,11 +132,14 @@ export function usePdfTextSelection({
 				setIsSelecting(false);
 				return;
 			}
-			const screen = rectTopCenterScreen(
-				pageEl,
-				anchorPage.rect,
-				zoomRef.current,
-			);
+			const zoom = zoomRef.current;
+			const screen = rectTopCenterScreen(pageEl, anchorPage.rect, zoom);
+			// Prefer the last line segment so the Add-to-chat pill sits at the
+			// visual end of the selection, not the union rect's bottom-right.
+			const lastSeg =
+				anchorPage.segmentRects[anchorPage.segmentRects.length - 1] ??
+				anchorPage.rect;
+			const bottomRight = rectBottomRightScreen(pageEl, lastSeg, zoom);
 			// Keep isSelecting true across the async quote extract so link
 			// previews cannot flash between mouseup and the selection menu.
 			void (async () => {
@@ -158,7 +162,7 @@ export function usePdfTextSelection({
 					setIsSelecting(false);
 					return;
 				}
-				setSelectionMenu({ screen, anchor, pages });
+				setSelectionMenu({ screen, bottomRight, anchor, pages });
 				setIsSelecting(false);
 				publishSelection({
 					text: quote,

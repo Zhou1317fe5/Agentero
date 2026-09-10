@@ -1,11 +1,11 @@
 /**
  * Selection actions (highlight / note / copy / ask / add-to-chat / translate).
  *
- * Highlight / copy / ask / add-to-chat / translate are wired to the floating
- * selection toolbar; note is typed on the right-rail selection comment chip and
- * committed from there. Detection and menu state stay in
- * {@link usePdfTextSelection}; each action's real work belongs to its own
- * cluster.
+ * Highlight / copy / ask / translate are wired to the floating selection
+ * toolbar; add-to-chat is the pill at the selection's bottom-right; note is
+ * typed on the right-rail selection comment chip and committed from there.
+ * Detection and menu state stay in {@link usePdfTextSelection}; each action's
+ * real work belongs to its own cluster.
  */
 
 import type {

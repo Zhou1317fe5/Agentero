@@ -27,7 +27,7 @@ type PdfCardStackProps = {
 		onAsk: () => void;
 		onAddToChat: () => void;
 		onTranslate: () => void;
-		/** Hide highlight / translate; keep Copy / Ask / Add-to-chat. */
+		/** Hide highlight / translate; keep Copy / Ask. */
 		readOnly?: boolean;
 	};
 	citationPreview: {
@@ -97,6 +97,7 @@ export function PdfCardStack({
 			{selectionMenu.state ? (
 				<SelectionMenu
 					screen={selectionMenu.state.screen}
+					bottomRight={selectionMenu.state.bottomRight}
 					onHighlight={selectionMenu.onHighlight}
 					onCopy={selectionMenu.onCopy}
 					onAsk={selectionMenu.onAsk}

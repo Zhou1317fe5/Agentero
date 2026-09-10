@@ -100,7 +100,10 @@ export type CardScreenPoint = ScreenPoint & {
 };
 
 export type SelectionMenuState = {
+	/** Top-center of the selection — floating toolbar anchor. */
 	screen: ScreenPoint;
+	/** Bottom-right of the last selected line — Add-to-chat pill anchor. */
+	bottomRight: ScreenPoint;
 	anchor: PdfAskAnchor;
 	pages: FormattedSelection[];
 };
