@@ -76,7 +76,7 @@ type CommentCardsLayerProps = {
 	hoveredId: string | null;
 	/**
 	 * Transient chip for the active text selection on this page. Hover expands;
-	 * leave collapses. Click / focus opens the real rail editor.
+	 * leave collapses. Pointerdown opens the real rail editor.
 	 */
 	selectionDraft?: SelectionCommentDraft | null;
 	/** Create a highlight + open the rail editor for `selectionDraft`. */
@@ -514,8 +514,10 @@ type SelectionCommentAffordanceProps = {
 
 /**
  * Collapsed icon chip at the selection's rail height. Hover expands to a
- * comment-card footprint; pointer leave collapses it again. Click / focus the
- * expanded field to create the highlight and open the real rail editor.
+ * comment-card footprint; pointer leave collapses it again. Activate on
+ * pointerdown (not click): the chip sits inside the page DOM, so EmbedPDF
+ * otherwise clears the live selection before a click handler can create the
+ * note.
  */
 const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 	draft,
@@ -573,7 +575,12 @@ const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 				top: topPx,
 				height: heightPx,
 			}}
-			onPointerDown={(e) => e.stopPropagation()}
+			onPointerDown={(e) => {
+				// Must run before EmbedPDF treats this page-local hit as "click away".
+				e.preventDefault();
+				e.stopPropagation();
+				activate();
+			}}
 			onPointerEnter={() => setExpanded(true)}
 			onPointerLeave={(e) => {
 				if (activatedRef.current) return;
@@ -582,8 +589,8 @@ const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 				setExpanded(false);
 			}}
 			onClick={(e) => {
+				e.preventDefault();
 				e.stopPropagation();
-				activate();
 			}}
 			onKeyDown={(e) => {
 				if (e.key === "Enter" || e.key === " ") {
@@ -615,23 +622,9 @@ const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 					)}
 					aria-hidden
 				/>
-				<textarea
-					className="mt-1 max-h-60 w-full resize-none bg-transparent p-0 text-sm text-foreground/80 leading-relaxed outline-none placeholder:text-muted-foreground/70"
-					placeholder={t("annotations.placeholder")}
-					aria-label={t("annotations.editorLabel")}
-					rows={EDIT_MIN_COMMENT_LINES}
-					tabIndex={expanded ? 0 : -1}
-					onFocus={(e) => {
-						e.stopPropagation();
-						setExpanded(true);
-						activate();
-					}}
-					onClick={(e) => {
-						e.stopPropagation();
-						activate();
-					}}
-					onPointerDown={(e) => e.stopPropagation()}
-				/>
+				<p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground/70">
+					{t("annotations.placeholder")}
+				</p>
 			</div>
 		</div>
 	);

@@ -12,7 +12,7 @@ import type {
 	FormattedSelection,
 	useSelectionCapability,
 } from "@embedpdf/plugin-selection/react";
-import { type Dispatch, type SetStateAction, useCallback } from "react";
+import { type Dispatch, type SetStateAction, useCallback, useRef } from "react";
 import type {
 	RailEditState,
 	SelectionMenuState,
@@ -78,25 +78,29 @@ export function usePdfSelectionActions({
 	paperRelPath,
 	paperAbsPath,
 }: UsePdfSelectionActionsOptions): PdfSelectionActions {
+	// The right-rail annotate chip lives inside the page DOM. EmbedPDF often
+	// clears the live selection on pointerdown before React re-renders, so
+	// action handlers read this snapshot instead of the possibly-null state.
+	const selectionMenuRef = useRef(selectionMenu);
+	selectionMenuRef.current = selectionMenu;
+
 	const handleHighlight = useCallback(
 		(color: HighlightColor) => {
-			if (!selectionMenu) return;
-			createHighlights(
-				selectionMenu.pages,
-				color,
-				selectionMenu.anchor.quote ?? "",
-			);
+			const menu = selectionMenuRef.current;
+			if (!menu) return;
+			createHighlights(menu.pages, color, menu.anchor.quote ?? "");
 			closeSelectionMenu();
 		},
-		[selectionMenu, createHighlights, closeSelectionMenu],
+		[createHighlights, closeSelectionMenu],
 	);
 
 	const handleNote = useCallback(() => {
-		if (!selectionMenu) return;
-		const quote = selectionMenu.anchor.quote ?? "";
-		const anchorPage = selectionMenu.pages[0];
+		const menu = selectionMenuRef.current;
+		if (!menu) return;
+		const quote = menu.anchor.quote ?? "";
+		const anchorPage = menu.pages[0];
 		const created = createHighlights(
-			selectionMenu.pages,
+			menu.pages,
 			DEFAULT_HIGHLIGHT_COLOR,
 			quote,
 		);
@@ -111,34 +115,29 @@ export function usePdfSelectionActions({
 			comment: "",
 			quote,
 			color: DEFAULT_HIGHLIGHT_COLOR,
-			anchorY: selectionMenu.anchor.rects[0]?.y ?? 0,
-			rects: selectionMenu.anchor.rects,
+			anchorY: menu.anchor.rects[0]?.y ?? 0,
+			rects: menu.anchor.rects,
 			isNew: true,
 		});
-	}, [
-		selectionMenu,
-		createHighlights,
-		selectionCap,
-		docId,
-		setSelectionMenu,
-		beginRailEdit,
-	]);
+	}, [createHighlights, selectionCap, docId, setSelectionMenu, beginRailEdit]);
 
 	const handleCopy = useCallback(() => {
 		selectionCap?.copyToClipboard(docId);
 	}, [selectionCap, docId]);
 
 	const handleMenuAsk = useCallback(() => {
-		if (!selectionMenu) return;
-		const anchor = selectionMenu.anchor;
+		const menu = selectionMenuRef.current;
+		if (!menu) return;
+		const anchor = menu.anchor;
 		setSelectionMenu(null);
 		selectionCap?.clear(docId);
 		startFromAnchor(anchor);
-	}, [selectionMenu, startFromAnchor, selectionCap, docId, setSelectionMenu]);
+	}, [startFromAnchor, selectionCap, docId, setSelectionMenu]);
 
 	const handleMenuAddToChat = useCallback(() => {
-		if (!selectionMenu) return;
-		const anchor = selectionMenu.anchor;
+		const menu = selectionMenuRef.current;
+		if (!menu) return;
+		const anchor = menu.anchor;
 		const quote = anchor.quote?.trim();
 		setSelectionMenu(null);
 		selectionCap?.clear(docId);
@@ -155,28 +154,16 @@ export function usePdfSelectionActions({
 		});
 		pinActiveSelection();
 		openRightTab("agent");
-	}, [
-		selectionMenu,
-		selectionCap,
-		docId,
-		paperRelPath,
-		paperAbsPath,
-		setSelectionMenu,
-	]);
+	}, [selectionCap, docId, paperRelPath, paperAbsPath, setSelectionMenu]);
 
 	const handleMenuTranslate = useCallback(() => {
-		if (!selectionMenu) return;
-		const anchor = selectionMenu.anchor;
+		const menu = selectionMenuRef.current;
+		if (!menu) return;
+		const anchor = menu.anchor;
 		setSelectionMenu(null);
 		selectionCap?.clear(docId);
 		translateSelection(anchor);
-	}, [
-		selectionMenu,
-		selectionCap,
-		docId,
-		setSelectionMenu,
-		translateSelection,
-	]);
+	}, [selectionCap, docId, setSelectionMenu, translateSelection]);
 
 	return {
 		handleHighlight,
