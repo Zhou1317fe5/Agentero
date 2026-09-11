@@ -1,6 +1,6 @@
 ---
 name: agentero-cli
-version: 10
+version: 11
 description: >-
   Use the Agentero CLI (bin `agentero-cli` on Windows) to create, discover, and
   inspect a local research vault and catalog—list/get papers, import by id/URL,
@@ -104,7 +104,7 @@ a second or two.
 
 Reader marks under `{paper}/marks/` can be referenced from Markdown as annotation
 wikilinks: `[[papers/…/NOTES@<id>|label]]` / `![[…@<id>]]`. Prefer real ids from
-`marks/` or the desktop copy action; do not invent ids. `agentero-cli wiki check`
+`marks/` or the desktop copy action; do not invent ids. `agentero-cli doctor wiki`
 validates path + fragment **shape** for `@id` / `#@id`, but does **not** verify
 the id still exists.
 
@@ -137,7 +137,7 @@ Cite Vault-relative paths in your answer; end with `## Sources` when substantial
 
 ## Command discovery
 
-Command groups: `vault`, `tree`, `paper`, `import`, `export`, `trash`, `wiki`,
+Command groups: `vault`, `tree`, `paper`, `import`, `export`, `trash`,
 `layout`, `mark`, `translate`, `doctor`, `feed`, `open`.
 Run **`agentero-cli <group> --help`** for exact flags — it is the source of truth.
 There is **no** `agentero-cli graph` command; never invent subcommands.
@@ -147,7 +147,7 @@ There is **no** `agentero-cli graph` command; never invent subcommands.
 - Success: `{ "ok": true, "data": … }` on stdout (compact; `--pretty` indents).
 - Failure: non-zero exit + `{ "ok": false, "error": { "code", "message", "details" } }`.
 - Stdout = result; stderr = progress/diagnostics. Parse `error.code` when retrying.
-- `wiki check` returns non-zero on `missing` / `ambiguous` / `invalidFragment`;
+- `doctor wiki` returns non-zero on `missing` / `ambiguous` / `invalidFragment`;
   the structured report is in `error.details`.
 
 ## Path / id resolution

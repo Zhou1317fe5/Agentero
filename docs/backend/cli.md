@@ -22,8 +22,7 @@ Headless Vault / Catalog / Wiki 接口；**不含** BYOA / paper-reader。
 | `trash` | list / restore / purge 本地回收站 |
 | `import` | 标识符入库 |
 | `export` | 导出 |
-| `wiki` | 只读双链语义检查 |
-| `doctor` | 聚合诊断与显式确认的论文 aliases / 视觉批注格式修复 |
+| `doctor` | Vault 结构与 Catalog 诊断；含 wikilink 检查与 aliases / 视觉批注 / catalog 去重修复 |
 | `layout` | 侧栏同构版面索引：`list` / `get`（figure / table / algorithm / formula） |
 | `mark` | 阅读标注：`list` / `get` / `add`（`--quote` 文字锚点或 `--region` 区域锚点）/ `update` / `delete` |
 | `translate` | 免费机器翻译纯文本（无需 API Key，不读桌面 settings） |
@@ -113,7 +112,7 @@ zh 目标走并行竞速）；商业 BYOK Key 只在桌面 settings 里，CLI �
 pnpm cli:bundle
 cargo build -p agentero-cli
 cargo run -p agentero-cli -- vault which --json
-cargo run -p agentero-cli -- wiki check papers/demo/NOTES.md --json
+cargo run -p agentero-cli -- doctor wiki papers/demo/NOTES.md --json
 cargo run -p agentero-cli -- doctor --json
 cargo run -p agentero-cli -- layout list papers/demo --json
 cargo test -p agentero-cli
@@ -187,9 +186,13 @@ CLI 通过 `agentero://open?path=…` 深链唤起已安装的桌面 App；无�
 - **Windows 资源管理器**：NSIS 安装钩子（`src-tauri/nsis/hooks.nsh`，经 `bundle.windows.nsis.installerHooks` 引入）在 `Software\Classes\Directory\shell` 与 `Directory\Background\shell` 下写入 `OpenWithAgentero` 条目，命令为 `"$INSTDIR\agentero.exe" "%1"`；卸载时仅清理指向本安装位置的条目。Win11 新式菜单中条目位于「显示更多选项」。
 - **macOS 访达**：Finder 对目录没有「打开方式」，改用 Quick Action。桌面 App 启动时自动安装/刷新 `~/Library/Services/Open with Agentero.workflow`（`features::finder_service`，shell 动作直接调用当前 App 二进制并传裸路径）；用户显式移除后写入配置标记（`finder-service.removed`），启动时不再自动恢复。设置 → 关于 提供安装/更新/移除入口；App 移动位置后状态显示为过期，可一键更新。
 
-## 双链检查
+## Doctor
 
-`agentero wiki check [<source>] --json` 使用桌面端导航、嵌入、反链和重命名事务共用的 `WikiIndex` resolver，不维护第二套正则解析器。
+`agentero doctor` 只读聚合 Vault 结构、Catalog schema、双链语义、Catalog 论文 `NOTES.md` aliases，以及 `papers/**/marks/*.json` 视觉批注格式；任一错误/待修项存在时返回 `doctor_issues` 和非零退出码。诊断会尊重设置页写入的 `.agentero/doctor.json` 别名忽略列表（这些路径不计入别名错误）。
+
+### 双链检查
+
+`agentero doctor wiki [<source>] --json` 使用桌面端导航、嵌入、反链和重命名事务共用的 `WikiIndex` resolver，不维护第二套正则解析器。
 
 - 不传 `source`：检查整个 Vault。
 - 传 Markdown 文件：只检查该文件，适合 paper-reader 写入后的局部验收。
@@ -201,9 +204,7 @@ CLI 通过 `agentero://open?path=…` 深链唤起已安装的桌面 App；无�
 
 报告包含 `checkedFiles`、四类状态计数，以及每个问题的 `source`、`line`、`targetRaw`、`syntax`、`embed`、`targetPath?`、`candidates` 和 `context?`。指定单文件作用域后，Vault 中其它历史坏链不会影响本次验收。
 
-## Doctor
-
-`agentero doctor` 只读聚合 Vault 结构、Catalog schema、双链语义、Catalog 论文 `NOTES.md` aliases，以及 `papers/**/marks/*.json` 视觉批注格式；任一错误/待修项存在时返回 `doctor_issues` 和非零退出码。诊断会尊重设置页写入的 `.agentero/doctor.json` 别名忽略列表（这些路径不计入别名错误）。
+### 修复命令
 
 `agentero doctor fix aliases` 在 TTY 中逐篇展示已有 alias，并允许编辑生成的标题 alias / 短 alias，最后进行一次批量确认。`-y` 接受全部安全默认值；`--json` 从不提示，未同时传 `-y` 时返回 `needs_confirmation`。修复会保留已有自定义 aliases，以内容哈希做竞态检查，并作为一个可回滚批次写入。
 

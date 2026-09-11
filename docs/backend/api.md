@@ -2418,8 +2418,8 @@ CLI 不再暴露 usage 命令；查询与清理通过桌面端设置 / Host API 
 | `trash list\|restore\|purge` | `path_list_trash` / `path_restore_item` / `path_purge_*` |
 | `import id\|bib` | `lookup::import_by_identifier` / `import_catalog` |
 | `export bib` | `lookup::export_catalog`（`-o`/`--out` 写文件；全局格式用 `--json`） |
-| `wiki check` | 只读双链语义检查（`WikiIndex`） |
 | `doctor` / `doctor fix` | 聚合诊断与 aliases / visual-marks 修复 |
+| `doctor wiki` | 只读双链语义检查（`WikiIndex`） |
 | `layout list\|get` | `{paper}/source/layout-index.json` |
 | `mark list\|get\|add\|delete` | `{paper}/marks/`（区域锚点优先） |
 
