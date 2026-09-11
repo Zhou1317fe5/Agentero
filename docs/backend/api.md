@@ -1392,7 +1392,7 @@ Agent：`agent_run_once` / `agent_warm` 在 vault 为 `remote:…` 时经 SSH `b
 - **契约缺口**：`impl Serialize for PaperTag`（`catalog/papers.rs`）在无色时输出**裸字符串**，而 specta 生成的类型是 `{ name, color }` 对象（`color: string | null`）。生成契约与真实 wire 形态不符，因此前端必须保留 `PaperTagInput[]` + `coercePaperTags`（`src/lib/paper/tags.ts`）而不能直接用生成类型。修法见 [../development/import-api-abstraction.md](../development/import-api-abstraction.md) §11。
 - **规范化**：trim 空白；丢弃空串；大小写不敏感去重（保留首次出现的写法与颜色；同名后续项仅在先无色时补色）；`color` 白名单校验。
 - **前端**：`src/lib/paper/api.ts` → `setPaperTags`；Paper Info 增删 + 色盘；Library 染色 chip + 筛选；`src/lib/ui/tag-colors.ts`。
-- **CLI**：`agentero paper tag set|add|rm <ref> …`（`set` 整表替换，`--clear` 清空；支持 `name:color`，颜色为 Apple 8 色 id）；`paper list --tag` 默认隐藏 `@zotero:` / `@arxiv:` 内部标签，`--all` 包含全部标签；`paper tag list` 同样支持 `--all`。另有 `paper move` 与 `trash list|restore|purge`。见 [`cli.md`](cli.md)。
+- **CLI**：`agentero paper tag set|add|rm <ref> …`（`set` 整表替换，`--clear` 清空；支持 `name:color`，颜色为 Apple 8 色 id）；`paper list --tag` 默认隐藏 `@zotero:` / `@arxiv:` 内部标签，`--all` 包含全部标签；`paper tag list` 同样支持 `--all`。另有 `paper move`。见 [`cli.md`](cli.md)。
 
 #### `paper:list`（扩展规划）
 
@@ -2415,7 +2415,6 @@ CLI 不再暴露 usage 命令；查询与清理通过桌面端设置 / Host API 
 | `paper list --tag` / `--query` 含 tags | CLI 侧过滤（读 `list_all`）；Host `paper_list` 仍全量 |
 | `paper move` | 文件夹 + Catalog 路径同步 |
 | `paper download\|parse` | `lookup::download_paper_assets` / `pdf_parse::parse_paper_body` |
-| `trash list\|restore\|purge` | `path_list_trash` / `path_restore_item` / `path_purge_*` |
 | `import id\|bib` | `lookup::import_by_identifier` / `import_catalog` |
 | `export bib` | `lookup::export_catalog`（`-o`/`--out` 写文件；全局格式用 `--json`） |
 | `doctor` / `doctor fix` | 聚合诊断与 aliases / visual-marks 修复 |

@@ -1,6 +1,6 @@
 ---
 name: agentero-cli
-version: 11
+version: 12
 description: >-
   Use the Agentero CLI (bin `agentero-cli` on Windows) to create, discover, and
   inspect a local research vault and catalog—list/get papers, import by id/URL,
@@ -137,7 +137,7 @@ Cite Vault-relative paths in your answer; end with `## Sources` when substantial
 
 ## Command discovery
 
-Command groups: `vault`, `tree`, `paper`, `import`, `export`, `trash`,
+Command groups: `vault`, `tree`, `paper`, `import`, `export`,
 `layout`, `mark`, `translate`, `doctor`, `feed`, `open`.
 Run **`agentero-cli <group> --help`** for exact flags — it is the source of truth.
 There is **no** `agentero-cli graph` command; never invent subcommands.

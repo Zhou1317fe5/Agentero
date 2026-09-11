@@ -19,7 +19,6 @@ Headless Vault / Catalog / Wiki 接口；**不含** BYOA / paper-reader。
 | `vault` | create / which / info 等 |
 | `tree` | 列树 |
 | `paper` | list/get、tag list/set/add/rm、move、download/parse… |
-| `trash` | list / restore / purge 本地回收站 |
 | `import` | 标识符入库 |
 | `export` | 导出 |
 | `doctor` | Vault 结构与 Catalog 诊断；含 wikilink 检查与 aliases / 视觉批注 / catalog 去重修复 |
@@ -151,14 +150,7 @@ agentero paper list --tag "@zotero:imported" --all
 agentero paper tag list --all
 ```
 
-`paper delete` 默认移入可恢复回收站；明确传 `--files` 才会物理删除。回收站操作：
-
-```bash
-agentero trash list
-agentero trash restore <batch-id> <stored>
-agentero -y trash purge <batch-id> <stored>
-agentero -y trash purge
-```
+`paper delete` 默认移入可恢复回收站（由桌面端管理恢复与清空）；明确传 `--files` 才会物理删除。
 
 论文移动会更新文件夹和 Catalog 路径。目标父目录不存在时会自动创建；目标已存在或路径逃出 `papers/` 时失败且不改 Catalog：
 
