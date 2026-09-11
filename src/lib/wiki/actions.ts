@@ -7,7 +7,7 @@
 import i18n from "@/i18n";
 import { commands } from "@/lib/core/bindings";
 import { callApi } from "@/lib/core/ipc";
-import { notifyError, notifySuccess, notifyWarning } from "@/lib/core/notify";
+import { notifyError, notifySuccess } from "@/lib/core/notify";
 import { isUnderPapers } from "@/lib/paper";
 import { refreshLibrary, setLibraryScopePath } from "@/lib/paper/library-store";
 import { remapTabAnnotations } from "@/lib/pdf/annotations-store";

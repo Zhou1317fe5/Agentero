@@ -7,7 +7,7 @@
 import { createStore } from "zustand/vanilla";
 import { isTauri } from "@/lib/core/tauri";
 import type { PaperLibraryRow, PaperMetadata } from "@/lib/paper";
-import { listPapers, setPaperTags } from "@/lib/paper/api";
+import { listPapers, rescanPapers, setPaperTags } from "@/lib/paper/api";
 import type { LocalPdfImportEntry } from "@/lib/paper/lookup";
 import type { CitingScanResult } from "@/lib/paper/refs";
 import type { PaperTagInput } from "@/lib/paper/tags";
@@ -184,20 +184,23 @@ export async function setLibraryPaperTags(
 /** Quiet catalog reload coalesced across external-change bursts (CLI, sync). */
 let libraryRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
-function runLibraryRefresh(): void {
+async function runLibraryRefresh(): Promise<void> {
 	libraryRefreshTimer = null;
 	const vaultPath = getVaultPath();
 	if (!vaultPath || !isTauri()) {
 		setLibraryPapers([]);
 		return;
 	}
-	void listPapers(vaultPath)
-		.then((papers) => {
-			if (getVaultPath() === vaultPath) setLibraryPapers(papers);
-		})
-		.catch(() => {
-			// Best-effort background refresh; explicit Library opens still report loading.
-		});
+	try {
+		// External moves (especially cross-directory drags in Finder) may not
+		// arrive as a trustworthy rename pair. Rebuild catalog rows from disk
+		// sidecars first so titles/metadata follow the new paths, then list.
+		await rescanPapers(vaultPath);
+		const papers = await listPapers(vaultPath);
+		if (getVaultPath() === vaultPath) setLibraryPapers(papers);
+	} catch {
+		setLibraryPapers([]);
+	}
 }
 
 /**

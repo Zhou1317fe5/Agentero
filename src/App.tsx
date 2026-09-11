@@ -50,7 +50,6 @@ import {
 	setPendingAgentComposerPrompt,
 } from "@/lib/agent/composer-seed";
 import { pinActiveSelection } from "@/lib/agent/selection-store";
-import { notifyWarning } from "@/lib/core/notify";
 import { closeTopOverlay } from "@/lib/core/overlay-stack";
 import { isMacOS, isTauri } from "@/lib/core/tauri";
 import { doctorSetDirtyPaths } from "@/lib/doctor/api";
@@ -189,7 +188,7 @@ function WelcomeCenter() {
 }
 
 export default function App() {
-	const { t } = useTranslation(["app"]);
+	useTranslation(["app"]);
 	useAppBootstrap();
 	useConnectorSync();
 	useMcpSync();
