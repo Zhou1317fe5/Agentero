@@ -5,7 +5,10 @@
  */
 
 import i18n from "@/i18n";
+import { commands } from "@/lib/core/bindings";
+import { callApi } from "@/lib/core/ipc";
 import { notifyError, notifySuccess, notifyWarning } from "@/lib/core/notify";
+import { isUnderPapers } from "@/lib/paper";
 import { refreshLibrary, setLibraryScopePath } from "@/lib/paper/library-store";
 import { remapTabAnnotations } from "@/lib/pdf/annotations-store";
 import { getSettings } from "@/lib/settings/react-store";
@@ -216,6 +219,20 @@ export async function handleExternalRename(
 	}
 	const fromAbs = joinVaultPath(root, fromRel);
 	const toAbs = joinVaultPath(root, toRel);
+
+	// Rewrite catalog path prefixes before the UI remap so paper titles and
+	// metadata follow the filesystem move. Best-effort: if it fails, the
+	// workspace remap below still keeps tabs pointing at the new disk path.
+	if (isUnderPapers(fromAbs) && isUnderPapers(toAbs)) {
+		try {
+			await callApi(() =>
+				commands.paperRepath({ vaultPath: root, fromRel, toRel }),
+			);
+		} catch (error) {
+			console.warn("[wiki] paper_repath failed", error);
+		}
+	}
+
 	const emptyResult: WikiRenameResult = {
 		movedPath: toRel,
 		updatedSources: [],

@@ -299,6 +299,14 @@ export const commands = {
 	 *  catalog path prefixes. Never overwrites an existing target.
 	 */
 	paperMove: (args: PaperMoveArgs) => typedError<ApiResult<PaperMoveResult>, string>(__TAURI_INVOKE("paper_move", { args })),
+	/**
+	 *  Rewrite catalog `path` prefixes after an item was moved outside the app.
+	 * 
+	 *  This does **not** touch the filesystem; it only keeps `papers` rows and
+	 *  `pdf_page_counts` in sync with the new disk layout so titles/metadata are
+	 *  not lost after a Finder/CLI move.
+	 */
+	paperRepath: (args: PaperRepathArgs) => __TAURI_INVOKE<ApiResult<PaperRepathResult>>("paper_repath", { args }),
 	/**  Update catalog `is_read` after paper-reader workflow completes (or reset). */
 	paperSetIsRead: (args: PaperSetIsReadArgs) => __TAURI_INVOKE<ApiResult<PaperRecord_Serialize>>("paper_set_is_read", { args }),
 	/**
@@ -3570,6 +3578,19 @@ export type PaperRenamedEventPayload = {
 	outcome: string,
 	updatedSources: string[],
 	timestamp: number,
+};
+
+export type PaperRepathArgs = {
+	vaultPath: string,
+	/**  Vault-relative original path (paper folder, org folder, or file under `papers/`). */
+	fromRel: string,
+	/**  Vault-relative new path after the move already happened on disk. */
+	toRel: string,
+};
+
+export type PaperRepathResult = {
+	/**  Number of catalog rows whose `path` prefix was rewritten. */
+	count: number,
 };
 
 export type PaperRescanArgs = {
