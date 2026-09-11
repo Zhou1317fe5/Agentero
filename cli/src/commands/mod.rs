@@ -10,4 +10,3 @@ pub mod translate;
 pub mod trash;
 pub mod tree;
 pub mod vault;
-pub mod wiki;

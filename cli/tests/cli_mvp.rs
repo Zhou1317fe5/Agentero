@@ -951,7 +951,7 @@ fn open_path_shorthand_and_explicit_dry_run() {
 }
 
 #[test]
-fn wiki_check_reports_semantic_issues_and_honors_file_scope() {
+fn doctor_wiki_check_reports_semantic_issues_and_honors_file_scope() {
     let tmp = tempdir().unwrap();
     let vault = tmp.path().join("v");
     create_vault(&vault);
@@ -974,8 +974,8 @@ fn wiki_check_reports_semantic_issues_and_honors_file_scope() {
         .args([
             "--vault",
             vault.to_str().unwrap(),
+            "doctor",
             "wiki",
-            "check",
             "notes/Clean.md",
             "--json",
         ])
@@ -994,8 +994,8 @@ fn wiki_check_reports_semantic_issues_and_honors_file_scope() {
         .args([
             "--vault",
             vault.to_str().unwrap(),
+            "doctor",
             "wiki",
-            "check",
             "notes/Broken.md",
             "--json",
         ])
@@ -1028,8 +1028,8 @@ fn wiki_check_reports_semantic_issues_and_honors_file_scope() {
         .args([
             "--vault",
             vault.to_str().unwrap(),
+            "doctor",
             "wiki",
-            "check",
             "papers/demo/PAPER.md",
             "--json",
         ])

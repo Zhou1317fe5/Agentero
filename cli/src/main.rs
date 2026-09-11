@@ -205,11 +205,6 @@ enum Commands {
         #[command(subcommand)]
         cmd: commands::trash::TrashCmd,
     },
-    /// Inspect Vault-local wikilinks.
-    Wiki {
-        #[command(subcommand)]
-        cmd: commands::wiki::WikiCmd,
-    },
     /// Diagnose Vault structure, Catalog, wikilinks, and paper aliases.
     Doctor {
         #[command(subcommand)]
@@ -385,7 +380,6 @@ fn command_label(cmd: &Commands) -> &'static str {
         Commands::Import { .. } => "cli.import",
         Commands::Export { .. } => "cli.export",
         Commands::Trash { .. } => "cli.trash",
-        Commands::Wiki { .. } => "cli.wiki",
         Commands::Doctor { .. } => "cli.doctor",
         Commands::Layout { .. } => "cli.layout",
         Commands::Mark { .. } => "cli.mark",
@@ -420,7 +414,6 @@ async fn run(command: Commands, globals: &GlobalOpts) -> Result<serde_json::Valu
         Commands::Import { cmd } => commands::import::run(cmd, globals).await,
         Commands::Export { cmd } => commands::export::run(cmd, globals).await,
         Commands::Trash { cmd } => commands::trash::run(cmd, globals),
-        Commands::Wiki { cmd } => commands::wiki::run(cmd, globals),
         Commands::Doctor { cmd } => commands::doctor::run(cmd, globals),
         Commands::Layout { cmd } => commands::layout::run(cmd, globals),
         Commands::Mark { cmd } => commands::mark::run(cmd, globals).await,

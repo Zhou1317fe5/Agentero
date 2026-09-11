@@ -15,7 +15,6 @@ const KNOWN_COMMANDS: &[&str] = &[
     "import",
     "export",
     "trash",
-    "wiki",
     "doctor",
     "layout",
     "mark",
