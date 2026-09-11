@@ -77,7 +77,7 @@ Vault 任意路径 `.pdf` → `blob:` 预览。页码导航/适应宽·整页/�
 
 ### Markdown 编辑
 
-Plate + `@platejs/markdown`。普通文本粘贴默认按 Markdown 解析。右键「整理 Markdown 格式」执行 Prettier round-trip。`\$a\$` 保持普通文本、`$a$` 保持公式。Obsidian Callout（`> [!type]`）结构化渲染并原样写回。内嵌图片粘贴到 `{mdDir}/assets/`，删节点且无引用时 GC。详见 [frontend/markdown.md](frontend/markdown.md)。
+Plate + `@platejs/markdown`。普通文本粘贴默认按 Markdown 解析。`\$a\$` 保持普通文本、`$a$` 保持公式。Obsidian Callout（`> [!type]`）结构化渲染并原样写回。内嵌图片粘贴到 `{mdDir}/assets/`，删节点且无引用时 GC。详见 [frontend/markdown.md](frontend/markdown.md)。
 
 ### 双链与图谱
 

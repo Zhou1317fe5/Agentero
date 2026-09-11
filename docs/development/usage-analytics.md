@@ -210,7 +210,6 @@ UI / Host 动作
 | `agent.session` | 续聊 vs 新开 | 新建草稿 / `loadSession` | `op`(new\|load\|cancel) |
 | `agent.fail` | 产品质量 | `agent:failed` | `workflow`（无错误正文） |
 | `note.export` | 笔记离开应用 | Markdown 导出 PDF/PNG | `format` |
-| `note.format` | 编辑习惯 | 右键「整理 Markdown」 | 仅计数 |
 | `wiki.follow` | 双链是否在被走 | `navigateWiki` | 不上报 path |
 | `refs.graph.click` | 引用图是否驱动打开 | Graph 节点点击 | `node`(paper\|stub) |
 | `zotero.sync` | 双向同步采用 | `zotero_sync` 成功 | `direction`/`count_bucket` |
