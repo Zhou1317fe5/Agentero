@@ -43,7 +43,7 @@ Issue 原文诉求拆两层：
 | 能力 | 现状 |
 |---|---|
 | marks 落盘 | 前端写 `marks/*.json` 与 `annotations.json`；Host 无统一 marks command（`api.md` 曾规划 `reader:annotations`，未做） |
-| CLI 命令组 | `vault` / `tree` / `paper` / `trash` / `import` / `export` / `config` / `wiki`；**无** `mark` / `translate` |
+| CLI 命令组 | `vault` / `tree` / `paper` / `trash` / `import` / `export` / `wiki`；**无** `mark` / `translate` |
 | CLI 与 marks | 仅 `paper get` → `assets.marksDir` 是否存在；skill 将 marks 列为 L2.5 **只读** |
 | 文字 → 框 | 阅读器用 EmbedPDF `searchAllPages`（⌘F）；CLI 用 `features/pdf_locate` 直调 PDFium 文本引擎（同源），**已**接 mark 写入 |
 | 翻译 Host | `translate_text` 已有；CLI `translate` 已暴露（仅免费引擎） |
@@ -127,7 +127,7 @@ agentero translate "Hello world" --to zh --json
 agentero mark add papers/… --kind translate --quote "…" --result "…" --json
 ```
 
-全局约定不变：`--vault` → `AGENTERO_VAULT` → cwd 上溯 → config `default_vault`；破坏性操作 `-y`。
+全局约定不变：`--vault` → `AGENTERO_VAULT` → cwd 上溯；破坏性操作 `-y`。
 
 ### 4.5 总体实施策略
 

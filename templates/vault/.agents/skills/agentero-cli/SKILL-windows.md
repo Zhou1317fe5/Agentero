@@ -1,6 +1,6 @@
 ---
 name: agentero-cli
-version: 8
+version: 10
 description: >-
   Use the Agentero CLI (bin `agentero-cli` on Windows) to create, discover, and
   inspect a local research vault and catalog—list/get papers, import by id/URL,
@@ -34,7 +34,7 @@ Design reference (repo): `docs/backend/cli.md`.
   compact single line; `--pretty` pretty-prints for humans.
 - Destructive deletes: pass **`-y` / `--yes`** under `--json` / non-TTY.
 - Vault resolution (first wins): `--vault <path>` → env `AGENTERO_VAULT` → cwd
-  walk-up (`.agentero/catalog.sqlite`) → CLI config `default_vault`.
+  walk-up (`.agentero/catalog.sqlite`).
 
 ## Hard boundaries
 
@@ -125,6 +125,8 @@ agentero-cli paper get <path|id> --json
 
 # 5) Import (exact id / DOI / URL) — creates shell NOTES, not lecture body
 agentero-cli import id <arxiv|doi|url> --json
+# place the new paper under a specific vault-relative parent (default: papers)
+agentero-cli import id <arxiv|doi|url> --parent papers/nlp --json
 # then write {path}/NOTES.md yourself: preserve user prose, never wipe marks/;
 # `paper set-read <path>` only after notes are done
 
@@ -136,7 +138,7 @@ Cite Vault-relative paths in your answer; end with `## Sources` when substantial
 ## Command discovery
 
 Command groups: `vault`, `tree`, `paper`, `import`, `export`, `trash`, `wiki`,
-`layout`, `mark`, `translate`, `doctor`, `config`, `usage`, `feed`, `open`.
+`layout`, `mark`, `translate`, `doctor`, `feed`, `open`.
 Run **`agentero-cli <group> --help`** for exact flags — it is the source of truth.
 There is **no** `agentero-cli graph` command; never invent subcommands.
 

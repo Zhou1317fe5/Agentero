@@ -348,7 +348,7 @@ cargo test -p agentero-cli
 | 10.8a | 设置（新装 / 删掉 `settings.json` 后重启） | 依次看翻译默认服务、Agent → Embedding 来源、版面解析 → 正文引擎 | 注入 key 的构建里三处默认都是「Agentero 内置」，且**看不到任何** Base URL / API Key / Model 输入框；未注入 key 的构建里三处回落 `tencenttransmart` / 自定义 / `local` | ☐ |
 | 10.8b | 设置 → 翻译 | 选「Agentero 内置」后在 PDF 划词翻译一段英文 | 出译文；失败时 Toast 是可读文案，**不裸露** `translate.no_builtin_key` 标记 | ☐ |
 | 10.8c | 设置 → Agent → Embedding | 已填过 Base URL / API Key / Model 的老配置升级后打开 | 来源被推断为「自定义接口」，三个输入框仍在且值未丢；**没有**被静默切到内置 | ☐ |
-| 10.9 | 设置 → 通用 → 隐私 | 开关「本地使用记录」；再点清除 | 关闭后不再写入；清除后 CLI `usage timeline` 为空；与 PostHog 开关互不影响 | ☐ |
+| 10.9 | 设置 → 通用 → 隐私 | 开关「本地使用记录」；再点清除 | 关闭后不再写入；清除后本地使用记录为空；与 PostHog 开关互不影响 | ☐ |
 
 ---
 

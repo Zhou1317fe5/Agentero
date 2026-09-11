@@ -2333,7 +2333,7 @@ UI 入口见 `settings_window_open`：Settings 现为独立原生单例窗口，
 - **参数**（`args`）：`{ vault? }`
 - **返回**：删除的事件条数。
 
-CLI 对照：`agentero usage which|timeline|summary|clear`（见 [cli.md](cli.md)）。前端入口：`src/lib/activity/`。
+CLI 不再暴露 usage 命令；查询与清理通过桌面端设置 / Host API 操作。前端入口：`src/lib/activity/`。
 
 ### 3.10.4 广场订阅（XDG `feeds.sqlite`）
 
@@ -2422,8 +2422,6 @@ CLI 对照：`agentero usage which|timeline|summary|clear`（见 [cli.md](cli.md
 | `doctor` / `doctor fix` | 聚合诊断与 aliases / visual-marks 修复 |
 | `layout list\|get` | `{paper}/source/layout-index.json` |
 | `mark list\|get\|add\|delete` | `{paper}/marks/`（区域锚点优先） |
-| `usage which\|timeline\|summary\|clear` | XDG `usage.sqlite`（`activity_record_events` / `usage_*`） |
-| `config show\|set` | `~/.config/agentero/config.toml`（与 GUI 隔离） |
 
 构建：`cargo build -p agentero-cli` → bin `agentero`。
 

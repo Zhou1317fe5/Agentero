@@ -5,7 +5,7 @@ Headless Vault / Catalog / Wiki 接口；**不含** BYOA / paper-reader。
 ## 位置
 
 - 目录：`cli/`（crate `agentero-cli`）
-- path 依赖 `agentero-core`（**不**依赖 `agentero_lib`，依赖树无 tauri/wry/tao）：`features::{vault,catalog,import,wiki,zotero,feeds,translate,doctor,trash,pdf_locate,open_request}` + 顶层 `{error,fs,usage}`
+- path 依赖 `agentero-core`（**不**依赖 `agentero_lib`，依赖树无 tauri/wry/tao）：`features::{vault,catalog,import,wiki,zotero,feeds,translate,doctor,trash,pdf_locate,open_request}` + 顶层 `{error,fs}`
 - 可选同版本 CLI 安装（不随桌面安装包打入，减小体积 [#285](https://github.com/poco-ai/Agentero/issues/285)；open/deep-link 仍见 [#165](https://github.com/poco-ai/Agentero/issues/165) / [#166](https://github.com/poco-ai/Agentero/issues/166)）
   - 设置 → 关于：**安装 CLI** 从 GitHub Release 下载与 App **同版本** 的 `agentero-cli-{ver}-{triple}` 归档，校验 `.sha256` 后写入用户目录并创建 PATH shim。POSIX 写 `~/.local/bin/agentero` 软链（不静默改 shell rc）；Windows 写 `agentero-cli.cmd` 并**自动把安装目录加入用户 PATH**（`HKCU\Environment`，广播 `WM_SETTINGCHANGE`，无需重启，新开终端即可用 `agentero-cli`）。下载 404 的错误文案会带上完整资产 URL（含宿主 triple），架构/版本不匹配时自解释；`CliInstallStatus.commandName` 供前端按平台展示验证命令
   - 独立 CLI 归档仍随每次 Release 发布，供无桌面的 headless 机器使用；macOS 亦可通过 Homebrew tap `poco-ai/agentero` 安装 headless CLI
@@ -16,20 +16,17 @@ Headless Vault / Catalog / Wiki 接口；**不含** BYOA / paper-reader。
 | 组 | 用途 |
 |---|---|
 | `open` | 在桌面 App 打开本地目录为 Vault（`agentero open <PATH>`；简写 `agentero <PATH>`） |
-| `completion` | 生成 / 安装 shell 自动补全（bash / zsh / fish / powershell / elvish） |
 | `vault` | create / which / info 等 |
 | `tree` | 列树 |
 | `paper` | list/get、tag list/set/add/rm、move、download/parse… |
 | `trash` | list / restore / purge 本地回收站 |
 | `import` | 标识符入库 |
 | `export` | 导出 |
-| `config` | 配置 |
 | `wiki` | 只读双链语义检查 |
 | `doctor` | 聚合诊断与显式确认的论文 aliases / 视觉批注格式修复 |
 | `layout` | 侧栏同构版面索引：`list` / `get`（figure / table / algorithm / formula） |
 | `mark` | 阅读标注：`list` / `get` / `add`（`--quote` 文字锚点或 `--region` 区域锚点）/ `update` / `delete` |
 | `translate` | 免费机器翻译纯文本（无需 API Key，不读桌面 settings） |
-| `usage` | 本机活动日志：`which` / `timeline` / `summary` / `clear`（XDG `usage.sqlite`） |
 | `feed` | 广场订阅：`add` / `list` / `remove`（XDG `feeds.sqlite`，与 UI 共用） |
 
 稳定 `--json` 输出，供脚本与外部 Agent 组合。JSON 默认 **compact 单行**（省 token），`--pretty` 恢复缩进美化（[#367](https://github.com/poco-ai/Agentero/issues/367)）。
@@ -119,9 +116,22 @@ cargo run -p agentero-cli -- vault which --json
 cargo run -p agentero-cli -- wiki check papers/demo/NOTES.md --json
 cargo run -p agentero-cli -- doctor --json
 cargo run -p agentero-cli -- layout list papers/demo --json
-cargo run -p agentero-cli -- completion zsh
 cargo test -p agentero-cli
 ```
+
+## 论文导入
+
+`import id` 通过标识符（arXiv ID / DOI / URL / 标题等）解析元数据并创建论文单元，同时尝试下载 PDF / arXiv TeX 等资源。默认放到 `papers/` 下，可用 `--parent` 指定 vault 内的父目录：
+
+```bash
+# 默认 parent = papers
+agentero import id 1706.03762 --json
+
+# 放到指定分类目录（不存在时会自动创建）
+agentero import id 1706.03762 --parent papers/nlp --json
+```
+
+`--parent` 是 **vault-relative** 的父目录，最终论文目录名由 resolver 根据论文 ID 决定，不是完全自定义路径。导入成功后会返回 `path`、`id`、`title` 以及 `pdf` / `tex` / `paperMd` 等资源旗标。
 
 ## 论文与 Tag
 
@@ -176,45 +186,6 @@ CLI 通过 `agentero://open?path=…` 深链唤起已安装的桌面 App；无�
 
 - **Windows 资源管理器**：NSIS 安装钩子（`src-tauri/nsis/hooks.nsh`，经 `bundle.windows.nsis.installerHooks` 引入）在 `Software\Classes\Directory\shell` 与 `Directory\Background\shell` 下写入 `OpenWithAgentero` 条目，命令为 `"$INSTDIR\agentero.exe" "%1"`；卸载时仅清理指向本安装位置的条目。Win11 新式菜单中条目位于「显示更多选项」。
 - **macOS 访达**：Finder 对目录没有「打开方式」，改用 Quick Action。桌面 App 启动时自动安装/刷新 `~/Library/Services/Open with Agentero.workflow`（`features::finder_service`，shell 动作直接调用当前 App 二进制并传裸路径）；用户显式移除后写入配置标记（`finder-service.removed`），启动时不再自动恢复。设置 → 关于 提供安装/更新/移除入口；App 移动位置后状态显示为过期，可一键更新。
-
-## Shell 自动补全
-
-`agentero completion <SHELL>` 向 stdout 打印补全脚本（始终是原始脚本，即使带了 `--json`）。`--install` 把脚本写入用户目录，**不**改 shell rc。
-
-```bash
-# 打印脚本
-agentero completion zsh
-agentero completion bash
-agentero completion fish
-
-# 写入用户补全目录（不改 rc）
-agentero completion zsh --install
-agentero completion bash --install
-agentero completion fish --install
-```
-
-| Shell | `--install` 路径 | 是否自动加载 |
-|---|---|---|
-| bash | `~/.local/share/bash-completion/completions/agentero` | bash-completion 2.8+ 会自动加载 |
-| zsh | `~/.zfunc/_agentero` | 需把 `~/.zfunc` 加进 `fpath` 后 `compinit` |
-| fish | `~/.config/fish/completions/agentero.fish` | 自动 |
-| powershell | `~/.config/powershell/Completions/agentero-cli.ps1` | 需在 `$PROFILE` 里 `.` source |
-| elvish | `~/.config/elvish/lib/agentero.elv` | 需在 `rc.elv` 里 `use agentero` |
-
-zsh 若尚未配置 `fpath`，在 `~/.zshrc` 加：
-
-```zsh
-fpath=(~/.zfunc $fpath)
-autoload -Uz compinit && compinit
-```
-
-Windows 安装后命令名是 `agentero-cli`，可显式指定：
-
-```powershell
-agentero-cli completion powershell --install --bin-name agentero-cli
-```
-
-补全会带上子命令、全局 flag，以及已声明的枚举值（如 `layout --kind`、`mark --mark-color`）。路径参数带 `ValueHint`，由 shell 按目录/文件补全。
 
 ## 双链检查
 
