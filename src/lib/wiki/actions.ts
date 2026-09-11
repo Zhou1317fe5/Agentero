@@ -214,6 +214,14 @@ export async function handleExternalRename(
 		notifyWarning(i18n.t("app:vault.externalRename.unverified"));
 		return;
 	}
+	const fromAbs = joinVaultPath(root, fromRel);
+	const toAbs = joinVaultPath(root, toRel);
+	const emptyResult: WikiRenameResult = {
+		movedPath: toRel,
+		updatedSources: [],
+		skipped: [],
+		rollback: "not-needed",
+	};
 	try {
 		const preview = await previewExternalRenameRepair(
 			root,
@@ -222,12 +230,19 @@ export async function handleExternalRename(
 			dirtyVaultPaths(root),
 		);
 		if (!externalRenameRepairNeeded(preview)) {
+			// No markdown links need repair, but open tabs / tree selection still
+			// must follow the filesystem move.
+			syncMovedPaths(root, fromAbs, toAbs, fromRel, toRel, emptyResult);
+			await refreshTree(root);
+			await refreshLibrary();
 			setExternalRenameVaultPath(null);
 			setExternalRenamePreview(null);
 			setExternalRenameFailure(null);
 			return;
 		}
 		if (getSettings().autoUpdateInternalLinks === "always") {
+			// applyPendingExternalRenameRepair remaps tabs and refreshes as part
+			// of applying the link repair.
 			try {
 				await applyPendingExternalRenameRepair(preview, root);
 			} catch (error) {
@@ -249,11 +264,21 @@ export async function handleExternalRename(
 			}
 			return;
 		}
+		// Ask mode: keep the workspace in sync immediately, then present the link
+		// repair dialog for the user to confirm.
+		syncMovedPaths(root, fromAbs, toAbs, fromRel, toRel, emptyResult);
+		await refreshTree(root);
+		await refreshLibrary();
 		setExternalRenameVaultPath(root);
 		setExternalRenameFailure(null);
 		setExternalRenamePreview(preview);
 	} catch (error) {
+		// Even if link-repair preview or apply failed, the move already happened
+		// on disk: remap open tabs so they don't point at a stale path.
 		console.warn("[wiki] external rename repair unavailable", error);
+		syncMovedPaths(root, fromAbs, toAbs, fromRel, toRel, emptyResult);
+		await refreshTree(root);
+		await refreshLibrary();
 		setExternalRenameVaultPath(root);
 		setExternalRenamePreview(null);
 		setExternalRenameFailure({
