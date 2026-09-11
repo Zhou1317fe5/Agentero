@@ -25,7 +25,6 @@ Headless Vault / Catalog / Wiki 接口；**不含** BYOA / paper-reader。
 | `layout` | 侧栏同构版面索引：`list` / `get`（figure / table / algorithm / formula） |
 | `mark` | 阅读标注：`list` / `get` / `add`（`--quote` 文字锚点或 `--region` 区域锚点）/ `update` / `delete` |
 | `translate` | 免费机器翻译纯文本（无需 API Key，不读桌面 settings） |
-| `feed` | 广场订阅：`add` / `list` / `remove`（XDG `feeds.sqlite`，与 UI 共用） |
 
 稳定 `--json` 输出，供脚本与外部 Agent 组合。JSON 默认 **compact 单行**（省 token），`--pretty` 恢复缩进美化（[#367](https://github.com/poco-ai/Agentero/issues/367)）。
 

@@ -229,11 +229,6 @@ enum Commands {
         #[arg(long = "provider", value_name = "ID")]
         provider: Option<String>,
     },
-    /// Plaza RSS / Atom subscriptions (XDG feeds.sqlite).
-    Feed {
-        #[command(subcommand)]
-        cmd: commands::feed::FeedCmd,
-    },
     /// Open a local directory as a Vault in the desktop App.
     ///
     /// Shorthand: bare `agentero <PATH>` rewrites to this when `<PATH>` looks like
@@ -378,7 +373,6 @@ fn command_label(cmd: &Commands) -> &'static str {
         Commands::Layout { .. } => "cli.layout",
         Commands::Mark { .. } => "cli.mark",
         Commands::Translate { .. } => "cli.translate",
-        Commands::Feed { .. } => "cli.feed",
         Commands::Open { .. } => "cli.open",
     }
 }
@@ -416,7 +410,6 @@ async fn run(command: Commands, globals: &GlobalOpts) -> Result<serde_json::Valu
             from,
             provider,
         } => commands::translate::run(&text, &to, &from, provider.as_deref(), globals).await,
-        Commands::Feed { cmd } => commands::feed::run(cmd, globals).await,
         Commands::Open { path } => commands::open::run(&path, globals),
     }
 }

@@ -18,7 +18,6 @@ const KNOWN_COMMANDS: &[&str] = &[
     "layout",
     "mark",
     "translate",
-    "feed",
     "open",
     "help",
 ];
