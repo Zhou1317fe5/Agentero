@@ -980,15 +980,34 @@ const reseedGuard = new Set<string>();
 const markdownPersistQueues = new Map<string, Promise<boolean>>();
 
 /**
+ * Where disk-change reseeds land. The main window uses the workspace tab
+ * store; doc popout windows pass a single-tab sink over local React state.
+ */
+export type DiskChangeSink = {
+	getTabs: () => DocTab[];
+	refreshNotes: (paperDir: string, content: string) => void;
+	refreshMarkdown: (absPath: string, content: string) => void;
+};
+
+const defaultDiskChangeSink: DiskChangeSink = {
+	getTabs,
+	refreshNotes: refreshTabNotes,
+	refreshMarkdown: refreshTabMarkdown,
+};
+
+/**
  * Reload an open editor when its file changed on disk (external editor /
  * Agent). Reseeds only when disk content differs from the current seed —
  * equal content means it was our own autosave. The mounted editor reloads the
  * new seed in place (no remount); the path is guarded briefly so a racing
  * autosave cannot overwrite the fresh disk text.
  */
-export async function applyDiskChange(absPath: string): Promise<void> {
+export async function applyDiskChange(
+	absPath: string,
+	sink: DiskChangeSink = defaultDiskChangeSink,
+): Promise<void> {
 	const norm = normalizeTabPath(absPath);
-	const openTabs = getTabs();
+	const openTabs = sink.getTabs();
 	const notesOwners = openTabs.filter(
 		(t) => t.notesPath && normalizeTabPath(t.notesPath) === norm,
 	);
@@ -1019,7 +1038,7 @@ export async function applyDiskChange(absPath: string): Promise<void> {
 		const paperDir = absPath.replace(/[\\/]NOTES\.md$/i, "");
 		const reload = () => {
 			guard();
-			refreshTabNotes(paperDir, content);
+			sink.refreshNotes(paperDir, content);
 		};
 		if (notesTab.notesDirty) promptReload(reload);
 		else reload();
@@ -1028,7 +1047,7 @@ export async function applyDiskChange(absPath: string): Promise<void> {
 		if (content === mdTab.markdownSeed) continue;
 		const reload = () => {
 			guard();
-			refreshTabMarkdown(absPath, content);
+			sink.refreshMarkdown(absPath, content);
 		};
 		if (mdTab.markdownDirty) promptReload(reload);
 		else reload();

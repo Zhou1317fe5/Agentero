@@ -2,7 +2,7 @@
  * Lightweight root for `?window=doc&path=…` document popouts.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
 	DocView,
@@ -12,6 +12,7 @@ import {
 } from "@/components/workspace/doc-view";
 import { useSettings, useVaultStore } from "@/hooks/use-app-stores";
 import { useNativeSelectAllGuard } from "@/hooks/use-native-select-all-guard";
+import { useVaultFileEvents } from "@/hooks/use-vault-file-events";
 import { isMacOS, isTauri } from "@/lib/core/tauri";
 import { isLibraryVirtualPath, isTrashVirtualPath } from "@/lib/paper/api";
 import { refreshLibrary } from "@/lib/paper/library-store";
@@ -20,11 +21,15 @@ import { readDocWindowParams } from "@/lib/shell/doc-window";
 import { openSettingsWindow } from "@/lib/shell/settings-window";
 import { openRecentVault } from "@/lib/vault/actions";
 import { refreshTree, vaultStore } from "@/lib/vault/store";
-import { persistFile } from "@/lib/workspace/actions";
+import { shouldIgnoreInternalRenameEvent } from "@/lib/wiki/store";
+import { applyDiskChange, persistFile } from "@/lib/workspace/actions";
 import {
 	createPlaceholderTab,
 	type DocTab,
 	loadTabResources,
+	reseedMarkdownTab,
+	reseedNotesTab,
+	syncTabSeedsForPath,
 } from "@/lib/workspace/tabs";
 import type { CenterViewMode } from "@/lib/workspace/viewer";
 
@@ -70,6 +75,8 @@ export function DocWindowRoot() {
 	const [tab, setTab] = useState<DocTab | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [ready, setReady] = useState(false);
+	const tabRef = useRef<DocTab | null>(null);
+	tabRef.current = tab;
 	useNativeSelectAllGuard();
 
 	const vaultPath = useVaultStore((s) => s.vaultPath);
@@ -174,6 +181,60 @@ export function DocWindowRoot() {
 		setTab((prev) => (prev && prev.id === id ? { ...prev, ...patch } : prev));
 	}, []);
 
+	const diskChangeSink = useMemo(
+		() => ({
+			getTabs: () => (tabRef.current ? [tabRef.current] : []),
+			refreshNotes: (paperDir: string, content: string) => {
+				setTab((prev) => {
+					if (!prev) return prev;
+					return reseedNotesTab([prev], paperDir, content)[0] ?? prev;
+				});
+			},
+			refreshMarkdown: (absPath: string, content: string) => {
+				setTab((prev) => {
+					if (!prev) return prev;
+					return reseedMarkdownTab([prev], absPath, content)[0] ?? prev;
+				});
+			},
+		}),
+		[],
+	);
+
+	const onDiskChange = useCallback(
+		(absPath: string) => {
+			void applyDiskChange(absPath, diskChangeSink);
+		},
+		[diskChangeSink],
+	);
+
+	const onStructuralChange = useCallback(() => {
+		if (vaultPath) void refreshTree(vaultPath);
+	}, [vaultPath]);
+
+	// Per-window watcher: Agent / external edits must reseed this popout's
+	// local tab (main-window applyDiskChange cannot see it).
+	useVaultFileEvents({
+		vaultPath,
+		onDiskChange,
+		onStructuralChange,
+		shouldIgnoreEvent: shouldIgnoreInternalRenameEvent,
+	});
+
+	const onPersistFile = useCallback(
+		async (path: string, md: string, lastSaved: string) => {
+			const ok = await persistFile(path, md, lastSaved);
+			if (ok) {
+				// Keep local seed in sync so our own autosave echo is suppressed.
+				setTab((prev) => {
+					if (!prev) return prev;
+					return syncTabSeedsForPath([prev], path, md)[0] ?? prev;
+				});
+			}
+			return ok;
+		},
+		[],
+	);
+
 	const editorProps = useMemo<DocViewEditorProps>(
 		() => ({
 			fontSize,
@@ -182,13 +243,22 @@ export function DocWindowRoot() {
 			showToolbar,
 			notesPlaceholder: t("editor.notesPlaceholder"),
 			markdownPlaceholder: t("editor.markdownPlaceholder"),
-			onPersistFile: persistFile,
+			onPersistFile,
 			onAssetsChanged: () => {
 				if (vaultPath) void refreshTree(vaultPath);
 			},
 			onTabPatch,
 		}),
-		[fontSize, fontFamily, lineHeight, showToolbar, t, vaultPath, onTabPatch],
+		[
+			fontSize,
+			fontFamily,
+			lineHeight,
+			showToolbar,
+			t,
+			vaultPath,
+			onTabPatch,
+			onPersistFile,
+		],
 	);
 
 	const title = tab?.title ?? t("tabs.strip");

@@ -79,7 +79,7 @@ export async function renameWikiHeadingAction(
 			joinVaultPath(root, source),
 		);
 		trackInternalRenamePaths(affectedAbsolute, Date.now() + 2000);
-		await Promise.all(affectedAbsolute.map(applyDiskChange));
+		await Promise.all(affectedAbsolute.map((path) => applyDiskChange(path)));
 		bumpWikiIndexRevision();
 		notifyWikiEmbedTargets(affectedAbsolute);
 		notifySuccess(
