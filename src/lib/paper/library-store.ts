@@ -5,13 +5,13 @@
  */
 
 import { createStore } from "zustand/vanilla";
-import { debounce } from "@/lib/core/debounce";
 import { isTauri } from "@/lib/core/tauri";
 import type { PaperLibraryRow, PaperMetadata } from "@/lib/paper";
 import { listPapers, setPaperTags } from "@/lib/paper/api";
 import type { LocalPdfImportEntry } from "@/lib/paper/lookup";
 import type { CitingScanResult } from "@/lib/paper/refs";
 import type { PaperTagInput } from "@/lib/paper/tags";
+import { watchRefreshDelayMs } from "@/lib/vault/shell-activity";
 import { getVaultPath } from "@/lib/vault/store";
 
 export type LibraryIoBusy =
@@ -181,14 +181,11 @@ export async function setLibraryPaperTags(
 	);
 }
 
-/** Coalesces external-change bursts (CLI, sync clients) into one reload. */
-const LIBRARY_REFRESH_DEBOUNCE_MS = 500;
+/** Quiet catalog reload coalesced across external-change bursts (CLI, sync). */
+let libraryRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
-/**
- * Quiet, debounced catalog reload for external tools (CLI, sync clients).
- * Avoids loading-state flicker while still updating tree labels and table rows.
- */
-const debouncedLibraryRefresh = debounce(() => {
+function runLibraryRefresh(): void {
+	libraryRefreshTimer = null;
 	const vaultPath = getVaultPath();
 	if (!vaultPath || !isTauri()) {
 		setLibraryPapers([]);
@@ -201,10 +198,19 @@ const debouncedLibraryRefresh = debounce(() => {
 		.catch(() => {
 			// Best-effort background refresh; explicit Library opens still report loading.
 		});
-}, LIBRARY_REFRESH_DEBOUNCE_MS);
+}
 
+/**
+ * Quiet, debounced catalog reload for external tools (CLI, sync clients).
+ * Avoids loading-state flicker while still updating tree labels and table rows.
+ * Background / unfocused shells use a longer coalesce window.
+ */
 export function scheduleLibraryRefresh(): void {
-	debouncedLibraryRefresh();
+	if (libraryRefreshTimer) clearTimeout(libraryRefreshTimer);
+	libraryRefreshTimer = setTimeout(
+		runLibraryRefresh,
+		watchRefreshDelayMs("library"),
+	);
 }
 
 /**
@@ -214,7 +220,10 @@ export function scheduleLibraryRefresh(): void {
  * `trashReloadSignal`, whose monotonic value subscribers compare against.
  */
 export function clearLibraryVaultState(): void {
-	debouncedLibraryRefresh.cancel();
+	if (libraryRefreshTimer) {
+		clearTimeout(libraryRefreshTimer);
+		libraryRefreshTimer = null;
+	}
 	libraryStore.setState({
 		papers: [],
 		paperMetaByRelPath: new Map(),

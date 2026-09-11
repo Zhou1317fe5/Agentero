@@ -23,7 +23,7 @@
 - 默认只展开 `papers/` 及其一级子目录。
 - 所有节点图标统一位于行首并使用一致的左右边距；文件夹与广场行悬停或键盘聚焦时，在同一位置将自身图标替换为展开/收缩箭头，保持行宽稳定并提示该行可展开。
 - 虚拟化：`@tanstack/react-virtual` 拍平窗口化；`getItemKey` 用行稳定 id，避免内联新建草稿插入/移除后按索引缓存行高留下空隙。文件/文件夹行固定为 `h-7`，论文资源操作按钮不改变行高。行定位用 `top`（不用 `translateY`），并在视口 Resize 时把 `scrollTop` 同步回 virtualizer，避免 WKWebView 在打开论文 / 刷新树后侧栏整片不绘制、滚动才恢复（见 [bug_fix/vault-sidebar-blank-until-scroll.md](../bug_fix/vault-sidebar-blank-until-scroll.md)）。
-- 外部工具 / CLI 导入论文时，watcher 会刷新文件树，并在 Catalog 或 `papers/` 结构变更后去抖刷新 Library 元数据；论文行标签因此可在不重开论文库的情况下从目录 ID 更新为标题/作者。
+- 外部工具 / CLI 导入论文时，watcher 会刷新文件树，并在 Catalog 或 `papers/` 结构变更后去抖刷新 Library 元数据；论文行标签因此可在不重开论文库的情况下从目录 ID 更新为标题/作者。窗口隐藏/失焦时变更先缓冲，回到前台再 flush；后台去抖更长。
 
 ### 论文目录识别
 

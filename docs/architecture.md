@@ -115,7 +115,7 @@ Plate + `@platejs/markdown`。普通文本粘贴默认按 Markdown 解析。右�
 
 ### 外部改动自动重载
 
-Host `notify` → `vault:file-changed`。打开的 `.md`/`NOTES.md` 磁盘变化：无未存改动则重载；有未存改动则 toast 提示；内容相等抑制自写回声。create/remove/rename 去抖刷新文件树。
+Host `notify` → `vault:file-changed`。打开的 `.md`/`NOTES.md` 磁盘变化：无未存改动则重载；有未存改动则 toast 提示；内容相等抑制自写回声。create/remove/rename 去抖刷新文件树。窗口隐藏/失焦时先缓冲变更，回到前台再 flush；后台去抖窗口更长。
 
 ### 保存冲突
 

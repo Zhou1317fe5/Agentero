@@ -11,7 +11,6 @@
 
 import type { useDocumentManagerCapability } from "@embedpdf/plugin-document-manager/react";
 import type { useLayoutAnalysisCapability } from "@embedpdf/plugin-layout-analysis/react";
-import type { UnlistenFn } from "@tauri-apps/api/event";
 import { type RefObject, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
@@ -19,7 +18,6 @@ import {
 	BackgroundTaskCancelledError,
 	isBackgroundTaskCancelledError,
 } from "@/lib/core/background-tasks";
-import { events } from "@/lib/core/bindings";
 import { errorText } from "@/lib/core/error";
 import { notifyError } from "@/lib/core/notify";
 import { runLocalActivity } from "@/lib/core/tasks";
@@ -33,6 +31,7 @@ import {
 	setLayoutOverlayVisible,
 } from "@/lib/pdf/layout";
 import { layoutSidecarPath } from "@/lib/pdf/layout/io";
+import { listenVaultFileChangedGated } from "@/lib/vault/file-change-gate";
 import type { VaultFileChangedPayload } from "@/lib/vault/fs-watch";
 import { normalizePathKey } from "@/lib/vault/path";
 
@@ -319,7 +318,7 @@ export function usePdfLayoutRun({
 		if (!layoutCap.forDocument(docId)) return;
 
 		let cancelled = false;
-		let unlisten: UnlistenFn | null = null;
+		let unlisten: (() => void) | null = null;
 		const sidecarKey = paperAbsPath
 			? normalizePathKey(layoutSidecarPath(paperAbsPath))
 			: null;
@@ -376,25 +375,12 @@ export function usePdfLayoutRun({
 		};
 
 		if (paperAbsPath && isTauri()) {
-			void (async () => {
-				try {
-					if (cancelled) return;
-					const stop = await events.vaultFileChanged.listen((event) => {
-						if (cancelled || !eventHitsSidecar(event.payload)) return;
-						void tryLoad();
-					});
-					if (cancelled) {
-						stop();
-						return;
-					}
-					unlisten = stop;
-				} finally {
-					void tryLoad();
-				}
-			})();
-		} else {
-			void tryLoad();
+			unlisten = listenVaultFileChangedGated((payload) => {
+				if (cancelled || !eventHitsSidecar(payload)) return;
+				void tryLoad();
+			});
 		}
+		void tryLoad();
 
 		return () => {
 			cancelled = true;
