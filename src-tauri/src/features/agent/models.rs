@@ -8,9 +8,6 @@ pub enum AgentTemplate {
     /// OpenClaw native ACP (`openclaw acp`).
     /// Docs: https://docs.openclaw.ai/cli/acp
     OpenClaw,
-    /// Google Antigravity CLI with native ACP (`agy --acp`).
-    /// Replaces the previous Google Gemini CLI template.
-    Antigravity,
     /// Hermes Agent native ACP (`hermes acp`).
     /// Docs: https://github.com/NousResearch/hermes-agent
     Hermes,
@@ -44,8 +41,6 @@ impl<'de> serde::Deserialize<'de> for AgentTemplate {
         Ok(match s.as_str() {
             "opencode" => Self::Opencode,
             "openclaw" => Self::OpenClaw,
-            // Backward compatibility: old Gemini registrations deserialize as Antigravity.
-            "antigravity" | "gemini" => Self::Antigravity,
             "hermes" => Self::Hermes,
             "claude-acp" => Self::ClaudeAcp,
             "codex-acp" => Self::CodexAcp,
@@ -69,7 +64,6 @@ impl AgentTemplate {
         match self {
             Self::Opencode => "opencode",
             Self::OpenClaw => "openclaw",
-            Self::Antigravity => "antigravity",
             Self::Hermes => "hermes",
             Self::ClaudeAcp => "claude-acp",
             Self::CodexAcp => "codex-acp",

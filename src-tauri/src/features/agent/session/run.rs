@@ -104,41 +104,13 @@ enum TurnPhase<T> {
     Cancelled(AgentResultPayload),
 }
 
-/// True when an ACP error is the agent's "sign in first" auth-required
-/// failure (agy-acp embeds `Authentication required` plus its terminal
-/// authMethod payload in the message).
-fn is_auth_required_error(msg: &str) -> bool {
-    msg.contains("Authentication required")
-        && (msg.contains("terminal-auth") || msg.contains("agy-login"))
-}
-
-/// Prefix understood by the frontend: renders an i18n sign-in card with a
-/// terminal-login action instead of the raw protocol JSON.
-const AUTH_REQUIRED_PREFIX: &str = "AGENT_AUTH_REQUIRED";
-
 /// Emit `agent:failed` for a run that could not start or complete.
-fn emit_run_failed(
-    app: &AgentEventEmitter,
-    session_id: &str,
-    agent_id: Option<&str>,
-    error: &impl std::fmt::Display,
-) {
-    let raw = error.to_string();
-    let text = if raw.starts_with(AUTH_REQUIRED_PREFIX) {
-        raw
-    } else if is_auth_required_error(&raw) {
-        format!(
-            "{AUTH_REQUIRED_PREFIX} agent={} {raw}",
-            agent_id.unwrap_or_default()
-        )
-    } else {
-        raw
-    };
+fn emit_run_failed(app: &AgentEventEmitter, session_id: &str, error: &impl std::fmt::Display) {
     let _ = app.emit(
         "agent:failed",
         AgentFailedEvent {
             session_id: session_id.to_string(),
-            error: text,
+            error: error.to_string(),
         },
     );
 }
@@ -163,12 +135,7 @@ async fn prepare_run_turn(params: &RunOnceParams) -> Result<RunTurnPrep, AppErro
         match load_skill_instructions(&params.skill_ids, skill_vault.as_deref(), skill_style) {
             Ok(instructions) => instructions,
             Err(error) => {
-                emit_run_failed(
-                    &params.app,
-                    &params.session_id,
-                    Some(&params.desc.id),
-                    &error,
-                );
+                emit_run_failed(&params.app, &params.session_id, &error);
                 return Err(error);
             }
         }
@@ -535,57 +502,17 @@ impl RunOnceContext {
             )));
         }
 
-        // agy (Antigravity) can fail a prompt with an internal "File not found"
-        // when its conversation store lost this session's brain files (e.g.
-        // after an agy upgrade). Recover once by opening a fresh session on
-        // the same connection and resending the prompt.
-        let mut session_id = session.acp_session_id.clone();
-        let mut retried_missing_state = false;
-        let prompt_response = loop {
-            let attempt = tokio::select! {
-                response = connection
-                    .send_request(PromptRequest::new(session_id.clone(), content_blocks.clone()))
-                    .block_task() => response.map_err(|e| acp_err(format!("prompt: {e}"))),
-                () = wait_for_cancellation(&mut cancellation) => {
-                    let _ = connection
-                        .send_notification(CancelNotification::new(session_id.clone()));
-                    return Ok(self.cancel_completed(Some(session_id.to_string())));
-                }
-            };
-            match attempt {
-                Ok(response) => break response,
-                Err(e) => {
-                    let text = e.to_string();
-                    if !retried_missing_state && text.contains("File not found") {
-                        retried_missing_state = true;
-                        log::warn!(
-                            target: "agentero::agent",
-                            "prompt failed with missing session state; retrying with a fresh session: {text}"
-                        );
-                        let fresh = tokio::select! {
-                            result = timed_acp_request(
-                                "new_session",
-                                connection
-                                    .send_request(NewSessionRequest::new(cwd.to_path_buf()))
-                                    .block_task(),
-                            ) => result?,
-                            () = wait_for_cancellation(&mut cancellation) => {
-                                return Ok(self.cancel_completed(None));
-                            }
-                        };
-                        session_id = fresh.session_id;
-                        if let Ok(mut buf) = self.content_buf.lock() {
-                            buf.clear();
-                        }
-                        if let Ok(mut buf) = self.thought_buf.lock() {
-                            buf.clear();
-                        }
-                        continue;
-                    }
-                    return Err(e);
-                }
+        let session_id = session.acp_session_id.clone();
+        let prompt_response = tokio::select! {
+            response = connection
+                .send_request(PromptRequest::new(session_id.clone(), content_blocks.clone()))
+                .block_task() => response.map_err(|e| acp_err(format!("prompt: {e}"))),
+            () = wait_for_cancellation(&mut cancellation) => {
+                let _ = connection
+                    .send_notification(CancelNotification::new(session_id.clone()));
+                return Ok(self.cancel_completed(Some(session_id.to_string())));
             }
-        };
+        }?;
 
         if let Ok(mut s) = self.stop_reason.lock() {
             *s = Some(format!("{:?}", prompt_response.stop_reason));
@@ -890,12 +817,7 @@ pub async fn run_once(params: RunOnceParams) -> Result<AgentResultPayload, AppEr
     let acp = match to_acp_agent(&params.desc, Some(&prep.cwd), params.remote.as_deref()) {
         Ok(agent) => agent,
         Err(error) => {
-            emit_run_failed(
-                &params.app,
-                &params.session_id,
-                Some(&params.desc.id),
-                &error,
-            );
+            emit_run_failed(&params.app, &params.session_id, &error);
             return Err(error);
         }
     };
@@ -907,16 +829,9 @@ pub async fn run_once(params: RunOnceParams) -> Result<AgentResultPayload, AppEr
     match run_result {
         Ok(payload) => Ok(payload),
         Err(e) => {
-            let raw = e.to_string();
-            // Mark command-level rejections too: some frontend paths surface
-            // the invoke error directly instead of the `agent:failed` event.
-            let msg = if is_auth_required_error(&raw) {
-                format!("{AUTH_REQUIRED_PREFIX} agent={} {raw}", state.agent_id)
-            } else {
-                raw
-            };
+            let msg = e.to_string();
             state.coalescer.flush();
-            emit_run_failed(&state.app, &state.session_id, Some(&state.agent_id), &msg);
+            emit_run_failed(&state.app, &state.session_id, &msg);
             Err(AppError::domain("acp", format!("acp: {msg}")))
         }
     }

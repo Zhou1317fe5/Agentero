@@ -39,7 +39,6 @@ import type { CardScreenPoint } from "@/components/viewer/pdf/types";
 import {
 	attachAgentRun,
 	cancelAgentRun,
-	displayAgentError,
 	disposeAgentRun,
 	listAgents,
 	type PromptImage,
@@ -310,9 +309,7 @@ export function usePdfAskThreads({
 						);
 					},
 					onFailed: (ev) => {
-						setAskError(
-							ev.error ? displayAgentError(ev.error) : t("pdfAsk.agentFailed"),
-						);
+						setAskError(ev.error || t("pdfAsk.agentFailed"));
 						setThreads((prev) =>
 							prev.map((th) => {
 								if (th.id !== threadId) return th;

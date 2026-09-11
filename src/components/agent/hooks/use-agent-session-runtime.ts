@@ -22,7 +22,6 @@ import {
 	type AgentResultPayload,
 	type AgentStreamEvent,
 	type AgentToolEvent,
-	agentLoginTerminal,
 	displayHistoryTitle,
 	listenAgentCollaboration,
 	listenAgentCommands,
@@ -36,7 +35,6 @@ import {
 	listenAgentStream,
 	listenAgentTool,
 	listenAgentUsage,
-	parseAgentAuthRequired,
 } from "@/lib/agent";
 import {
 	type AgentSessionRecord,
@@ -65,12 +63,6 @@ import {
 	promoteOrphanThoughtToText,
 	ThinkTagParser,
 } from "@/lib/agent/stream-parse";
-import {
-	errorMessage,
-	notifyAction,
-	notifyError,
-	notifySuccess,
-} from "@/lib/core/notify";
 import { isTauri } from "@/lib/core/tauri";
 import {
 	completeTrace,
@@ -524,10 +516,7 @@ export function useAgentSessionRuntime({
 	const failSession = useCallback(
 		(sessionId: string, error: string) => {
 			if (!isChatOwnedSession(sessionId)) return;
-			const auth = parseAgentAuthRequired(error);
-			const failedLine: ChatLine = errorChatLine(
-				auth ? t("agentAuth.required") : error,
-			);
+			const failedLine: ChatLine = errorChatLine(error);
 			updateSessionLines(sessionId, (prev) => {
 				const next = [...prev];
 				const last = next[next.length - 1];
@@ -557,19 +546,6 @@ export function useAgentSessionRuntime({
 				kind: "failed",
 				error,
 			});
-			if (auth) {
-				notifyAction(t("agentAuth.required"), {
-					description: t("agentAuth.hint"),
-					actionLabel: t("agentAuth.login"),
-					duration: 20_000,
-					onAction: () => {
-						if (!auth.agentId) return;
-						void agentLoginTerminal(auth.agentId)
-							.then(() => notifySuccess(t("agentAuth.opened")))
-							.catch((e) => notifyError(errorMessage(e)));
-					},
-				});
-			}
 		},
 		[
 			finalizeAskThreads,
@@ -577,7 +553,6 @@ export function useAgentSessionRuntime({
 			isChatOwnedSession,
 			updateSessionLines,
 			setSessionHistory,
-			t,
 		],
 	);
 

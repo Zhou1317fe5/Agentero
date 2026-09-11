@@ -1,6 +1,6 @@
 use crate::core::error::AppError;
 pub(crate) use crate::core::process::windows_shell_path as simplified_agent_cwd;
-use crate::features::agent::models::{AgentDescriptor, AgentResultPayload, AgentTemplate};
+use crate::features::agent::models::{AgentDescriptor, AgentResultPayload};
 use crate::features::agent::prompt::envelope::extract_sources;
 use crate::features::agent::registry::discovery::{login_shell_env, path_entries};
 use agent_client_protocol::schema::v1::{
@@ -176,7 +176,6 @@ pub(crate) fn build_child_env(
     process_env: impl Iterator<Item = (String, String)>,
     shell_env: Option<&HashMap<String, String>>,
     desc_env: &HashMap<String, String>,
-    template: AgentTemplate,
 ) -> HashMap<String, String> {
     let process_env: HashMap<String, String> = process_env.collect();
     let mut child_env = process_env.clone();
@@ -205,23 +204,11 @@ pub(crate) fn build_child_env(
         child_env.insert("PATH".to_string(), path.to_string_lossy().to_string());
     }
 
-    // Antigravity (formerly Gemini) launches a browser OAuth flow from
-    // `new_session` when it has no cached credentials; our 15s ACP timeout kills
-    // the child before login can finish, so the browser would pop up on every
-    // spawn. Sign-in must happen in a terminal instead (BYOA).
-    if matches!(template, AgentTemplate::Antigravity) && !child_env.contains_key("NO_BROWSER") {
-        child_env.insert("NO_BROWSER".to_string(), "true".to_string());
-    }
     child_env
 }
 
 pub(crate) fn effective_local_agent_env(desc: &AgentDescriptor) -> HashMap<String, String> {
-    build_child_env(
-        std::env::vars(),
-        login_shell_env(),
-        &desc.env,
-        desc.template.clone(),
-    )
+    build_child_env(std::env::vars(), login_shell_env(), &desc.env)
 }
 
 pub(crate) fn resolve_command_in_agent_env(
@@ -492,12 +479,7 @@ mod cwd_shell_wrap_tests {
         let mut desc_env = HashMap::new();
         desc_env.insert("OPENAI_API_KEY".to_string(), "desc-key".to_string());
 
-        let env = build_child_env(
-            process_env,
-            Some(&shell_env),
-            &desc_env,
-            AgentTemplate::CodexAcp,
-        );
+        let env = build_child_env(process_env, Some(&shell_env), &desc_env);
 
         // desc_env wins over everything.
         assert_eq!(env.get("OPENAI_API_KEY"), Some(&"desc-key".to_string()));
@@ -530,12 +512,7 @@ mod cwd_shell_wrap_tests {
             descriptor_path.to_string_lossy().into_owned(),
         );
 
-        let env = build_child_env(
-            process_env,
-            Some(&shell_env),
-            &desc_env,
-            AgentTemplate::CodexAcp,
-        );
+        let env = build_child_env(process_env, Some(&shell_env), &desc_env);
         let entries = std::env::split_paths(env.get("PATH").unwrap()).collect::<Vec<_>>();
 
         assert_eq!(entries[0], PathBuf::from("/descriptor/bin"));
@@ -549,29 +526,5 @@ mod cwd_shell_wrap_tests {
                 .count(),
             1
         );
-    }
-
-    #[test]
-    fn build_child_env_injects_no_browser_for_antigravity() {
-        let env = build_child_env(
-            std::iter::empty(),
-            None,
-            &HashMap::new(),
-            AgentTemplate::Antigravity,
-        );
-        assert_eq!(env.get("NO_BROWSER"), Some(&"true".to_string()));
-    }
-
-    #[test]
-    fn build_child_env_respects_existing_no_browser() {
-        let mut desc_env = HashMap::new();
-        desc_env.insert("NO_BROWSER".to_string(), "false".to_string());
-        let env = build_child_env(
-            std::iter::empty(),
-            None,
-            &desc_env,
-            AgentTemplate::Antigravity,
-        );
-        assert_eq!(env.get("NO_BROWSER"), Some(&"false".to_string()));
     }
 }

@@ -25,7 +25,6 @@ import {
 	type AgentStreamEvent,
 	type AgentToolEvent,
 	cancelAgentRun,
-	displayAgentError,
 	ensureCatalogAgent,
 	loadModelPref,
 	loadReasoningEffortPref,
@@ -341,10 +340,7 @@ export function useAgentSend({
 					setSelectedAgentId(agentId);
 					await refresh();
 				} catch (e) {
-					setLines((p) => [
-						...p,
-						errorChatLine(displayAgentError(errorText(e))),
-					]);
+					setLines((p) => [...p, errorChatLine(errorText(e))]);
 					return false;
 				}
 			}
@@ -607,7 +603,7 @@ export function useAgentSend({
 				sessionContextGeneration === sessionContextGenRef.current &&
 				requestVaultPath === vaultPathRef.current
 			) {
-				setLines((p) => [...p, errorChatLine(displayAgentError(errorText(e)))]);
+				setLines((p) => [...p, errorChatLine(errorText(e))]);
 			}
 			return false;
 		} finally {

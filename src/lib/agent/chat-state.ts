@@ -303,7 +303,6 @@ function catalogTemplateFromId(templateId: string): AgentTemplate | undefined {
 	switch (templateId) {
 		case "opencode":
 		case "openclaw":
-		case "antigravity":
 		case "hermes":
 		case "claude-acp":
 		case "codex-acp":

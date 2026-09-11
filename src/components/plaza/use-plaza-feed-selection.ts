@@ -16,7 +16,6 @@ import type { PlazaSelectionScreen } from "@/components/plaza/plaza-selection-me
 import {
 	attachAgentRun,
 	cancelAgentRun,
-	displayAgentError,
 	disposeAgentRun,
 	listAgents,
 	runOnce,
@@ -342,9 +341,7 @@ export function usePlazaFeedSelection({
 						});
 					},
 					onFailed: (ev) => {
-						setAskError(
-							ev.error ? displayAgentError(ev.error) : t("pdfAsk.agentFailed"),
-						);
+						setAskError(ev.error || t("pdfAsk.agentFailed"));
 						setAsk((prev) => {
 							if (!prev || prev.thread.id !== threadId) return prev;
 							return {

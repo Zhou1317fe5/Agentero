@@ -44,7 +44,6 @@ pub fn npm_package_for_template(template_id: &str) -> Option<&'static str> {
         "openclaw" => Some("openclaw"),
         "claude-acp" => Some("@anthropic-ai/claude-code"),
         "codex-acp" => Some("@openai/codex"),
-        "antigravity" => Some("agy-acp"),
         "pi" => Some("@earendil-works/pi-coding-agent"),
         "grok-build" => Some("@xai-official/grok"),
         "kimi-code" => Some("@moonshot-ai/kimi-code"),

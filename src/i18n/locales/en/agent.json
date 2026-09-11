@@ -173,12 +173,6 @@
 		"emptyNoneCustom": "No models yet. Type a model id above to use a third-party model.",
 		"emptyNoMatch": "No match. Type a full model id to use it as custom."
 	},
-	"agentAuth": {
-		"required": "Antigravity sign-in required",
-		"hint": "Complete sign-in in the terminal window (it closes automatically once done), then send your message again.",
-		"login": "Sign in",
-		"opened": "Sign-in terminal opened"
-	},
 	"messages": {
 		"cancelled": "Stopped the current run.",
 		"desktopOnly": "Open the desktop app to run agents.",

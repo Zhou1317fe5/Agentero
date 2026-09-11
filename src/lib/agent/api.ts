@@ -21,7 +21,6 @@ export type {
 export type AgentTemplate =
 	| "opencode"
 	| "openclaw"
-	| "antigravity"
 	| "hermes"
 	| "claude-acp"
 	| "codex-acp"
@@ -487,28 +486,6 @@ export async function toolUninstallInfo(
 		() => commands.agentToolUninstallInfo(templateId),
 		AGENT_CALL_OPTS,
 	);
-}
-
-/** Parse the Host auth-required marker; null for ordinary failures. */
-export function parseAgentAuthRequired(
-	error: string,
-): { agentId: string | null } | null {
-	// Unanchored: the marker also appears inside command-level error strings
-	// prefixed with `acp: `.
-	const m = /AGENT_AUTH_REQUIRED agent=(\S*)/.exec(error);
-	return m ? { agentId: m[1] || null } : null;
-}
-
-/** User-facing text for agent failures (i18n for auth-required, raw else). */
-export function displayAgentError(error: string): string {
-	return parseAgentAuthRequired(error)
-		? i18n.t("agent:agentAuth.required")
-		: error;
-}
-
-/** Open the system terminal for the agent's interactive sign-in (Antigravity). */
-export async function agentLoginTerminal(agentId: string): Promise<boolean> {
-	return callApi(() => commands.agentLoginTerminal(agentId), AGENT_CALL_OPTS);
 }
 
 /**

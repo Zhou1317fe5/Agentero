@@ -14,7 +14,6 @@ import type {
 	AgentResultEvent,
 	AgentStreamEvent,
 } from "@/components/mobile/types";
-import { displayAgentError } from "@/lib/agent";
 import { bridgeRpc, listenBridgeEvent } from "@/lib/bridge/client";
 import { toSafeDisposer } from "@/lib/core/tauri-events";
 
@@ -106,10 +105,7 @@ export function useMobileAgentChat({
 					if (!active || event.sessionId !== sessionRef.current) return;
 					setSending(false);
 					setLines((current) =>
-						appendAssistantLine(
-							current,
-							event.error ? displayAgentError(event.error) : t("agent.failed"),
-						),
+						appendAssistantLine(current, event.error || t("agent.failed")),
 					);
 				}),
 			),

@@ -160,7 +160,6 @@ fn export_typescript_bindings() {
             crate::features::agent::commands::agent_run_partial_uninstall,
             crate::features::agent::commands::agent_lifecycle_cancel,
             crate::features::agent::commands::agent_tool_uninstall_info,
-            crate::features::agent::commands::agent_login_terminal,
             crate::features::agent::commands::agent_run_once,
             crate::features::agent::commands::agent_list_sessions,
             crate::features::agent::commands::agent_load_session,

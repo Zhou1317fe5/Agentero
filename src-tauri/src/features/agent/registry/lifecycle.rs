@@ -79,7 +79,6 @@ pub const LIFECYCLE_TEMPLATES: &[&str] = &[
     "openclaw",
     "claude-acp",
     "codex-acp",
-    "antigravity",
     "hermes",
     "grok-build",
     "pi",
@@ -381,7 +380,6 @@ pub fn uninstall_info(template_id: &str) -> Option<UninstallInfo> {
             vec!["npm uninstall -g @openai/codex".to_string()],
             vec!["npm uninstall -g @agentclientprotocol/codex-acp".to_string()],
         ),
-        "antigravity" => (vec!["npm uninstall -g agy-acp".to_string()], Vec::new()),
         "pi" => (
             vec!["npm uninstall -g @earendil-works/pi-coding-agent".to_string()],
             vec![pi_acp],
@@ -533,7 +531,7 @@ pub fn run_template_lifecycle(
         .unwrap_or(info.command.as_str());
     let host_present = resolve_command(detect).is_some();
     let acp_present = resolve_command(&info.command).is_some();
-    // Same binary for host and ACP (opencode, openclaw, antigravity, hermes, grok via npx).
+    // Same binary for host and ACP (opencode, openclaw, hermes, grok via npx).
     let needs_separate_adapter = info
         .detect_command
         .as_ref()
@@ -643,7 +641,6 @@ fn host_install_command(template_id: &str) -> Result<String, String> {
         match template_id {
             "claude-acp" => Ok("npm i -g @anthropic-ai/claude-code@latest".to_string()),
             "codex-acp" => Ok("npm i -g @openai/codex@latest".to_string()),
-            "antigravity" => Ok("npm i -g agy-acp@latest".to_string()),
             "opencode" => Ok("npm i -g opencode-ai@latest".to_string()),
             "openclaw" => Ok("npm i -g openclaw@latest".to_string()),
             "hermes" => Ok(hermes_install_windows_command()),
@@ -668,7 +665,6 @@ fn host_install_command(template_id: &str) -> Result<String, String> {
                 "npm i -g @anthropic-ai/claude-code@latest",
             )),
             "codex-acp" => Ok("npm i -g @openai/codex@latest".to_string()),
-            "antigravity" => Ok("npm i -g agy-acp@latest".to_string()),
             "opencode" => Ok(chain_or(
                 OPENCODE_INSTALL_UNIX,
                 "npm i -g opencode-ai@latest",
@@ -712,8 +708,6 @@ fn host_update_command(template_id: &str) -> Result<String, String> {
             }
         }
         "codex-acp" => Ok("npm i -g @openai/codex@latest".to_string()),
-        // Antigravity is installed through the community agy-acp npm adapter.
-        "antigravity" => Ok("npm i -g agy-acp@latest".to_string()),
         "openclaw" => Ok(chain_or(
             "openclaw update --yes",
             "npm i -g openclaw@latest",
@@ -844,8 +838,6 @@ npm i -g @anthropic-ai/claude-code@latest
 # Codex + ACP adapter
 npm i -g @openai/codex@latest
 npm i -g @agentclientprotocol/codex-acp@latest
-# Antigravity
-{antigravity}
 # OpenCode
 npm i -g opencode-ai@latest
 # OpenClaw
@@ -864,7 +856,6 @@ npm i -g openclaw@latest
 # Dsh (DeepSeek Harness ACP demo — Agentero writes cordis.yml + runs this)
 {dsh}"#,
             claude_acp = CLAUDE_ACP_INSTALL_COMMAND,
-            antigravity = "npm i -g agy-acp@latest",
             pi_host = PI_HOST_INSTALL_COMMAND,
             pi_acp = PI_ACP_INSTALL_COMMAND,
             hermes = hermes_install_windows_command(),
@@ -882,8 +873,6 @@ npm i -g openclaw@latest
 # Codex + ACP adapter
 npm i -g @openai/codex@latest
 npm i -g @agentclientprotocol/codex-acp@latest
-# Antigravity
-{antigravity}
 # OpenCode
 {opencode} || npm i -g opencode-ai@latest
 # OpenClaw
@@ -901,7 +890,6 @@ npm i -g openclaw@latest
 {dsh}"#,
             claude_host = CLAUDE_INSTALL_UNIX,
             claude_acp = CLAUDE_ACP_INSTALL_COMMAND,
-            antigravity = "npm i -g agy-acp@latest",
             opencode = OPENCODE_INSTALL_UNIX,
             pi_host = PI_HOST_INSTALL_COMMAND,
             pi_acp = PI_ACP_INSTALL_COMMAND,
@@ -962,7 +950,7 @@ fn run_tool_lifecycle_silently(
 
 /// Mirror `store::apply_proxy_to_agent`: inject HTTP_PROXY/HTTPS_PROXY/ALL_PROXY
 /// into the lifecycle child when the Agentero proxy is enabled, so curl/npm
-/// based installers (Antigravity, Kimi, Claude, Grok, Hermes, OpenCode, …)
+/// based installers (Kimi, Claude, Grok, Hermes, OpenCode, …)
 /// can reach the network through the user's configured proxy.
 fn apply_proxy_env_to_command(cmd: &mut Command, proxy_enabled: bool, proxy_url: &str) {
     for key in ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"] {
@@ -1262,7 +1250,6 @@ mod tests {
             .unwrap()
             .contains("codex-acp"));
         assert!(adapter_install_command("pi").unwrap().contains("pi-acp"));
-        assert!(adapter_install_command("antigravity").is_err());
     }
 
     #[test]
@@ -1298,7 +1285,6 @@ mod tests {
     fn manual_text_lists_agents() {
         let text = manual_install_commands_text();
         assert!(text.contains("Claude"));
-        assert!(text.contains("Antigravity"));
         assert!(text.contains("OpenCode"));
         assert!(text.contains("OpenClaw"));
         assert!(text.contains("Hermes"));

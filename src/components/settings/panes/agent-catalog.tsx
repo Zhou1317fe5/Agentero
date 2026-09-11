@@ -150,7 +150,6 @@ function catalogTemplateFromId(templateId: string): AgentTemplate {
 	switch (templateId) {
 		case "opencode":
 		case "openclaw":
-		case "antigravity":
 		case "hermes":
 		case "claude-acp":
 		case "codex-acp":

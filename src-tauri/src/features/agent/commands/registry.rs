@@ -2,8 +2,6 @@
 
 use super::{AgentUserAgentResponse, EnabledResponse};
 use crate::core::error::{map_err, ApiResult, AppError};
-#[cfg(not(target_os = "ios"))]
-use crate::features::agent::models::AgentTemplate;
 use crate::features::agent::models::{
     AgentListResponse, AgentOnly, AgentSkill, CatalogScanResponse, ProbeResult, UpsertAgentRequest,
 };
@@ -378,52 +376,5 @@ pub async fn agent_probe_catalog(
     match service::probe_catalog(&app, registry.inner(), &template_id).await {
         Ok(result) => Ok(ApiResult::ok(result)),
         Err(e) => Ok(map_err(e)),
-    }
-}
-
-/// Open the system terminal at the agent's interactive terminal login
-/// (Antigravity / agy-acp: `<command> <args...> --login`). Used when a run
-/// fails with the ACP auth-required error: the login TUI closes itself once
-/// `agy models` succeeds, then the user retries the prompt in chat. The
-/// terminal uses the usual Enter-to-confirm UX (nothing runs silently).
-#[cfg(not(target_os = "ios"))]
-#[tauri::command]
-#[specta::specta]
-pub fn agent_login_terminal(registry: State<'_, AgentRegistry>, id: String) -> ApiResult<bool> {
-    let desc = match registry.get(&id) {
-        Ok(d) => d,
-        Err(e) => return map_err(e),
-    };
-    if desc.template != AgentTemplate::Antigravity {
-        return map_err(AppError::message(
-            "terminal sign-in is only supported for the Antigravity adapter",
-        ));
-    }
-    let mut parts: Vec<String> = Vec::with_capacity(desc.args.len() + 2);
-    // Resolve against the agent env (merged login-shell PATH) so the terminal
-    // line works even when a fresh terminal's PATH lacks the npm shim dir
-    // (e.g. portable node installs on another drive).
-    let env = crate::features::agent::acp::client::effective_local_agent_env(&desc);
-    let command =
-        crate::features::agent::acp::client::resolve_command_in_agent_env(&desc.command, &env)
-            .map(|p| p.to_string_lossy().into_owned())
-            .unwrap_or_else(|| desc.command.clone());
-    parts.push(command);
-    parts.extend(desc.args.iter().cloned());
-    parts.push("--login".to_string());
-    let line = parts
-        .iter()
-        .map(|p| {
-            if p.contains(' ') || p.is_empty() {
-                format!("\"{p}\"")
-            } else {
-                p.clone()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ");
-    match crate::app::terminal::open_terminal_confirm_command(&line) {
-        Ok(()) => ApiResult::ok(true),
-        Err(e) => map_err(e),
     }
 }
