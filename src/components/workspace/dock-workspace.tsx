@@ -50,6 +50,7 @@ import { isLibraryVirtualPath, isTrashVirtualPath } from "@/lib/paper/api";
 import { moveDocToWindow } from "@/lib/shell/leaf";
 import { TAG_COLOR_IDS, tagSwatchStyle } from "@/lib/ui/tag-colors";
 import { installDockviewDragSelectionGuard } from "@/lib/workspace/dockview-drag-selection";
+import { installDockviewDropOverlayCleanup } from "@/lib/workspace/dockview-drop-overlay-cleanup";
 import { installDockviewSashFrameLoop } from "@/lib/workspace/dockview-sash";
 import { agenteroDockTheme } from "@/lib/workspace/dockview-theme";
 import {
@@ -683,6 +684,9 @@ export const DockWorkspace = memo(
 					installDockviewDragSelectionGuard(
 						workspaceRootRef.current as HTMLDivElement,
 						api,
+					),
+					installDockviewDropOverlayCleanup(
+						workspaceRootRef.current as HTMLDivElement,
 					),
 					api.onUnhandledDragOver((e: DockviewDndOverlayEvent) => {
 						if (!isExternalPathDrag(e.nativeEvent)) return;
