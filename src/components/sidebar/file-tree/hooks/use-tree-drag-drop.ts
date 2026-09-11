@@ -206,7 +206,11 @@ export function useTreeDragDrop({
 			setDropTarget(null);
 			endVaultFileDrag();
 			if (!onDropMove || !canDrop(targetPath, paths)) return;
-			onDropMove(paths, dropDirFor(targetPath));
+			const destDir = dropDirFor(targetPath);
+			// Skip items already in the destination folder; moving them would be a no-op.
+			const movingPaths = paths.filter((p) => dirnameOf(p) !== destDir);
+			if (movingPaths.length === 0) return;
+			onDropMove(movingPaths, destDir);
 		},
 		[onDropMove, canDrop, dropDirFor],
 	);

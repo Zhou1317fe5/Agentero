@@ -475,6 +475,10 @@ export async function movePathsTo(
 			}
 			const destinationParent = normalizeVaultRel(destParentRel) || "papers";
 			const expectedToRel = `${destinationParent}/${basenameOf(rel)}`;
+			// Already at the requested destination; nothing to do.
+			if (normalizeVaultRel(expectedToRel) === normalizeVaultRel(rel)) {
+				continue;
+			}
 			const pendingEventPaths = [path, joinVaultPath(vaultPath, expectedToRel)];
 			trackInternalRenamePaths(pendingEventPaths, Number.POSITIVE_INFINITY);
 			try {
@@ -688,6 +692,10 @@ async function movePathsToDestination(
 		const base = basenameOf(srcRel);
 		const toRel = destRel ? `${destRel}/${base}` : base;
 		const toAbs = joinVaultPath(vaultPath, toRel);
+		// Already at the resolved destination; nothing to do.
+		if (pathKey(toAbs) === srcKey) {
+			continue;
+		}
 		const pendingEventPaths = [normSrc, toAbs];
 		trackInternalRenamePaths(pendingEventPaths, Number.POSITIVE_INFINITY);
 
