@@ -13,6 +13,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import type { PlazaSelectionScreen } from "@/components/plaza/plaza-selection-menu";
+import type { SelectionPulseRect } from "@/components/ui/selection-copy-pulse";
 import {
 	attachAgentRun,
 	cancelAgentRun,
@@ -38,6 +39,18 @@ import { resolveTranslateAgent } from "@/lib/translate";
 import { getVaultPath } from "@/lib/vault/store";
 
 const MAX_SELECTION_CHARS = 4000;
+const COPY_PULSE_DURATION_MS = 900;
+
+function selectionCopyPulseRects(sel: Selection): SelectionPulseRect[] {
+	if (sel.rangeCount === 0) return [];
+	const rects = sel.getRangeAt(0).getClientRects();
+	return Array.from(rects).map((r) => ({
+		x: r.left,
+		y: r.top,
+		width: r.width,
+		height: r.height,
+	}));
+}
 
 export type PlazaFeedSelectionMenu = {
 	text: string;
@@ -76,6 +89,18 @@ export function usePlazaFeedSelection({
 	const [ask, setAsk] = useState<PlazaFeedAskState | null>(null);
 	const [streaming, setStreaming] = useState(false);
 	const [askError, setAskError] = useState<string | null>(null);
+	const [copyPulseRects, setCopyPulseRects] = useState<
+		SelectionPulseRect[] | null
+	>(null);
+	const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const clearCopyPulse = useCallback(() => {
+		if (pulseTimerRef.current) {
+			clearTimeout(pulseTimerRef.current);
+			pulseTimerRef.current = null;
+		}
+		setCopyPulseRects(null);
+	}, []);
 
 	const askRef = useRef<PlazaFeedAskState | null>(null);
 	askRef.current = ask;
@@ -104,7 +129,8 @@ export function usePlazaFeedSelection({
 		setAsk(null);
 		setAskError(null);
 		setStreaming(false);
-	}, [item.id]);
+		clearCopyPulse();
+	}, [item.id, clearCopyPulse]);
 
 	const clearNativeSelection = useCallback(() => {
 		const sel = window.getSelection();
@@ -113,7 +139,8 @@ export function usePlazaFeedSelection({
 
 	const closeMenu = useCallback(() => {
 		setMenu(null);
-	}, []);
+		clearCopyPulse();
+	}, [clearCopyPulse]);
 
 	const captureSelection = useCallback(() => {
 		const root = bodyRef.current;
@@ -138,7 +165,17 @@ export function usePlazaFeedSelection({
 			return;
 		}
 		setMenu({ text, screen });
-	}, [bodyRef]);
+		void copyTextToClipboard(text);
+		clearCopyPulse();
+		const rects = selectionCopyPulseRects(sel);
+		if (rects.length) {
+			setCopyPulseRects(rects);
+			pulseTimerRef.current = setTimeout(() => {
+				pulseTimerRef.current = null;
+				setCopyPulseRects(null);
+			}, COPY_PULSE_DURATION_MS);
+		}
+	}, [bodyRef, clearCopyPulse]);
 
 	useEffect(() => {
 		const root = bodyRef.current;
@@ -190,11 +227,6 @@ export function usePlazaFeedSelection({
 		item.paperUrl?.trim() ||
 		item.title.trim() ||
 		`feed:${item.id}`;
-
-	const handleCopy = useCallback(() => {
-		if (!menu) return;
-		void copyTextToClipboard(menu.text);
-	}, [menu]);
 
 	const handleAddToChat = useCallback(() => {
 		if (!menu) return;
@@ -452,7 +484,6 @@ export function usePlazaFeedSelection({
 		streaming,
 		askError,
 		closeMenu,
-		handleCopy,
 		handleAsk,
 		handleAddToChat,
 		sendAskQuestion,
@@ -460,6 +491,7 @@ export function usePlazaFeedSelection({
 		hideAsk,
 		deleteAsk,
 		stopAskStreaming,
+		copyPulseRects,
 		itemTitle: item.title,
 		itemLink: item.url ?? item.paperUrl ?? undefined,
 	};

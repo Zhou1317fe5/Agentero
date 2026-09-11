@@ -543,6 +543,7 @@ function PdfViewerInner({
 		isSelecting,
 		closeSelectionMenu,
 		rePlaceSelectionMenu,
+		copyPulseRects,
 	} = usePdfTextSelection({
 		selectionCap,
 		docCap,
@@ -1047,7 +1048,6 @@ function PdfViewerInner({
 	const {
 		handleHighlight,
 		handleCommitSelectionNote,
-		handleCopy,
 		handleMenuAsk,
 		handleMenuAddToChat,
 		handleMenuTranslate,
@@ -1518,12 +1518,12 @@ function PdfViewerInner({
 				selectionMenu={{
 					state: selectionMenu,
 					onHighlight: handleHighlight,
-					onCopy: handleCopy,
 					onAsk: handleMenuAsk,
 					onAddToChat: handleMenuAddToChat,
 					onTranslate: handleMenuTranslate,
 					readOnly: isRemotePaper,
 				}}
+				copyPulseRects={copyPulseRects}
 				citationPreview={{
 					state: citationPreview,
 					importMenu: citationImport

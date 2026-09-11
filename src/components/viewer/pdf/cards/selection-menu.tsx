@@ -1,5 +1,5 @@
-import { Check, Copy, Languages, MessageSquare } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Languages, MessageSquare } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AgentLogo } from "@/components/agent/agent-logo";
 import { Button } from "@/components/ui/button";
@@ -27,45 +27,39 @@ type SelectionMenuProps = {
 	bottomRight: ScreenPoint;
 	/** Create a highlight in the chosen color */
 	onHighlight: (color: HighlightColor) => void;
-	/** Copy the selected text to the clipboard */
-	onCopy: () => void;
 	onAsk: () => void;
 	/** Pin the selection as an Agent composer context chip and open the chat. */
 	onAddToChat: () => void;
 	onTranslate: () => void;
-	/** Hide highlight / translate (need marks/); keep Copy / Ask. */
+	/** Hide highlight / translate (need marks/); keep Ask. */
 	readOnly?: boolean;
 };
 
-const BAR_W_NORMAL = 268;
-const BAR_W_READONLY = 112;
+const BAR_W_NORMAL = 216;
+const BAR_W_READONLY = 64;
 const BAR_H = 40;
 const PILL_H = 24;
 const PILL_GAP = 4;
-const COPIED_FLASH_MS = 1500;
 
 /**
  * Floating action bar shown next to a text selection: a row of color swatches
- * (highlight), then Copy / Ask / Translate. Annotate lives on the right-rail
+ * (highlight), then Ask / Translate. Annotate lives on the right-rail
  * selection comment chip instead. Add-to-chat is a small text pill at the
  * selection's bottom-right corner. Ask uses the configured PDF-Ask agent logo.
- * Copy keeps the bar open and swaps the copy icon for a check briefly.
- * Remote papers are read-only: they keep Copy / Ask but hide persistent
+ * Selected text is copied to the clipboard automatically.
+ * Remote papers are read-only: they keep Ask but hide persistent
  * highlight / translate actions.
  */
 export function SelectionMenu({
 	screen,
 	bottomRight,
 	onHighlight,
-	onCopy,
 	onAsk,
 	onAddToChat,
 	onTranslate,
 	readOnly = false,
 }: SelectionMenuProps) {
 	const { t } = useTranslation("viewer");
-	const [copied, setCopied] = useState(false);
-	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const pdfAskAgentId = useSettings((s) => s.pdfAsk.agentId);
 	const [askTemplate, setAskTemplate] = useState<AgentTemplate | null>(null);
 	// Add-to-chat only when the Agent surface is already visible (rail or popout).
@@ -74,12 +68,6 @@ export function SelectionMenu({
 			(s.rightSidebarOpen && s.rightSidebarTab === "agent") ||
 			s.featurePoppedOut.agent === true,
 	);
-
-	useEffect(() => {
-		return () => {
-			if (timerRef.current) clearTimeout(timerRef.current);
-		};
-	}, []);
 
 	// Resolve the PDF-Ask agent logo so the Ask button mirrors Settings → PDF Ask.
 	useEffect(() => {
@@ -135,16 +123,6 @@ export function SelectionMenu({
 		Math.max(12, bottomRight.y + PILL_GAP),
 		vh - PILL_H - 12,
 	);
-
-	const handleCopy = useCallback(() => {
-		onCopy();
-		setCopied(true);
-		if (timerRef.current) clearTimeout(timerRef.current);
-		timerRef.current = setTimeout(() => {
-			timerRef.current = null;
-			setCopied(false);
-		}, COPIED_FLASH_MS);
-	}, [onCopy]);
 
 	const colorLabel = (c: HighlightColor): string => {
 		switch (c) {
@@ -206,41 +184,6 @@ export function SelectionMenu({
 							<div className="mx-1 h-5 w-px shrink-0 bg-border" />
 						</>
 					) : null}
-					<div className="relative">
-						{copied ? (
-							<span
-								className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md border border-border/80 bg-background px-1.5 py-0.5 text-caption text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10"
-								role="status"
-								aria-live="polite"
-							>
-								{t("selection.copied")}
-							</span>
-						) : null}
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									type="button"
-									variant="ghost"
-									size="icon-sm"
-									aria-label={
-										copied ? t("selection.copied") : t("selection.copy")
-									}
-									onClick={handleCopy}
-								>
-									{copied ? (
-										<Check className="size-4 text-foreground" aria-hidden />
-									) : (
-										<Copy className="size-4" />
-									)}
-								</Button>
-							</TooltipTrigger>
-							{!copied ? (
-								<TooltipContent side="top">
-									{t("selection.copy")}
-								</TooltipContent>
-							) : null}
-						</Tooltip>
-					</div>
 					<Tooltip>
 						<TooltipTrigger asChild>
 							<Button

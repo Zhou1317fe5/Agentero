@@ -17,6 +17,7 @@ import { MessageResponse } from "@/components/ai-elements/message";
 import { PlazaSelectionMenu } from "@/components/plaza/plaza-selection-menu";
 import { usePlazaFeedSelection } from "@/components/plaza/use-plaza-feed-selection";
 import { Button } from "@/components/ui/button";
+import { SelectionCopyPulse } from "@/components/ui/selection-copy-pulse";
 import {
 	Tooltip,
 	TooltipContent,
@@ -278,10 +279,12 @@ export function PlazaFeedItemDetail({
 			{selection.menu && !selection.ask ? (
 				<PlazaSelectionMenu
 					screen={selection.menu.screen}
-					onCopy={selection.handleCopy}
 					onAsk={selection.handleAsk}
 					onAddToChat={selection.handleAddToChat}
 				/>
+			) : null}
+			{selection.copyPulseRects ? (
+				<SelectionCopyPulse rects={selection.copyPulseRects} />
 			) : null}
 			{selection.ask ? (
 				<div data-plaza-ask-card>

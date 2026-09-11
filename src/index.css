@@ -118,6 +118,28 @@
 	animation: task-ring-success-fill 0.45s var(--motion-ease-out) both;
 }
 
+/* Selection auto-copy feedback: a short teal glow over the selected text. */
+@keyframes selection-copy-pulse {
+	0% {
+		opacity: 0.45;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+.selection-copy-pulse {
+	background-color: rgb(45 212 191 / 0.28);
+	animation: selection-copy-pulse 400ms ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.selection-copy-pulse {
+		animation: none;
+		opacity: 0;
+	}
+}
+
 /*
  * Rail collapse/expand: use-shell-layout marks every panel in the group with
  * data-rail-animating, then commits the final layout via collapse()/expand().

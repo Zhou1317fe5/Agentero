@@ -1,10 +1,10 @@
 /**
  * Lightweight selection toolbar for Plaza text surfaces (RSS detail).
- * Copy / Ask / Add-to-chat — no highlight / note / translate (nothing to persist).
+ * Ask / Add-to-chat — no highlight / note / translate (nothing to persist).
+ * Selected text is copied to the clipboard automatically.
  */
 
-import { Check, Copy, MessageSquare, MessageSquarePlus } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { MessageSquare, MessageSquarePlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,30 +19,19 @@ export type PlazaSelectionScreen = { x: number; y: number };
 
 type PlazaSelectionMenuProps = {
 	screen: PlazaSelectionScreen;
-	onCopy: () => void;
 	onAsk: () => void;
 	onAddToChat: () => void;
 };
 
-const BAR_W = 120;
+const BAR_W = 88;
 const BAR_H = 40;
-const COPIED_FLASH_MS = 1500;
 
 export function PlazaSelectionMenu({
 	screen,
-	onCopy,
 	onAsk,
 	onAddToChat,
 }: PlazaSelectionMenuProps) {
 	const { t } = useTranslation("viewer");
-	const [copied, setCopied] = useState(false);
-	const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-	useEffect(() => {
-		return () => {
-			if (timerRef.current) clearTimeout(timerRef.current);
-		};
-	}, []);
 
 	const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
 	const vh = typeof window !== "undefined" ? window.innerHeight : 800;
@@ -54,16 +43,6 @@ export function PlazaSelectionMenu({
 		top = Math.min(vh - BAR_H - 12, screen.y + 18);
 		overContent = true;
 	}
-
-	const handleCopy = useCallback(() => {
-		onCopy();
-		setCopied(true);
-		if (timerRef.current) clearTimeout(timerRef.current);
-		timerRef.current = setTimeout(() => {
-			timerRef.current = null;
-			setCopied(false);
-		}, COPIED_FLASH_MS);
-	}, [onCopy]);
 
 	return (
 		<div
@@ -79,39 +58,6 @@ export function PlazaSelectionMenu({
 			onMouseDown={(e) => e.stopPropagation()}
 		>
 			<TooltipProvider delayDuration={200}>
-				<div className="relative">
-					{copied ? (
-						<span
-							className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md border border-border/80 bg-background px-1.5 py-0.5 text-caption text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10"
-							role="status"
-							aria-live="polite"
-						>
-							{t("selection.copied")}
-						</span>
-					) : null}
-					<Tooltip>
-						<TooltipTrigger asChild>
-							<Button
-								type="button"
-								variant="ghost"
-								size="icon-sm"
-								aria-label={
-									copied ? t("selection.copied") : t("selection.copy")
-								}
-								onClick={handleCopy}
-							>
-								{copied ? (
-									<Check className="size-4 text-foreground" aria-hidden />
-								) : (
-									<Copy className="size-4" />
-								)}
-							</Button>
-						</TooltipTrigger>
-						{!copied ? (
-							<TooltipContent side="top">{t("selection.copy")}</TooltipContent>
-						) : null}
-					</Tooltip>
-				</div>
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Button

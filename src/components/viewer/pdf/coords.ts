@@ -67,6 +67,21 @@ export function rectBottomRightScreen(
 	};
 }
 
+/** Map a page-coordinate rect to a screen (client) rect in px. */
+export function rectToScreen(
+	pageEl: HTMLElement,
+	rect: Rect,
+	zoom: number,
+): { x: number; y: number; width: number; height: number } {
+	const box = pageEl.getBoundingClientRect();
+	return {
+		x: box.left + rect.origin.x * zoom,
+		y: box.top + rect.origin.y * zoom,
+		width: rect.size.width * zoom,
+		height: rect.size.height * zoom,
+	};
+}
+
 /**
  * Build a normalized {@link PdfAskAnchor} from an EmbedPDF text selection.
  * EmbedPDF reports rects in PDF page coordinates (points); dividing by the page

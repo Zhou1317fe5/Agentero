@@ -1,4 +1,6 @@
 import { createPortal } from "react-dom";
+import type { SelectionPulseRect } from "@/components/ui/selection-copy-pulse";
+import { SelectionCopyPulse } from "@/components/ui/selection-copy-pulse";
 import { AskPopover } from "@/components/viewer/pdf/cards/ask-popover";
 import {
 	type CitationPreviewImportMenu,
@@ -23,13 +25,14 @@ type PdfCardStackProps = {
 	selectionMenu: {
 		state: SelectionMenuState | null;
 		onHighlight: (color: HighlightColor) => void;
-		onCopy: () => void;
 		onAsk: () => void;
 		onAddToChat: () => void;
 		onTranslate: () => void;
-		/** Hide highlight / translate; keep Copy / Ask. */
+		/** Hide highlight / translate; keep Ask. */
 		readOnly?: boolean;
 	};
+	/** Transient screen rects for the auto-copy visual pulse overlay. */
+	copyPulseRects: SelectionPulseRect[] | null;
 	citationPreview: {
 		state: CitationPreviewState | null;
 		importMenu?: CitationPreviewImportMenu;
@@ -81,6 +84,7 @@ type PdfCardStackProps = {
  */
 export function PdfCardStack({
 	selectionMenu,
+	copyPulseRects,
 	citationPreview,
 	crossrefPreview,
 	cardScreen,
@@ -99,13 +103,14 @@ export function PdfCardStack({
 					screen={selectionMenu.state.screen}
 					bottomRight={selectionMenu.state.bottomRight}
 					onHighlight={selectionMenu.onHighlight}
-					onCopy={selectionMenu.onCopy}
 					onAsk={selectionMenu.onAsk}
 					onAddToChat={selectionMenu.onAddToChat}
 					onTranslate={selectionMenu.onTranslate}
 					readOnly={selectionMenu.readOnly}
 				/>
 			) : null}
+
+			{copyPulseRects ? <SelectionCopyPulse rects={copyPulseRects} /> : null}
 
 			{citationPreview.state ? (
 				<PdfCitationPreview

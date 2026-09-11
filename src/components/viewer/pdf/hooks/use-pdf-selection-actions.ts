@@ -70,7 +70,6 @@ export type PdfSelectionActions = {
 		},
 		comment: string,
 	) => void;
-	handleCopy: () => void;
 	handleMenuAsk: () => void;
 	handleMenuAddToChat: () => void;
 	handleMenuTranslate: () => void;
@@ -132,10 +131,6 @@ export function usePdfSelectionActions({
 		],
 	);
 
-	const handleCopy = useCallback(() => {
-		selectionCap?.copyToClipboard(docId);
-	}, [selectionCap, docId]);
-
 	const handleMenuAsk = useCallback(() => {
 		const menu = selectionMenuRef.current;
 		if (!menu) return;
@@ -179,7 +174,6 @@ export function usePdfSelectionActions({
 	return {
 		handleHighlight,
 		handleCommitSelectionNote,
-		handleCopy,
 		handleMenuAsk,
 		handleMenuAddToChat,
 		handleMenuTranslate,
