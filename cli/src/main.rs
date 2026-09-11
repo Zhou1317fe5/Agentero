@@ -205,11 +205,6 @@ enum Commands {
         #[command(subcommand)]
         cmd: commands::trash::TrashCmd,
     },
-    /// CLI-only configuration (not GUI settings).
-    Config {
-        #[command(subcommand)]
-        cmd: commands::config_cmd::ConfigCmd,
-    },
     /// Inspect Vault-local wikilinks.
     Wiki {
         #[command(subcommand)]
@@ -244,11 +239,6 @@ enum Commands {
         #[arg(long = "provider", value_name = "ID")]
         provider: Option<String>,
     },
-    /// Device-local activity log (XDG usage.sqlite).
-    Usage {
-        #[command(subcommand)]
-        cmd: commands::usage::UsageCmd,
-    },
     /// Plaza RSS / Atom subscriptions (XDG feeds.sqlite).
     Feed {
         #[command(subcommand)]
@@ -262,20 +252,6 @@ enum Commands {
         /// Local directory to open (absolute, relative, or `~`).
         #[arg(value_hint = ValueHint::DirPath)]
         path: PathBuf,
-    },
-    /// Generate shell completion script (bash / zsh / fish / powershell / elvish).
-    ///
-    /// Prints the script to stdout. `--install` writes it into the user
-    /// completion directory and does not edit shell rc files.
-    Completion {
-        /// Target shell.
-        shell: clap_complete::Shell,
-        /// Write the script to the user completion directory.
-        #[arg(long = "install")]
-        install: bool,
-        /// Command name to complete (`agentero` or `agentero-cli`).
-        #[arg(long = "bin-name", value_name = "NAME")]
-        bin_name: Option<String>,
     },
 }
 
@@ -333,33 +309,6 @@ fn main() -> StdExitCode {
     let cmd_name = command_label(&cli.command);
     let start = std::time::Instant::now();
     log::info!(target: "agentero::op", "op start {cmd_name}");
-
-    // Completion scripts must be raw stdout — never wrap in the JSON/text envelope.
-    if let Commands::Completion {
-        shell,
-        install,
-        bin_name,
-    } = cli.command
-    {
-        return match commands::completion::run(
-            shell,
-            install,
-            bin_name.as_deref(),
-            Cli::command(),
-            &globals,
-        ) {
-            Ok(None) => {
-                log::info!(
-                    target: "agentero::op",
-                    "op end {cmd_name} ok=true duration_ms={}",
-                    start.elapsed().as_millis()
-                );
-                StdExitCode::SUCCESS
-            }
-            Ok(Some(value)) => finish_ok(cmd_name, start, &globals, &value),
-            Err(err) => finish_err(cmd_name, start, &globals, err),
-        };
-    }
 
     let rt = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -436,16 +385,13 @@ fn command_label(cmd: &Commands) -> &'static str {
         Commands::Import { .. } => "cli.import",
         Commands::Export { .. } => "cli.export",
         Commands::Trash { .. } => "cli.trash",
-        Commands::Config { .. } => "cli.config",
         Commands::Wiki { .. } => "cli.wiki",
         Commands::Doctor { .. } => "cli.doctor",
         Commands::Layout { .. } => "cli.layout",
         Commands::Mark { .. } => "cli.mark",
         Commands::Translate { .. } => "cli.translate",
-        Commands::Usage { .. } => "cli.usage",
         Commands::Feed { .. } => "cli.feed",
         Commands::Open { .. } => "cli.open",
-        Commands::Completion { .. } => "cli.completion",
     }
 }
 
@@ -474,7 +420,6 @@ async fn run(command: Commands, globals: &GlobalOpts) -> Result<serde_json::Valu
         Commands::Import { cmd } => commands::import::run(cmd, globals).await,
         Commands::Export { cmd } => commands::export::run(cmd, globals).await,
         Commands::Trash { cmd } => commands::trash::run(cmd, globals),
-        Commands::Config { cmd } => commands::config_cmd::run(cmd, globals),
         Commands::Wiki { cmd } => commands::wiki::run(cmd, globals),
         Commands::Doctor { cmd } => commands::doctor::run(cmd, globals),
         Commands::Layout { cmd } => commands::layout::run(cmd, globals),
@@ -485,9 +430,7 @@ async fn run(command: Commands, globals: &GlobalOpts) -> Result<serde_json::Valu
             from,
             provider,
         } => commands::translate::run(&text, &to, &from, provider.as_deref(), globals).await,
-        Commands::Usage { cmd } => commands::usage::run(cmd, globals),
         Commands::Feed { cmd } => commands::feed::run(cmd, globals).await,
         Commands::Open { path } => commands::open::run(&path, globals),
-        Commands::Completion { .. } => unreachable!("handled before async runtime"),
     }
 }

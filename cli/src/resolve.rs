@@ -93,7 +93,7 @@ pub fn resolve_vault(globals: &GlobalOpts) -> Result<PathBuf, CliError> {
     }
 
     Err(CliError::vault_not_found(
-        "could not resolve vault (pass --vault, set AGENTERO_VAULT, cd into a vault, or config set default_vault)",
+        "could not resolve vault (pass --vault, set AGENTERO_VAULT, or cd into a vault)",
     ))
 }
 
