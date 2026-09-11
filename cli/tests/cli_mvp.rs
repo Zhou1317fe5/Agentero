@@ -584,7 +584,9 @@ fn paper_crud_catalog_only() {
         .assert()
         .success();
 
-    let delete = agentero()
+    // Delete moves the paper to the recycle bin (desktop can restore it).
+    // CLI no longer exposes trash management commands.
+    agentero()
         .args([
             "--vault",
             vault.to_str().unwrap(),
@@ -596,37 +598,6 @@ fn paper_crud_catalog_only() {
         .assert()
         .success();
     assert!(!paper.exists());
-    let delete: Value = serde_json::from_slice(&delete.get_output().stdout).unwrap();
-    let batch_id = delete["data"]["batchId"].as_str().unwrap();
-
-    let trash = agentero()
-        .args([
-            "--vault",
-            vault.to_str().unwrap(),
-            "trash",
-            "list",
-            "--json",
-        ])
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-    let trash: Value = serde_json::from_slice(&trash).unwrap();
-    let stored = trash["data"]["items"][0]["stored"].as_str().unwrap();
-    agentero()
-        .args([
-            "--vault",
-            vault.to_str().unwrap(),
-            "trash",
-            "restore",
-            batch_id,
-            stored,
-            "--json",
-        ])
-        .assert()
-        .success();
-    assert!(paper.join("NOTES.md").is_file());
 
     let list2 = agentero()
         .args([
@@ -642,31 +613,7 @@ fn paper_crud_catalog_only() {
         .stdout
         .clone();
     let v: Value = serde_json::from_slice(&list2).unwrap();
-    assert_eq!(v["data"].as_array().unwrap().len(), 1);
-
-    agentero()
-        .args([
-            "--vault",
-            vault.to_str().unwrap(),
-            "paper",
-            "delete",
-            "papers/demo",
-            "--json",
-        ])
-        .assert()
-        .success();
-    agentero()
-        .args([
-            "--vault",
-            vault.to_str().unwrap(),
-            "-y",
-            "trash",
-            "purge",
-            "--json",
-        ])
-        .assert()
-        .success();
-    assert!(!paper.exists());
+    assert_eq!(v["data"].as_array().unwrap().len(), 0);
 }
 
 #[test]
