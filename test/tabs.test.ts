@@ -20,6 +20,8 @@ import {
 	savePersistedTabs,
 	syncTabSeedsForPath,
 	tabHasNotesSplit,
+	tabIsPaperNotes,
+	tabNotesEligible,
 } from "@/lib/workspace/tabs";
 
 function makeTab(path: string, overrides: Partial<DocTab> = {}): DocTab {
@@ -448,6 +450,54 @@ describe("flat workspace helpers", () => {
 		expect(pane?.notesSeed).toBe("# hi");
 		expect(pane?.path).toBe("/vault/p/NOTES.md");
 		expect(pane?.title).toBe("Notes");
+	});
+
+	it("createNotesSplitPane works even when catalog metadata is missing", () => {
+		const tab = makeTab("/vault/p", {
+			kind: "paper",
+			mode: "pdf",
+			notesPath: "/vault/p/NOTES.md",
+			notesSeed: "# hi",
+			paperMeta: null,
+		});
+		const pane = createNotesSplitPane(tab);
+		expect(pane).not.toBeNull();
+		expect(pane?.paperMeta).toBeNull();
+		expect(pane?.path).toBe("/vault/p/NOTES.md");
+		expect(pane?.notesSeed).toBe("# hi");
+	});
+
+	it("tabIsPaperNotes recognizes a paper root or NOTES.md without catalog metadata", () => {
+		const notesTab = makeTab("/vault/p/NOTES.md", {
+			mode: "markdown",
+			notesPath: "/vault/p/NOTES.md",
+			paperMeta: null,
+		});
+		expect(tabIsPaperNotes(notesTab)).toBe(true);
+
+		const rootTab = makeTab("/vault/p", {
+			mode: "markdown",
+			notesPath: "/vault/p/NOTES.md",
+			paperMeta: null,
+		});
+		expect(tabIsPaperNotes(rootTab)).toBe(true);
+	});
+
+	it("tabNotesEligible accepts a paper body that has notesPath even without catalog metadata", () => {
+		const pdfBody = makeTab("/vault/p", {
+			kind: "paper",
+			mode: "pdf",
+			notesPath: "/vault/p/NOTES.md",
+			paperMeta: null,
+		});
+		expect(tabNotesEligible(pdfBody)).toBe(true);
+
+		const plainPdf = makeTab("/vault/plain.pdf", {
+			mode: "pdf",
+			notesPath: null,
+			paperMeta: null,
+		});
+		expect(tabNotesEligible(plainPdf)).toBe(false);
 	});
 
 	it("tabHasNotesSplit finds NOTES among open panels", () => {

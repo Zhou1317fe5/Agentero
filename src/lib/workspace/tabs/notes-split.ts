@@ -13,8 +13,8 @@ export function tabNotesEligible(tab: DocTab | null): boolean {
 	return (
 		tab.kind !== "library" &&
 		!isRemoteArxivPath(tab.path) &&
-		Boolean(tab.paperMeta) &&
-		(tab.mode === "pdf" || tab.mode === "html")
+		(tab.mode === "pdf" || tab.mode === "html") &&
+		Boolean(tab.paperMeta ?? tab.notesPath)
 	);
 }
 
@@ -28,7 +28,7 @@ export function isPaperContentTab(tab: DocTab | null): boolean {
 
 /** Center Markdown mode while a paper is open edits its NOTES.md live. */
 export function tabIsPaperNotes(tab: DocTab | null): boolean {
-	if (!tab?.paperMeta || tab.mode !== "markdown" || !tab.notesPath) {
+	if (tab?.mode !== "markdown" || !tab.notesPath) {
 		return false;
 	}
 	const tabPath = normalizeTabPath(tab.path);
@@ -120,7 +120,7 @@ export function paperReadingPlacements(
 }
 
 export function createNotesSplitPane(tab: DocTab): DocTab | null {
-	if (!tab.notesPath || !tab.paperMeta) return null;
+	if (!tab.notesPath) return null;
 	return {
 		...createPlaceholderTab(tab.notesPath, "markdown"),
 		kind: "file",
