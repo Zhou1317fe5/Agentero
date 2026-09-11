@@ -214,7 +214,10 @@ export async function handleExternalRename(
 	const fromRel = vaultRelativePath(root, rename.from);
 	const toRel = vaultRelativePath(root, rename.to);
 	if (!fromRel || !toRel || fromRel === toRel) {
-		notifyWarning(i18n.t("app:vault.externalRename.unverified"));
+		console.warn(
+			"[wiki] unverified external rename; links left unchanged",
+			rename,
+		);
 		return;
 	}
 	const fromAbs = joinVaultPath(root, fromRel);

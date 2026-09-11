@@ -155,7 +155,6 @@
 			"cancel": "Keep links unchanged",
 			"repaired": "Updated links in {{count}} Markdown file(s).",
 			"notRepaired": "The external rename was detected, but links were left unchanged because a safe repair could not be prepared.",
-			"unverified": "The file watcher did not provide a complete rename pair; links were left unchanged.",
 			"vaultChanged": "The active vault changed before the external rename repair could run.",
 			"failed": "Could not repair links after the external rename."
 		},

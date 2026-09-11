@@ -301,8 +301,14 @@ export default function App() {
 			}
 		},
 		onUnverifiedRename: (payload) => {
+			// Incomplete OS rename pairs cannot authorize link rewrites. Path-extension
+			// heuristics still run (md/pdf/images/dirs), but toasting every echo was
+			// noisy for ordinary saves — log only.
 			if (renameMayAffectWikiTargets(payload.paths)) {
-				notifyWarning(t("vault.externalRename.unverified"));
+				console.warn(
+					"[wiki] unverified external rename; links left unchanged",
+					payload.paths,
+				);
 			}
 		},
 	});
