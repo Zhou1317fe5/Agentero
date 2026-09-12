@@ -1,3 +1,4 @@
+import { AnimatePresence } from "motion/react";
 import { createPortal } from "react-dom";
 import { SelectionCopiedLabel } from "@/components/ui/selection-copied-label";
 import { AskPopover } from "@/components/viewer/pdf/cards/ask-popover";
@@ -142,51 +143,60 @@ export function PdfCardStack({
 				/>
 			) : null}
 
-			{ask.thread && cardScreen ? (
-				<AskPopover
-					thread={ask.thread}
-					paperTitle={ask.paperTitle}
-					paperLink={ask.paperLink}
-					screen={cardScreen}
-					preferRight={cardScreen.preferRight ?? true}
-					streaming={ask.streaming}
-					error={ask.error}
-					onSend={ask.onSend}
-					onResend={ask.onResend}
-					onHide={ask.onHide}
-					onDelete={ask.onDelete}
-					onPointerEnter={onCardHoverEnter}
-					onPointerLeave={onCardHoverLeave}
-					onStop={ask.onStop}
-				/>
-			) : null}
+			<AnimatePresence>
+				{ask.thread && cardScreen ? (
+					<AskPopover
+						key={`ask-${ask.thread.id}`}
+						thread={ask.thread}
+						paperTitle={ask.paperTitle}
+						paperLink={ask.paperLink}
+						screen={cardScreen}
+						preferRight={cardScreen.preferRight ?? true}
+						streaming={ask.streaming}
+						error={ask.error}
+						onSend={ask.onSend}
+						onResend={ask.onResend}
+						onHide={ask.onHide}
+						onDelete={ask.onDelete}
+						onPointerEnter={onCardHoverEnter}
+						onPointerLeave={onCardHoverLeave}
+						onStop={ask.onStop}
+					/>
+				) : null}
+			</AnimatePresence>
 
-			{translate.record && cardScreen ? (
-				<TranslateCard
-					screen={cardScreen}
-					preferRight={cardScreen.preferRight ?? false}
-					result={translate.record.result ?? ""}
-					streaming={translate.streaming}
-					error={translate.error ?? translate.record.error ?? null}
-					onOpenSettings={translate.onOpenSettings}
-					onHide={translate.onHide}
-					onDelete={translate.onDelete}
-					onPointerEnter={onCardHoverEnter}
-					onPointerLeave={onCardHoverLeave}
-				/>
-			) : null}
+			<AnimatePresence>
+				{translate.record && cardScreen ? (
+					<TranslateCard
+						key={`translate-${translate.record.id}`}
+						screen={cardScreen}
+						preferRight={cardScreen.preferRight ?? false}
+						result={translate.record.result ?? ""}
+						streaming={translate.streaming}
+						error={translate.error ?? translate.record.error ?? null}
+						onOpenSettings={translate.onOpenSettings}
+						onHide={translate.onHide}
+						onDelete={translate.onDelete}
+						onPointerEnter={onCardHoverEnter}
+						onPointerLeave={onCardHoverLeave}
+					/>
+				) : null}
+			</AnimatePresence>
 
-			{visual.trace && cardScreen ? (
-				<VisualTraceCard
-					trace={visual.trace}
-					screen={cardScreen}
-					preferRight={cardScreen.preferRight ?? true}
-					onHide={visual.onHide}
-					onDelete={visual.onDelete}
-					onPointerEnter={onCardHoverEnter}
-					onPointerLeave={onCardHoverLeave}
-				/>
-			) : null}
+			<AnimatePresence>
+				{visual.trace && cardScreen ? (
+					<VisualTraceCard
+						key={`visual-${visual.trace.id}`}
+						trace={visual.trace}
+						screen={cardScreen}
+						preferRight={cardScreen.preferRight ?? true}
+						onHide={visual.onHide}
+						onDelete={visual.onDelete}
+						onPointerEnter={onCardHoverEnter}
+						onPointerLeave={onCardHoverLeave}
+					/>
+				) : null}
+			</AnimatePresence>
 		</div>,
 		document.body,
 	);
