@@ -150,6 +150,8 @@ export function LayoutStep({
 					icon={<KeyRound className="size-5 text-muted-foreground" />}
 					title={t("layout.configureOwn")}
 					description={t("layout.configureOwnDesc")}
+					recommended
+					recommendedLabel={t("recommended")}
 					onClick={() => setMode("configure")}
 				/>
 				<ChoiceCard
