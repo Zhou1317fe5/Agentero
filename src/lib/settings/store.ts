@@ -353,6 +353,10 @@ function normalizePartial(
 	if (typeof parsed.autoOpenPaperNotes !== "boolean") {
 		merged.autoOpenPaperNotes = DEFAULT_SETTINGS.autoOpenPaperNotes;
 	}
+	if (typeof parsed.replaceCurrentTabOnOpenPaper !== "boolean") {
+		merged.replaceCurrentTabOnOpenPaper =
+			DEFAULT_SETTINGS.replaceCurrentTabOnOpenPaper;
+	}
 	if (
 		merged.autoUpdateInternalLinks !== "ask" &&
 		merged.autoUpdateInternalLinks !== "always"

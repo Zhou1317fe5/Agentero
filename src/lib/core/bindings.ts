@@ -1313,6 +1313,11 @@ export type AppSettings_Deserialize = {
 	 *  Default on; off opens only the PDF/HTML body.
 	 */
 	autoOpenPaperNotes?: boolean,
+	/**
+	 *  When opening a new paper, close the active tab instead of adding a new one.
+	 *  Default off; useful for users who prefer a single-paper-at-a-time workflow.
+	 */
+	replaceCurrentTabOnOpenPaper?: boolean,
 	autoUpdateInternalLinks?: string,
 	libraryColumns?: LibraryColumnPref[],
 	connectorEnabled?: boolean,
@@ -1391,6 +1396,11 @@ export type AppSettings_Serialize = {
 	 *  Default on; off opens only the PDF/HTML body.
 	 */
 	autoOpenPaperNotes: boolean,
+	/**
+	 *  When opening a new paper, close the active tab instead of adding a new one.
+	 *  Default off; useful for users who prefer a single-paper-at-a-time workflow.
+	 */
+	replaceCurrentTabOnOpenPaper: boolean,
 	autoUpdateInternalLinks: string,
 	libraryColumns: LibraryColumnPref[],
 	connectorEnabled: boolean,

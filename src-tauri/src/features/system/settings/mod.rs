@@ -99,6 +99,10 @@ pub struct AppSettings {
     /// Default on; off opens only the PDF/HTML body.
     #[serde(default = "default_true")]
     pub auto_open_paper_notes: bool,
+    /// When opening a new paper, close the active tab instead of adding a new one.
+    /// Default off; useful for users who prefer a single-paper-at-a-time workflow.
+    #[serde(default)]
+    pub replace_current_tab_on_open_paper: bool,
     #[serde(default = "default_auto_update_internal_links")]
     pub auto_update_internal_links: String,
     #[serde(default = "default_library_columns")]
@@ -327,6 +331,7 @@ impl Default for AppSettings {
             paper_tree_sort_mode: default_paper_tree_sort_mode(),
             paper_note_mode: default_paper_note_mode(),
             auto_open_paper_notes: default_true(),
+            replace_current_tab_on_open_paper: false,
             auto_update_internal_links: default_auto_update_internal_links(),
             library_columns: default_library_columns(),
             connector_enabled: false,

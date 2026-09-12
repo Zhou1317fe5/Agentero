@@ -86,6 +86,9 @@
 		"autoOpenPaperNotes": {
 			"label": "Open paper notes by default"
 		},
+		"replaceCurrentTabOnOpenPaper": {
+			"label": "Replace current tab when opening a paper"
+		},
 		"autoUpdateInternalLinks": {
 			"label": "Update internal links after external renames",
 			"ask": "Ask",

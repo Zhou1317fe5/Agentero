@@ -760,6 +760,12 @@ export function openPaperNotes(paperDir: string): void {
 export function openPaper(paperDir: string): void {
 	const abs = paperDir.replace(/\\/g, "/").replace(/\/+$/, "");
 	setTreeSelectedPath(abs);
+	if (loadSettings().replaceCurrentTabOnOpenPaper) {
+		const activeId = getActiveTabId();
+		if (activeId && !getTabs().some((t) => t.id === tabIdForPath(abs))) {
+			closeTab(activeId, { remember: false });
+		}
+	}
 	openTab(abs, { preferMode: "pdf" });
 }
 

@@ -86,6 +86,9 @@
 		"autoOpenPaperNotes": {
 			"label": "默认打开论文笔记"
 		},
+		"replaceCurrentTabOnOpenPaper": {
+			"label": "打开新论文时替换当前标签页"
+		},
 		"autoUpdateInternalLinks": {
 			"label": "外部改名后更新双链",
 			"ask": "询问",

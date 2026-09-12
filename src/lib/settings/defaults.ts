@@ -70,6 +70,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
 	autoUpdateInternalLinks: "ask",
 	paperNoteMode: "standard",
 	autoOpenPaperNotes: true,
+	replaceCurrentTabOnOpenPaper: false,
 	libraryColumns: DEFAULT_LIBRARY_COLUMNS.map((c) => ({ ...c })),
 	connectorEnabled: false,
 	connectorPort: 23119,
