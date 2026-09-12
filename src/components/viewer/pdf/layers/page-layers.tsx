@@ -29,6 +29,8 @@ import {
 	EMPTY_PINS,
 	PAGE_LAYER_STYLE,
 	PDF_BASE_LAYER_SCALE_CAP,
+	PDF_PRIVACY_HIDE_CLASS,
+	PDF_PRIVACY_ROOT_CLASS,
 	pdfRasterDpr,
 	pdfTileDpr,
 } from "@/components/viewer/pdf/constants";
@@ -205,6 +207,11 @@ export type PdfPageLayersProps = {
 	layout: PdfPageLayoutSlice;
 	mode: PdfPageModeSlice;
 	handlers: PdfPageHandlers;
+	/**
+	 * Privacy mode: fade out annotation / comment / translate overlays while
+	 * the window is unfocused (see `usePdfPrivacy`).
+	 */
+	hidden?: boolean;
 };
 
 type PageTranslateTabProps = {
@@ -251,6 +258,7 @@ const PageTranslateTab = memo(function PageTranslateTab({
 			className={cn(
 				"absolute top-3 left-0 z-[6] flex w-7 min-h-16 -translate-x-full flex-col items-center justify-center gap-1 rounded-l-lg border-r-0 px-1 py-2 font-medium text-xs text-foreground transition-colors duration-100 hover:bg-muted/80 active:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60",
 				PDF_CHROME_CHIP,
+				PDF_PRIVACY_HIDE_CLASS,
 				active && "border-primary/30 bg-primary/10 text-primary",
 			)}
 			aria-label={label}
@@ -288,6 +296,7 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 	layout,
 	mode,
 	handlers,
+	hidden = false,
 }: PdfPageLayersProps) {
 	const { t } = useTranslation("viewer");
 	const pdfDark = tone === "dark";
@@ -346,6 +355,7 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 			className={cn(
 				"relative overflow-visible rounded-sm shadow-sm ring-1",
 				PDF_PAPER_SHELL_CLASS[tone],
+				hidden && PDF_PRIVACY_ROOT_CLASS,
 			)}
 			style={{ width, height }}
 			{...{ [EMBED_PAGE_ATTR]: pageIndex }}
@@ -424,6 +434,7 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 					className={cn(
 						"absolute inset-0",
 						pdfDark && PDF_ANNOTATION_DARK_CLASS,
+						PDF_PRIVACY_HIDE_CLASS,
 					)}
 				>
 					<AnnotationLayer
@@ -446,23 +457,27 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 					running={pageTranslateState.running}
 					onToggle={handlers.onTogglePageLayoutTranslate}
 				/>
-				<CitationLinkLayer
-					links={marks.citationLinks.get(pageIndex) ?? EMPTY_CITATION_LINKS}
-					textLinks={marks.textLinks.get(pageIndex) ?? []}
-					pageWidthPt={width / zoomRef.current}
-					pageHeightPt={height / zoomRef.current}
-					label={t("pdf.linkAria")}
-					onActivate={handlers.onCitationActivate}
-					onTextActivate={handlers.onTextLinkActivate}
-					onHover={handlers.onCitationHover}
-				/>
-				<PdfRegionSelectLayer
-					active={mode.regionSelecting && !mode.visualCropPending}
-					label={t("pdfExplain.regionSelectionLabel", {
-						page: pageNumber,
-					})}
-					onSelect={(region) => handlers.onRegionSelect(pageNumber, region)}
-				/>
+				<div className={PDF_PRIVACY_HIDE_CLASS}>
+					<CitationLinkLayer
+						links={marks.citationLinks.get(pageIndex) ?? EMPTY_CITATION_LINKS}
+						textLinks={marks.textLinks.get(pageIndex) ?? []}
+						pageWidthPt={width / zoomRef.current}
+						pageHeightPt={height / zoomRef.current}
+						label={t("pdf.linkAria")}
+						onActivate={handlers.onCitationActivate}
+						onTextActivate={handlers.onTextLinkActivate}
+						onHover={handlers.onCitationHover}
+					/>
+				</div>
+				<div className={PDF_PRIVACY_HIDE_CLASS}>
+					<PdfRegionSelectLayer
+						active={mode.regionSelecting && !mode.visualCropPending}
+						label={t("pdfExplain.regionSelectionLabel", {
+							page: pageNumber,
+						})}
+						onSelect={(region) => handlers.onRegionSelect(pageNumber, region)}
+					/>
+				</div>
 				{/*
 				 * Debug Eye overlay: pre-merge detections (all kinds, no NMS),
 				 * score ≥ LAYOUT_SIDEBAR_MIN_SCORE (30%). Label = kind + conf.
@@ -478,7 +493,10 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 							return (
 								<div
 									key={`layout-box-${region.id}`}
-									className="pointer-events-none absolute z-[1] rounded-none border"
+									className={cn(
+										"pointer-events-none absolute z-[1] rounded-none border",
+										PDF_PRIVACY_HIDE_CLASS,
+									)}
 									style={{
 										left: `${region.bbox.x * 100}%`,
 										top: `${region.bbox.y * 100}%`,
@@ -503,12 +521,14 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 					: null}
 				{/* Bulk layout translate: progressive text overlays over body blocks. */}
 				{layoutTranslateOnPage && layoutTranslateOnPage.length > 0 ? (
-					<LayoutTranslateOverlay
-						items={layoutTranslateOnPage}
-						pageWidthPx={width}
-						pageHeightPx={height}
-						tone={tone}
-					/>
+					<div className={PDF_PRIVACY_HIDE_CLASS}>
+						<LayoutTranslateOverlay
+							items={layoutTranslateOnPage}
+							pageWidthPx={width}
+							pageHeightPx={height}
+							tone={tone}
+						/>
+					</div>
 				) : null}
 				{/*
 				 * Hit targets for post-merge figure/table/algorithm/formula.
@@ -535,7 +555,10 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 									})}
 									// Click crops in place; pointer cursor is reserved for
 									// navigation (citation links).
-									className="group absolute z-[2] cursor-crosshair rounded-none border-0 bg-transparent p-0 transition-colors hover:bg-primary/5"
+									className={cn(
+										"group absolute z-[2] cursor-crosshair rounded-none border-0 bg-transparent p-0 transition-colors hover:bg-primary/5",
+										PDF_PRIVACY_HIDE_CLASS,
+									)}
 									style={{
 										left: `${region.bbox.x * 100}%`,
 										top: `${region.bbox.y * 100}%`,
@@ -592,7 +615,10 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 					? activeAskOnPage.rects.map((rect) => (
 							<div
 								key={`${activeAskOnPage.id}-source-${rect.x}-${rect.y}-${rect.w}-${rect.h}`}
-								className="pointer-events-auto absolute z-[1] rounded-[2px] bg-amber-300/45 dark:bg-amber-400/35"
+								className={cn(
+									"pointer-events-auto absolute z-[1] rounded-[2px] bg-amber-300/45 dark:bg-amber-400/35",
+									PDF_PRIVACY_HIDE_CLASS,
+								)}
 								style={{
 									left: `${rect.x * 100}%`,
 									top: `${rect.y * 100}%`,
@@ -609,7 +635,10 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 					? activeTranslateOnPage.rects.map((rect) => (
 							<div
 								key={`${activeTranslateOnPage.id}-source-${rect.x}-${rect.y}-${rect.w}-${rect.h}`}
-								className="pointer-events-auto absolute z-[1] rounded-[2px] bg-yellow-300/40 dark:bg-yellow-400/35"
+								className={cn(
+									"pointer-events-auto absolute z-[1] rounded-[2px] bg-yellow-300/40 dark:bg-yellow-400/35",
+									PDF_PRIVACY_HIDE_CLASS,
+								)}
 								style={{
 									left: `${rect.x * 100}%`,
 									top: `${rect.y * 100}%`,
@@ -625,7 +654,10 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 				{/* Open visual draft / mark: show the framed source region on-page. */}
 				{visualDraftRegionOnPage ? (
 					<div
-						className="pointer-events-none absolute z-[2] rounded-none border border-primary/40 bg-primary/5 shadow-[0_0_0_1px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.5)]"
+						className={cn(
+							"pointer-events-none absolute z-[2] rounded-none border border-primary/40 bg-primary/5 shadow-[0_0_0_1px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.5)]",
+							PDF_PRIVACY_HIDE_CLASS,
+						)}
 						style={{
 							left: `${visualDraftRegionOnPage.x * 100}%`,
 							top: `${visualDraftRegionOnPage.y * 100}%`,
@@ -641,7 +673,10 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 				 */}
 				{visualCropRegionOnPage ? (
 					<div
-						className="pointer-events-none absolute z-[3] flex items-center justify-center rounded-none border border-primary/50 bg-primary/10 shadow-[0_0_0_1px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.5)]"
+						className={cn(
+							"pointer-events-none absolute z-[3] flex items-center justify-center rounded-none border border-primary/50 bg-primary/10 shadow-[0_0_0_1px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.5)]",
+							PDF_PRIVACY_HIDE_CLASS,
+						)}
 						style={{
 							left: `${visualCropRegionOnPage.x * 100}%`,
 							top: `${visualCropRegionOnPage.y * 100}%`,
@@ -660,7 +695,10 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 				{/* Figures sidebar selection: EmbedPDF layout hue for kind. */}
 				{focusedLayoutOnPage ? (
 					<div
-						className="pointer-events-none absolute z-[2] rounded-none border shadow-[0_0_0_1px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.5)]"
+						className={cn(
+							"pointer-events-none absolute z-[2] rounded-none border shadow-[0_0_0_1px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.5)]",
+							PDF_PRIVACY_HIDE_CLASS,
+						)}
 						style={{
 							left: `${focusedLayoutOnPage.bbox.x * 100}%`,
 							top: `${focusedLayoutOnPage.bbox.y * 100}%`,
@@ -679,7 +717,10 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 					? activeVisualOnPage.rects.map((rect) => (
 							<div
 								key={`${activeVisualOnPage.id}-region-${rect.x}-${rect.y}-${rect.w}-${rect.h}`}
-								className="pointer-events-none absolute z-[2] rounded-none border border-primary/40 bg-primary/5 shadow-[0_0_0_1px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.5)]"
+								className={cn(
+									"pointer-events-none absolute z-[2] rounded-none border border-primary/40 bg-primary/5 shadow-[0_0_0_1px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.5)]",
+									PDF_PRIVACY_HIDE_CLASS,
+								)}
 								style={{
 									left: `${rect.x * 100}%`,
 									top: `${rect.y * 100}%`,
@@ -696,7 +737,10 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 					? marks.focusedVisualRegion.rects.map((rect) => (
 							<div
 								key={`comment-focus-${rect.x}-${rect.y}-${rect.w}-${rect.h}`}
-								className="pointer-events-none absolute z-[2] rounded-none border border-primary/40 bg-primary/5 shadow-[0_0_0_1px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.5)]"
+								className={cn(
+									"pointer-events-none absolute z-[2] rounded-none border border-primary/40 bg-primary/5 shadow-[0_0_0_1px_rgba(255,255,255,0.55)] dark:shadow-[0_0_0_1px_rgba(0,0,0,0.5)]",
+									PDF_PRIVACY_HIDE_CLASS,
+								)}
 								style={{
 									left: `${rect.x * 100}%`,
 									top: `${rect.y * 100}%`,
@@ -707,13 +751,15 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 							/>
 						))
 					: null}
-				<SelectionGutter
-					items={pins}
-					activeId={marks.activeCardId}
-					onOpen={handlers.onOpenPin}
-					onEnter={handlers.onCardHoverEnter}
-					onLeave={handlers.onCardHoverLeave}
-				/>
+				<div className={PDF_PRIVACY_HIDE_CLASS}>
+					<SelectionGutter
+						items={pins}
+						activeId={marks.activeCardId}
+						onOpen={handlers.onOpenPin}
+						onEnter={handlers.onCardHoverEnter}
+						onLeave={handlers.onCardHoverLeave}
+					/>
+				</div>
 				{/* Emphasis overlay for the hovered or edited comment-rail card. */}
 				{emphasizedComment
 					? emphasizedComment.rects.map((rect) => (
@@ -721,6 +767,7 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 								key={`comment-hover-${emphasizedComment.id}-${rect.x}-${rect.y}-${rect.w}-${rect.h}`}
 								className={cn(
 									"pointer-events-none absolute z-[4] rounded-[1px]",
+									PDF_PRIVACY_HIDE_CLASS,
 									emphasizedComment.kind === "visual"
 										? cn(
 												"box-border",
@@ -758,7 +805,10 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 						<button
 							key={`comment-hover-hit-${comment.id}-${rect.x}-${rect.y}-${rect.w}-${rect.h}`}
 							type="button"
-							className="absolute z-[3] cursor-pointer bg-transparent"
+							className={cn(
+								"absolute z-[3] cursor-pointer bg-transparent",
+								PDF_PRIVACY_HIDE_CLASS,
+							)}
 							style={{
 								left: `${rect.x * 100}%`,
 								top: `${rect.y * 100}%`,
@@ -779,29 +829,32 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 						/>
 					)),
 				)}
-				<CommentCardsLayer
-					items={comments}
-					pageWidthPx={width}
-					pageHeightPx={height}
-					editingId={marks.editingCommentId}
-					wikiTarget={marks.commentWikiTarget}
-					hoveredId={marks.hoveredCommentId}
-					selectionDraft={selectionDraftOnPage}
-					onCommitSelectionComment={handlers.onCommitSelectionComment}
-					onSelectionCommentActiveChange={
-						handlers.onSelectionCommentActiveChange
-					}
-					onDismissSelectionComment={handlers.onDismissSelectionComment}
-					onOpen={handlers.onOpenComment}
-					onSave={handlers.onSaveComment}
-					onCancel={handlers.onCancelComment}
-					onDelete={handlers.onDeleteComment}
-					onCopyLink={handlers.onCopyCommentLink}
-					onCopyEmbed={handlers.onCopyCommentEmbed}
-					onAddToChat={handlers.onAddCommentToChat}
-					onHover={handlers.onHoverComment}
-					onLeave={handlers.onLeaveComment}
-				/>
+				<div className={PDF_PRIVACY_HIDE_CLASS}>
+					<CommentCardsLayer
+						items={comments}
+						pageWidthPx={width}
+						pageHeightPx={height}
+						tone={tone}
+						editingId={marks.editingCommentId}
+						wikiTarget={marks.commentWikiTarget}
+						hoveredId={marks.hoveredCommentId}
+						selectionDraft={selectionDraftOnPage}
+						onCommitSelectionComment={handlers.onCommitSelectionComment}
+						onSelectionCommentActiveChange={
+							handlers.onSelectionCommentActiveChange
+						}
+						onDismissSelectionComment={handlers.onDismissSelectionComment}
+						onOpen={handlers.onOpenComment}
+						onSave={handlers.onSaveComment}
+						onCancel={handlers.onCancelComment}
+						onDelete={handlers.onDeleteComment}
+						onCopyLink={handlers.onCopyCommentLink}
+						onCopyEmbed={handlers.onCopyCommentEmbed}
+						onAddToChat={handlers.onAddCommentToChat}
+						onHover={handlers.onHoverComment}
+						onLeave={handlers.onLeaveComment}
+					/>
+				</div>
 			</PagePointerProvider>
 		</div>
 	);

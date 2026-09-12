@@ -56,6 +56,18 @@ export const PDF_PAPER_SWATCH_CLASS: Record<PdfPaperTone, string> = {
 	dark: "bg-zinc-800",
 };
 
+/**
+ * Hover connector stroke on the comment rail — ink against the PDF paper,
+ * independent of the app chrome theme.
+ */
+export const PDF_COMMENT_CONNECTOR_STROKE_CLASS: Record<PdfPaperTone, string> =
+	{
+		white: "stroke-black/80",
+		sepia: "stroke-black/75",
+		green: "stroke-black/75",
+		dark: "stroke-white/80",
+	};
+
 export function isPdfPaperTone(value: unknown): value is PdfPaperTone {
 	return (
 		typeof value === "string" && PDF_PAPER_TONES.includes(value as PdfPaperTone)

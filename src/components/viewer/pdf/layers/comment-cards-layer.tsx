@@ -35,6 +35,10 @@ import {
 	DEFAULT_HIGHLIGHT_COLOR,
 	swatchColorClass,
 } from "@/lib/pdf/highlight/palette";
+import {
+	PDF_COMMENT_CONNECTOR_STROKE_CLASS,
+	type PdfPaperTone,
+} from "@/lib/pdf/page-theme";
 
 /** Card width in CSS px — also the gutter width reserved on the viewport. */
 export const COMMENT_CARD_WIDTH_PX = 224;
@@ -71,6 +75,8 @@ type CommentCardsLayerProps = {
 	pageWidthPx: number;
 	/** Rendered page height in px (zoom-aware). */
 	pageHeightPx: number;
+	/** PDF paper tone — connector ink follows paper, not app chrome. */
+	tone: PdfPaperTone;
 	/** Id of the card currently being edited in place; null when idle. */
 	editingId: string | null;
 	/** Resolvable wiki target; copy buttons only render when set. */
@@ -771,6 +777,7 @@ export const CommentCardsLayer = memo(function CommentCardsLayer({
 	items,
 	pageWidthPx,
 	pageHeightPx,
+	tone,
 	editingId,
 	wikiTarget,
 	hoveredId,
@@ -823,7 +830,7 @@ export const CommentCardsLayer = memo(function CommentCardsLayer({
 					<path
 						d={connectorD}
 						fill="none"
-						className="stroke-foreground/90 dark:stroke-foreground"
+						className={PDF_COMMENT_CONNECTOR_STROKE_CLASS[tone]}
 						strokeWidth={1.5}
 						strokeLinecap="round"
 						strokeLinejoin="round"
