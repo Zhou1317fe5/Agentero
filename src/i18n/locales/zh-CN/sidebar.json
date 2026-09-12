@@ -121,7 +121,7 @@
 		"colCitations": "被引量",
 		"heatmapTooltip": "{{total}} 次 · 高亮 {{highlights}} · 对话 {{asks}} · 翻译 {{translates}}",
 		"sortBy": "按{{column}}排序",
-		"copyHint": "单击复制{{label}}",
+		"copyHint": "双击复制{{label}}",
 		"copied": "已复制{{label}}",
 		"copyFailed": "无法复制到剪贴板",
 		"count": "共 {{formatted}} 篇",
