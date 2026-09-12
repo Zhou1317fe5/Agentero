@@ -106,6 +106,16 @@ impl std::error::Error for CliError {}
 
 impl From<agentero_core::error::AppError> for CliError {
     fn from(err: agentero_core::error::AppError) -> Self {
+        use agentero_core::error::AppError;
+        // Preserve stable domain codes (layout_index_missing, usage, …).
+        if let AppError::Domain { code, message } = &err {
+            let exit = if *code == "usage" {
+                ExitCode::Usage
+            } else {
+                ExitCode::Business
+            };
+            return Self::new(code, message.clone(), exit);
+        }
         let msg = err.to_string();
         let lower = msg.to_ascii_lowercase();
         if lower.contains("not found") {

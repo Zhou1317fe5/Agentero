@@ -176,6 +176,11 @@ enum Commands {
         #[command(subcommand)]
         cmd: commands::vault::VaultCmd,
     },
+    /// Introspect curated machine ops (agent schema). Omit id for the full index.
+    Describe {
+        /// Op id (`paper.list`) or MCP tool name (`paper_list`).
+        op: Option<String>,
+    },
     /// Paper catalog operations.
     Paper {
         #[command(subcommand)]
@@ -353,6 +358,7 @@ fn command_label(cmd: &Commands) -> &'static str {
             commands::vault::VaultCmd::Create { .. } => "cli.vault.create",
             commands::vault::VaultCmd::List => "cli.vault.list",
         },
+        Commands::Describe { .. } => "cli.describe",
         Commands::Paper { .. } => "cli.paper",
         Commands::Import { .. } => "cli.import",
         Commands::Export { .. } => "cli.export",
@@ -384,6 +390,7 @@ fn resolve_format(cli: &Cli) -> OutputFormat {
 async fn run(command: Commands, globals: &GlobalOpts) -> Result<serde_json::Value, CliError> {
     match command {
         Commands::Vault { cmd } => commands::vault::run(cmd, globals).await,
+        Commands::Describe { op } => commands::describe::run(op.as_deref(), globals),
         Commands::Paper { cmd } => commands::paper::run(cmd, globals).await,
         Commands::Import { cmd } => commands::import::run(cmd, globals).await,
         Commands::Export { cmd } => commands::export::run(cmd, globals).await,

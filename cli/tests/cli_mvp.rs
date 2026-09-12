@@ -114,6 +114,59 @@ fn vault_create_and_list() {
 }
 
 #[test]
+fn describe_lists_ops_and_resolves_one() {
+    let listed = agentero()
+        .args(["describe", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let v: Value = serde_json::from_slice(&listed).unwrap();
+    assert_eq!(v["ok"], true);
+    let ops = v["data"]["ops"].as_array().unwrap();
+    assert!(ops.iter().any(|o| o["id"] == "paper.list"));
+    assert!(ops.iter().any(|o| o["id"] == "layout.list"));
+    assert!(ops.iter().any(|o| o["mcpTool"] == "paper_list"));
+
+    let one = agentero()
+        .args(["describe", "paper.list", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let v: Value = serde_json::from_slice(&one).unwrap();
+    assert_eq!(v["ok"], true);
+    assert_eq!(v["data"]["id"], "paper.list");
+    assert_eq!(v["data"]["cli"], "agentero paper list");
+    assert!(v["data"]["input"].is_object());
+    assert!(v["data"]["output"].is_object());
+    assert!(!v["data"]["examples"].as_array().unwrap().is_empty());
+
+    let by_mcp = agentero()
+        .args(["describe", "paper_list", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let v: Value = serde_json::from_slice(&by_mcp).unwrap();
+    assert_eq!(v["data"]["id"], "paper.list");
+
+    let bad = agentero()
+        .args(["describe", "no.such.op", "--json"])
+        .assert()
+        .failure()
+        .get_output()
+        .stdout
+        .clone();
+    let v: Value = serde_json::from_slice(&bad).unwrap();
+    assert_eq!(v["ok"], false);
+    assert_eq!(v["error"]["code"], "usage");
+}
+
+#[test]
 fn paper_list_empty_and_set_read_not_found() {
     let tmp = tempdir().unwrap();
     let vault = tmp.path().join("v");
