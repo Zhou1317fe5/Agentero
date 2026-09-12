@@ -241,6 +241,7 @@ export function PdfToolbar({
 									size="icon-xs"
 									variant={layoutTranslateActive ? "secondary" : "ghost"}
 									className="shrink-0 self-center"
+									data-full-text-translate
 									aria-label={layoutTranslateLabel}
 									aria-pressed={layoutTranslateActive}
 									disabled={!engine}

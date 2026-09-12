@@ -61,6 +61,8 @@ async function startTour(t: TFunction<"onboarding">): Promise<void> {
 
 	const candidates = [
 		{ selector: "[data-vault-sidebar]", key: "sidebar", side: "right" },
+		{ selector: "[data-library-row]", key: "library", side: "right" },
+		{ selector: "[data-cool-papers]", key: "coolPapers", side: "right" },
 		{ selector: "[data-magic-wand]", key: "magicWand", side: "bottom" },
 		{ selector: ".agentero-dockview", key: "workspace", side: "top" },
 		{ selector: "[data-agent-panel]", key: "agent", side: "left" },

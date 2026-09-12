@@ -266,7 +266,11 @@ export function LibraryRow({
 }: LibraryRowProps) {
 	const { t } = useTranslation("sidebar");
 	return (
-		<FileTreeFile path={LIBRARY_VIRTUAL_PATH} name={t("papersLibrary.title")}>
+		<FileTreeFile
+			path={LIBRARY_VIRTUAL_PATH}
+			name={t("papersLibrary.title")}
+			data-library-row
+		>
 			<FileTreeIcon>
 				<Library className="size-4 text-muted-foreground" />
 			</FileTreeIcon>
@@ -351,7 +355,11 @@ export function PlazaSourceRow({ source }: { source: PlazaSource }) {
 	const Icon = PLAZA_SOURCE_ICONS[source.icon];
 	const label = plazaSourceLabel(source);
 	return (
-		<FileTreeFile path={source.path} name={label}>
+		<FileTreeFile
+			path={source.path}
+			name={label}
+			{...(source.id === "cool-papers" ? { "data-cool-papers": "" } : {})}
+		>
 			<FileTreeIcon>
 				<Icon className="size-4" />
 			</FileTreeIcon>
