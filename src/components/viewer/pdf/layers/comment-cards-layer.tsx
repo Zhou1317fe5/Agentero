@@ -30,6 +30,7 @@ import type {
 } from "@/components/viewer/pdf/types";
 import { useImeGuard } from "@/hooks/use-ime-guard";
 import { cn } from "@/lib/core/utils";
+import type { PdfAskNormalizedRect } from "@/lib/pdf/ask/types";
 import {
 	DEFAULT_HIGHLIGHT_COLOR,
 	swatchColorClass,
@@ -66,6 +67,8 @@ const EDIT_MAX_COMMENT_LINES = 12;
 type CommentCardsLayerProps = {
 	/** Comments for this page only. */
 	items: PageAnnotationComment[];
+	/** Rendered page width in px (zoom-aware); used by the hover connector. */
+	pageWidthPx: number;
 	/** Rendered page height in px (zoom-aware). */
 	pageHeightPx: number;
 	/** Id of the card currently being edited in place; null when idle. */
@@ -178,6 +181,45 @@ export function layoutCommentCards(
 	}
 
 	return laid;
+}
+
+/**
+ * Word / Feishu-style orthogonal leader from the highlight envelope's right
+ * edge to the laid-out card's left midpoint, folding at the page's right edge.
+ * Returns an SVG path `d` in page-pixel coordinates, or null when undrawable.
+ */
+export function commentConnectorPath(
+	rects: readonly PdfAskNormalizedRect[],
+	placement: CommentCardPlacement,
+	pageWidthPx: number,
+	pageHeightPx: number,
+): string | null {
+	if (rects.length === 0 || pageWidthPx <= 0 || pageHeightPx <= 0) return null;
+
+	let minY = Number.POSITIVE_INFINITY;
+	let maxY = Number.NEGATIVE_INFINITY;
+	let maxRight = Number.NEGATIVE_INFINITY;
+	for (const rect of rects) {
+		minY = Math.min(minY, rect.y);
+		maxY = Math.max(maxY, rect.y + rect.h);
+		maxRight = Math.max(maxRight, rect.x + rect.w);
+	}
+	if (
+		!Number.isFinite(minY) ||
+		!Number.isFinite(maxY) ||
+		!Number.isFinite(maxRight)
+	) {
+		return null;
+	}
+
+	const round = (n: number) => Math.round(n * 100) / 100;
+	const x1 = round(maxRight * pageWidthPx);
+	const y1 = round(((minY + maxY) / 2) * pageHeightPx);
+	const xMid = round(pageWidthPx);
+	const x2 = round(pageWidthPx + COMMENT_CARD_GAP_PX);
+	const y2 = round(placement.topPx + placement.heightPx / 2);
+
+	return `M ${x1} ${y1} L ${xMid} ${y1} L ${xMid} ${y2} L ${x2} ${y2}`;
 }
 
 function autosizeTextarea(el: HTMLTextAreaElement | null) {
@@ -727,6 +769,7 @@ const SelectionCommentAffordance = memo(function SelectionCommentAffordance({
 
 export const CommentCardsLayer = memo(function CommentCardsLayer({
 	items,
+	pageWidthPx,
 	pageHeightPx,
 	editingId,
 	wikiTarget,
@@ -749,9 +792,45 @@ export const CommentCardsLayer = memo(function CommentCardsLayer({
 
 	const laid = layoutCommentCards(items, pageHeightPx, editingId);
 	const byId = new Map(items.map((item) => [item.id, item]));
+	const hoveredPlacement = hoveredId
+		? (laid.find((pos) => pos.id === hoveredId) ?? null)
+		: null;
+	const hoveredItem = hoveredId ? (byId.get(hoveredId) ?? null) : null;
+	const connectorD =
+		hoveredItem && hoveredPlacement
+			? commentConnectorPath(
+					hoveredItem.rects,
+					hoveredPlacement,
+					pageWidthPx,
+					pageHeightPx,
+				)
+			: null;
+	const svgWidth = pageWidthPx + COMMENT_CARD_GAP_PX + COMMENT_CARD_WIDTH_PX;
 
 	return (
 		<div className="pointer-events-none absolute inset-0 z-[5] overflow-visible">
+			{connectorD ? (
+				// Decorative hover leader; announced via the card / hit-target labels.
+				// biome-ignore lint/a11y/noSvgWithoutTitle: purely visual connector
+				<svg
+					aria-hidden
+					focusable="false"
+					className="pointer-events-none absolute top-0 left-0 overflow-visible"
+					width={svgWidth}
+					height={pageHeightPx}
+					viewBox={`0 0 ${svgWidth} ${pageHeightPx}`}
+				>
+					<path
+						d={connectorD}
+						fill="none"
+						className="stroke-muted-foreground/45"
+						strokeWidth={1}
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						vectorEffect="non-scaling-stroke"
+					/>
+				</svg>
+			) : null}
 			<TooltipProvider delayDuration={200}>
 				{laid.map((pos) => {
 					const item = byId.get(pos.id);

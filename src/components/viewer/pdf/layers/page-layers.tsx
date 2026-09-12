@@ -747,35 +747,41 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 						))
 					: null}
 				{/*
-				 * Bidirectional hover for visual annotations: hovering the page region
-				 * highlights the right-rail card and shows the border (#396).
+				 * Bidirectional hover for rail comments: hovering the page region
+				 * (text highlight or visual crop) emphasizes the card and draws the
+				 * connector. Visual regions keep the existing click-to-edit path (#396);
+				 * text highlights with a note do the same, while plain highlights
+				 * (not in `comments`) still use EmbedPDF's annotation menu.
 				 */}
-				{comments
-					.filter((comment) => comment.kind === "visual")
-					.map((comment) =>
-						comment.rects.map((rect) => (
-							<button
-								key={`visual-hover-${comment.id}-${rect.x}-${rect.y}-${rect.w}-${rect.h}`}
-								type="button"
-								className="absolute z-[3] cursor-pointer bg-transparent"
-								style={{
-									left: `${rect.x * 100}%`,
-									top: `${rect.y * 100}%`,
-									width: `${rect.w * 100}%`,
-									height: `${rect.h * 100}%`,
-								}}
-								aria-label={t("pdfExplain.visualAnnotation")}
-								onMouseEnter={() => handlers.onHoverComment(comment)}
-								onMouseLeave={handlers.onLeaveComment}
-								onClick={(event) => {
-									event.stopPropagation();
-									handlers.onOpenComment(comment);
-								}}
-							/>
-						)),
-					)}
+				{comments.map((comment) =>
+					comment.rects.map((rect) => (
+						<button
+							key={`comment-hover-hit-${comment.id}-${rect.x}-${rect.y}-${rect.w}-${rect.h}`}
+							type="button"
+							className="absolute z-[3] cursor-pointer bg-transparent"
+							style={{
+								left: `${rect.x * 100}%`,
+								top: `${rect.y * 100}%`,
+								width: `${rect.w * 100}%`,
+								height: `${rect.h * 100}%`,
+							}}
+							aria-label={
+								comment.kind === "visual"
+									? t("pdfExplain.visualAnnotation")
+									: t("annotations.editorLabel")
+							}
+							onMouseEnter={() => handlers.onHoverComment(comment)}
+							onMouseLeave={handlers.onLeaveComment}
+							onClick={(event) => {
+								event.stopPropagation();
+								handlers.onOpenComment(comment);
+							}}
+						/>
+					)),
+				)}
 				<CommentCardsLayer
 					items={comments}
+					pageWidthPx={width}
 					pageHeightPx={height}
 					editingId={marks.editingCommentId}
 					wikiTarget={marks.commentWikiTarget}
