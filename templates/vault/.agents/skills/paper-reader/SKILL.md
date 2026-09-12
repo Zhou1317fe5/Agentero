@@ -144,8 +144,8 @@ Use wikilinks to connect this paper to knowledge that is already present in the
 Vault. A link is a navigable relationship, not decoration for every technical
 term.
 
-- Before adding a link, confirm its target exists with `agentero tree --json`,
-  `agentero paper list --json`, or direct Vault file inspection.
+- Before adding a link, confirm its target exists with `agentero paper list --json`
+  or direct Vault file inspection.
 - Link a cataloged paper to its note with a canonical Vault-relative target,
   for example `[[papers/nlp/1706.03762/NOTES|Attention Is All You Need]]`.
 - Link an existing concept note by path, for example

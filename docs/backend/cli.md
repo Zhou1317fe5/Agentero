@@ -17,7 +17,6 @@ Headless Vault / Catalog / Wiki 接口；**不含** BYOA / paper-reader。
 |---|---|
 | `open` | 在桌面 App 打开本地目录为 Vault（`agentero open <PATH>`；简写 `agentero <PATH>`） |
 | `vault` | create / list 等 |
-| `tree` | 列树 |
 | `paper` | list/get、tag list/set/add/rm、move、download/parse… |
 | `import` | 标识符入库 |
 | `export` | 导出 |

@@ -697,28 +697,6 @@ fn paper_list_json_slim_by_default_fields_and_full() {
 }
 
 #[test]
-fn tree_and_vault_resolve_from_cwd() {
-    let tmp = tempdir().unwrap();
-    let vault = tmp.path().join("v");
-    create_vault(&vault);
-    fs::write(vault.join("notes").join("a.md"), "hi").unwrap();
-
-    agentero()
-        .current_dir(&vault)
-        .args(["tree", "--json"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("notes"));
-
-    agentero()
-        .current_dir(&vault)
-        .args(["vault", "list", "--json"])
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("\"ok\":true"));
-}
-
-#[test]
 fn paper_move_updates_filesystem_and_catalog() {
     let tmp = tempdir().unwrap();
     let vault = tmp.path().join("v");

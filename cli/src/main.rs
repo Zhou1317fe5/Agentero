@@ -176,15 +176,6 @@ enum Commands {
         #[command(subcommand)]
         cmd: commands::vault::VaultCmd,
     },
-    /// List vault-relative file tree.
-    Tree {
-        /// Subpath under vault (default: root).
-        #[arg(value_hint = ValueHint::AnyPath)]
-        path: Option<String>,
-        /// Max depth (default 3; -1 = unlimited).
-        #[arg(long = "depth", default_value = "3")]
-        depth: i32,
-    },
     /// Paper catalog operations.
     Paper {
         #[command(subcommand)]
@@ -362,7 +353,6 @@ fn command_label(cmd: &Commands) -> &'static str {
             commands::vault::VaultCmd::Create { .. } => "cli.vault.create",
             commands::vault::VaultCmd::List => "cli.vault.list",
         },
-        Commands::Tree { .. } => "cli.tree",
         Commands::Paper { .. } => "cli.paper",
         Commands::Import { .. } => "cli.import",
         Commands::Export { .. } => "cli.export",
@@ -394,7 +384,6 @@ fn resolve_format(cli: &Cli) -> OutputFormat {
 async fn run(command: Commands, globals: &GlobalOpts) -> Result<serde_json::Value, CliError> {
     match command {
         Commands::Vault { cmd } => commands::vault::run(cmd, globals).await,
-        Commands::Tree { path, depth } => commands::tree::run(path.as_deref(), depth, globals),
         Commands::Paper { cmd } => commands::paper::run(cmd, globals).await,
         Commands::Import { cmd } => commands::import::run(cmd, globals).await,
         Commands::Export { cmd } => commands::export::run(cmd, globals).await,

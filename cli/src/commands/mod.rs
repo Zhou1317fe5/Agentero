@@ -6,5 +6,4 @@ pub mod mark;
 pub mod open;
 pub mod paper;
 pub mod translate;
-pub mod tree;
 pub mod vault;
