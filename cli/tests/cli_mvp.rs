@@ -124,16 +124,24 @@ fn vault_create_which_info_check() {
     assert_eq!(v["ok"], true);
     assert_eq!(v["data"]["counts"]["papers"], 0);
 
-    agentero()
-        .args([
-            "--vault",
-            vault.to_str().unwrap(),
-            "vault",
-            "check",
-            "--json",
-        ])
+    let list = agentero()
+        .env("HOME", &home)
+        .args(["vault", "list", "--json"])
         .assert()
-        .success();
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let v: Value = serde_json::from_slice(&list).unwrap();
+    assert_eq!(v["ok"], true);
+    let vaults = v["data"]["vaults"].as_array().unwrap();
+    assert!(
+        vaults.iter().any(|entry| entry["path"]
+            .as_str()
+            .unwrap()
+            .contains("v")),
+        "vault list should contain the newly created vault"
+    );
 }
 
 #[test]
