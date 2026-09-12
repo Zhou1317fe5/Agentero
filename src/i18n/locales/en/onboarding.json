@@ -96,6 +96,10 @@
 			"title": "One-click import",
 			"desc": "Paste a DOI, arXiv ID or link; metadata, PDF and LaTeX source are fetched automatically. {{magicWandShortcut}} opens it anytime."
 		},
+		"readPaper": {
+			"title": "Read & take notes",
+			"desc": "Click the lightning bolt on any paper to open it with the PDF on the left and NOTES.md on the right, ready for highlights and annotations."
+		},
 		"workspace": {
 			"title": "Split-screen reading",
 			"desc": "Papers open with the PDF on the left and notes on the right. Select text to highlight, annotate, translate or ask; the toolbar also offers full-text translation."

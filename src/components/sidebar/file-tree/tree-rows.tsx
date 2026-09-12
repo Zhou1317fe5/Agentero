@@ -179,6 +179,7 @@ export function PaperTreeRow({
 									variant="ghost"
 									size="icon-xs"
 									className="size-5"
+									data-read-paper
 									aria-label={t("fileTree.readPaper")}
 									disabled={rowBusy}
 									onClick={(e) => {

@@ -96,6 +96,10 @@
 			"title": "魔棒一键入库",
 			"desc": "粘贴 DOI、arXiv ID 或链接，自动抓取元数据、下载 PDF 与 LaTeX 源码。{{magicWandShortcut}} 随时唤起。"
 		},
+		"readPaper": {
+			"title": "阅读并记笔记",
+			"desc": "任意论文旁的闪电按钮会打开分屏：左侧 PDF，右侧 NOTES.md，可直接高亮批注、写入笔记。"
+		},
 		"workspace": {
 			"title": "分屏精读",
 			"desc": "打开论文默认左 PDF、右笔记分屏，划词即可高亮、批注、翻译或提问；工具栏还提供全文翻译。"
