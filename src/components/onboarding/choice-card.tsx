@@ -1,13 +1,15 @@
 import { cn } from "@/lib/core/utils";
 
-/** Big onboarding action card (icon + title), used across wizard steps. */
+/** Big onboarding action card (icon + title + optional description), used across wizard steps. */
 export function ChoiceCard({
 	icon,
 	title,
+	description,
 	onClick,
 }: {
 	icon: React.ReactNode;
 	title: string;
+	description?: string;
 	onClick: () => void;
 }) {
 	return (
@@ -21,7 +23,14 @@ export function ChoiceCard({
 			<div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted">
 				{icon}
 			</div>
-			<p className="font-medium text-sm">{title}</p>
+			<div className="space-y-1">
+				<p className="font-medium text-sm">{title}</p>
+				{description ? (
+					<p className="line-clamp-2 text-muted-foreground text-xs leading-snug">
+						{description}
+					</p>
+				) : null}
+			</div>
 		</button>
 	);
 }

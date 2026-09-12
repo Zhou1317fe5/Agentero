@@ -149,11 +149,13 @@ export function LayoutStep({
 				<ChoiceCard
 					icon={<KeyRound className="size-5 text-muted-foreground" />}
 					title={t("layout.configureOwn")}
+					description={t("layout.configureOwnDesc")}
 					onClick={() => setMode("configure")}
 				/>
 				<ChoiceCard
 					icon={<Sparkles className="size-5 text-muted-foreground" />}
 					title={t("layout.useDefault")}
+					description={t("layout.useDefaultDesc")}
 					onClick={useSystemDefault}
 				/>
 			</div>
