@@ -17,7 +17,6 @@ import {
 } from "@/hooks/use-app-stores";
 import { useNativeSelectAllGuard } from "@/hooks/use-native-select-all-guard";
 import { applyAgentSessionHandoffOnce } from "@/lib/agent/agent-session-store";
-import { normalizeAgentSourcePath } from "@/lib/agent/sources";
 import { toVaultRelative } from "@/lib/core/path";
 import { isMacOS, isTauri } from "@/lib/core/tauri";
 import { toSafeDisposer } from "@/lib/core/tauri-events";
@@ -58,7 +57,7 @@ import { joinVaultPath } from "@/lib/vault";
 import { openRecentVault } from "@/lib/vault/actions";
 import { refreshTree } from "@/lib/vault/store";
 import { rebuildWikiAndNotify } from "@/lib/wiki/store";
-import { openGraphPath } from "@/lib/workspace/actions";
+import { openCitation } from "@/lib/workspace/actions";
 
 const AgentPanel = lazy(() =>
 	import("@/components/agent/agent-panel").then((m) => ({
@@ -109,17 +108,7 @@ function viewTitleKey(
 }
 
 function handleAgentOpenSource(source: string): void {
-	const trimmed = normalizeAgentSourcePath(source);
-	if (!trimmed) return;
-	if (/^https?:\/\//i.test(trimmed)) {
-		void import("@tauri-apps/plugin-opener")
-			.then(({ openUrl }) => openUrl(trimmed))
-			.catch(() => {
-				window.open(trimmed, "_blank", "noopener,noreferrer");
-			});
-		return;
-	}
-	openGraphPath(trimmed);
+	openCitation(source);
 }
 
 function FeatureAnnotations({

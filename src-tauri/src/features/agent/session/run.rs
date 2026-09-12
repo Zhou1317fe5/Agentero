@@ -20,7 +20,7 @@ use crate::features::agent::models::{
     AgentDescriptor, AgentFailedEvent, AgentResultPayload, AgentStreamEvent, AgentStreamKind,
     AgentTemplate, PromptImage,
 };
-use crate::features::agent::prompt::envelope::{build_prompt, extract_sources};
+use crate::features::agent::prompt::envelope::build_prompt;
 use crate::features::agent::prompt::skills::{
     load_skill_instructions, skill_activation_prefix, skill_mention_style,
 };
@@ -790,7 +790,7 @@ impl RunOnceContext {
             .lock()
             .map(|g| g.clone())
             .unwrap_or_default();
-        let sources = extract_sources(&content);
+        let sources = Vec::new();
         let payload = AgentResultPayload {
             session_id: self.session_id.clone(),
             message_id: self.message_id.clone(),

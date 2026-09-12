@@ -1,7 +1,7 @@
 use crate::core::error::AppError;
 pub(crate) use crate::core::process::windows_shell_path as simplified_agent_cwd;
 use crate::features::agent::models::{AgentDescriptor, AgentResultPayload};
-use crate::features::agent::prompt::envelope::extract_sources;
+
 use crate::features::agent::registry::discovery::{login_shell_env, path_entries};
 use agent_client_protocol::schema::v1::{
     ClientCapabilities, ElicitationCapabilities, ElicitationFormCapabilities, EnvVariable,
@@ -341,7 +341,7 @@ pub(crate) fn cancelled_payload(
     AgentResultPayload {
         session_id,
         message_id,
-        sources: extract_sources(&content),
+        sources: Vec::new(),
         content,
         reasoning: (!reasoning.is_empty()).then_some(reasoning),
         stop_reason: Some("cancelled".to_string()),

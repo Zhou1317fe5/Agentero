@@ -7,6 +7,8 @@
 
 import i18n from "@/i18n";
 import { notePaperFocus, track } from "@/lib/activity";
+import type { CitationTarget } from "@/lib/agent/api";
+import { resolvePdfCitation } from "@/lib/agent/api";
 import { errorText } from "@/lib/core/error";
 import { notifyError, notifyUndo, notifyWarning } from "@/lib/core/notify";
 import { closeTopOverlay } from "@/lib/core/overlay-stack";
@@ -822,6 +824,102 @@ export function openGraphPath(rel: string): void {
 		}
 		openVaultRel(clean);
 	})();
+}
+
+/** Wait for the PDF handle registration after openPaper, then jump to a layout region. */
+function scheduleCitationJump(paperAbs: string, target: CitationTarget): void {
+	const tabId = tabIdForPath(paperAbs);
+	let unsubscribe: (() => void) | null = null;
+	let timeoutId: number | null = null;
+	let finished = false;
+
+	const finish = () => {
+		if (finished) return false;
+		finished = true;
+		unsubscribe?.();
+		if (timeoutId !== null) window.clearTimeout(timeoutId);
+		return true;
+	};
+
+	const jump = (handle: PdfViewerHandle) => {
+		if (!finish()) return;
+		handle.scrollToLayoutRegion({
+			id: target.regionId,
+			pageIndex: target.pageIndex,
+			bbox: target.bbox,
+		});
+	};
+
+	const tryJump = () => {
+		const handle = pdfHandleFor(tabId);
+		if (handle) jump(handle);
+	};
+
+	tryJump();
+	if (finished) return;
+	unsubscribe = subscribePdfHandles(tryJump);
+	timeoutId = window.setTimeout(() => {
+		finish();
+	}, 2000);
+}
+
+/**
+ * Open a citation link from agent output.
+ *
+ * Plain vault paths open as documents. Links that point at a paper file and
+ * carry a `#section=`, `#figure=`, `#page=`, or `#region=` fragment resolve
+ * the fragment on the Host and jump the PDF viewer to the cited location.
+ */
+export function openCitation(source: string): void {
+	const trimmed = source.trim();
+	if (!trimmed) return;
+	if (/^https?:\/\//i.test(trimmed)) {
+		void import("@tauri-apps/plugin-opener")
+			.then(({ openUrl }) => openUrl(trimmed))
+			.catch(() => {
+				window.open(trimmed, "_blank", "noopener,noreferrer");
+			});
+		return;
+	}
+
+	const fragmentIndex = trimmed.indexOf("#");
+	const path = fragmentIndex >= 0 ? trimmed.slice(0, fragmentIndex) : trimmed;
+	const fragment = fragmentIndex >= 0 ? trimmed.slice(fragmentIndex + 1) : "";
+	if (!fragment) {
+		openGraphPath(path);
+		return;
+	}
+
+	const vaultPath = getVaultPath();
+	if (!vaultPath) {
+		notifyError(i18n.t("app:errors.openVaultForGraph"));
+		return;
+	}
+
+	const clean = normalizeVaultRel(path);
+	const full = joinVaultPath(vaultPath, clean);
+	const paperAbs =
+		paperDirFromPath(full, vaultStore.getState().paperFolders) ?? null;
+
+	if (!paperAbs) {
+		// Best-effort: if the path itself is a paper folder, open it.
+		void (async () => {
+			if (await detectPaperDirectory(full)) {
+				openPaper(full);
+				void resolvePdfCitation(vaultPath, trimmed)
+					.then((target) => scheduleCitationJump(full, target))
+					.catch(() => {});
+				return;
+			}
+			openGraphPath(path);
+		})();
+		return;
+	}
+
+	openPaper(paperAbs);
+	void resolvePdfCitation(vaultPath, trimmed)
+		.then((target) => scheduleCitationJump(paperAbs, target))
+		.catch(() => {});
 }
 
 let wikiNavigationIntentId = 0;

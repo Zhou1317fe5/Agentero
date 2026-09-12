@@ -28,13 +28,18 @@ pub fn build_prompt(
 
     let skill_hint = skill_follow_hint(skill_style, skill_ids);
 
+    let citation_directive = "Cite sources inline with Markdown links, e.g. \
+        `([Section 2.3](papers/<id>/PAPER.md#section=2.3))` or \
+        `([Figure 1](papers/<id>/<id>.pdf#figure=1))`. Prefer vault-relative paths; \
+        for web pages use `([domain](https://...))`. Do not end answers with a separate `## Sources` block.";
+
     let system = match workflow {
         "summary" => {
             format!(
                 "You are helping with a research vault. Summarize the target paper using \
                  progressive disclosure: AGENTS.md → papers/<id>/NOTES.md → marks/ → \
                  PAPER.md → source/ (there is usually no root PAPERS.md; paper list lives in the app catalog). \
-                 Keep [[wikilinks]]. End with a `## Sources` list of Vault-relative paths you read.{skill_hint}"
+                 Keep [[wikilinks]]. {citation_directive}{skill_hint}"
             )
         }
         "paper_reader" => {
@@ -43,26 +48,26 @@ pub fn build_prompt(
                 "You are running the Agentero paper-reader workflow. {skill_line} \
                  Target is a paper folder under papers/. Prefer TeX under source/, else PAPER.md, \
                  else local PDF. Write structured lecture notes into that paper's NOTES.md. Keep [[wikilinks]]. \
-                 End with `## Sources` of Vault-relative paths you read."
+                 {citation_directive}"
             )
         }
         "qa" => {
             format!(
                 "You are answering questions about a local research vault. Read only what you need \
                  (AGENTS.md → papers/*/NOTES.md → …; root PAPERS.md is optional export only). \
-                 Cite local paths. End with `## Sources`.{skill_hint}"
+                 {citation_directive}{skill_hint}"
             )
         }
         "related_work" => {
             format!(
                 "Draft a Related Work section from local papers in this Vault. Prefer each paper's NOTES.md \
-                 under papers/; open PAPER.md/source only when needed. Keep [[wikilinks]] and end with `## Sources`.{skill_hint}"
+                 under papers/; open PAPER.md/source only when needed. Keep [[wikilinks]]. {citation_directive}{skill_hint}"
             )
         }
         _ => {
             format!(
                 "You are an assistant working inside a Agentero research Vault (cwd is the vault root). \
-                 Prefer progressive disclosure of local Markdown. End substantial answers with `## Sources`.{skill_hint}"
+                 Prefer progressive disclosure of local Markdown. {citation_directive}{skill_hint}"
             )
         }
     };

@@ -14,7 +14,7 @@ use crate::features::agent::models::{
     AcpHistoryLine, AcpHistoryPart, AcpHistoryTool, AcpListSessionsResult, AcpLoadSessionResult,
     AcpSessionInfo, AgentDescriptor, AgentPlanEntry,
 };
-use crate::features::agent::prompt::envelope::extract_sources;
+
 use agent_client_protocol::schema::v1::{
     ListSessionsRequest, LoadSessionRequest, RequestPermissionRequest, SessionId,
     SessionNotification, SessionUpdate,
@@ -375,7 +375,7 @@ impl ReplayBuilder {
                 out.push(AcpHistoryLine {
                     id,
                     kind: "agent".to_string(),
-                    sources: extract_sources(&text),
+                    sources: Vec::new(),
                     text,
                     reasoning: (!reasoning.is_empty()).then_some(reasoning),
                     parts: line.parts,
@@ -644,7 +644,7 @@ mod replay_builder_tests {
     }
 
     #[test]
-    fn agent_turns_recover_sources_from_replayed_text() {
+    fn agent_turns_no_longer_extract_sources_from_replayed_text() {
         let mut b = ReplayBuilder::default();
         b.push_agent_chunk(
             false,
@@ -653,7 +653,7 @@ mod replay_builder_tests {
         );
 
         let (lines, _) = b.finish();
-        assert_eq!(lines[0].sources, vec!["papers/a/NOTES.md".to_string()]);
+        assert!(lines[0].sources.is_empty());
     }
 
     #[test]

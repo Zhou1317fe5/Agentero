@@ -151,6 +151,16 @@ export type AgentResultPayload = {
 	providerSessionId?: string | null;
 };
 
+export type CitationTarget = {
+	paperPath: string;
+	path: string;
+	fragment: string;
+	pageIndex: number;
+	bbox: { x: number; y: number; w: number; h: number };
+	title?: string | null;
+	regionId: string;
+};
+
 export type AgentStreamKind = "message" | "thought";
 
 export type AgentStreamEvent = {
@@ -701,6 +711,17 @@ export async function warmAgent(request: {
 			}),
 		AGENT_CALL_OPTS,
 	);
+}
+
+/** Resolve an inline citation link to PDF page/bbox coordinates. */
+export async function resolvePdfCitation(
+	vaultPath: string,
+	source: string,
+): Promise<CitationTarget> {
+	return (await callApiResult(
+		() => commands.agentResolveCitation(vaultPath, source),
+		AGENT_CALL_OPTS,
+	)) as CitationTarget;
 }
 
 export function listenAgentStream(

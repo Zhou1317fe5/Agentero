@@ -28,7 +28,7 @@ pub struct LayoutIndexItem {
     pub layout_region_id: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct Bbox {
     pub x: f64,
     pub y: f64,
