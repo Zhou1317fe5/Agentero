@@ -44,6 +44,7 @@ import {
 	ZoomMode,
 	ZoomPluginPackage,
 } from "@embedpdf/plugin-zoom/react";
+import { LayoutGroup } from "motion/react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useStore } from "zustand";
@@ -1523,99 +1524,101 @@ function PdfViewerInner({
 				/>
 			)}
 
-			<DockviewViewport
-				documentId={docId}
-				hostRef={hostRef}
-				rightGutter={translationOnly ? 0 : COMMENT_RAIL_WIDTH_PX}
-				className="agentero-scroll-both min-h-0 min-w-0 flex-1"
-			>
-				<WheelZoomHandler docId={docId} />
-				<PanDragHandler
-					active={isActive}
+			<LayoutGroup>
+				<DockviewViewport
+					documentId={docId}
 					hostRef={hostRef}
-					allowLeftDrag={!translationOnly && !regionSelecting}
-				/>
-				<ActiveCardScrollSync
-					active={Boolean(activeCard) || Boolean(selectionMenu)}
-					onScroll={rePlaceFloatingOnScroll}
-				/>
-				{/* Ctrl+wheel and trackpad pinch are handled by WheelZoomHandler (WebKit
-				    pinch arrives as GestureEvents, not ctrl+wheel); EmbedPDF's built-in
-				    wheel zoom is disabled so steps stay discrete and coalesced, and
-				    its enablePinch only covers touch devices. */}
-				<ZoomGestureWrapper documentId={docId} enableWheel={false}>
-					<GlobalPointerProvider documentId={docId}>
-						<Scroller documentId={docId} renderPage={renderPage} />
-					</GlobalPointerProvider>
-				</ZoomGestureWrapper>
-			</DockviewViewport>
+					rightGutter={translationOnly ? 0 : COMMENT_RAIL_WIDTH_PX}
+					className="agentero-scroll-both min-h-0 min-w-0 flex-1"
+				>
+					<WheelZoomHandler docId={docId} />
+					<PanDragHandler
+						active={isActive}
+						hostRef={hostRef}
+						allowLeftDrag={!translationOnly && !regionSelecting}
+					/>
+					<ActiveCardScrollSync
+						active={Boolean(activeCard) || Boolean(selectionMenu)}
+						onScroll={rePlaceFloatingOnScroll}
+					/>
+					{/* Ctrl+wheel and trackpad pinch are handled by WheelZoomHandler (WebKit
+					    pinch arrives as GestureEvents, not ctrl+wheel); EmbedPDF's built-in
+					    wheel zoom is disabled so steps stay discrete and coalesced, and
+					    its enablePinch only covers touch devices. */}
+					<ZoomGestureWrapper documentId={docId} enableWheel={false}>
+						<GlobalPointerProvider documentId={docId}>
+							<Scroller documentId={docId} renderPage={renderPage} />
+						</GlobalPointerProvider>
+					</ZoomGestureWrapper>
+				</DockviewViewport>
 
-			{!translationOnly && (
-				<PdfCardStack
-					hidden={privacyHidden}
-					selectionMenu={{
-						state: selectionMenu,
-						onHighlight: handleHighlight,
-						onAsk: handleMenuAsk,
-						onAddToChat: handleMenuAddToChat,
-						onTranslate: handleMenuTranslate,
-						readOnly: isRemotePaper,
-					}}
-					copiedLabelPos={copiedLabelPos}
-					citationPreview={{
-						state: citationPreview,
-						importMenu: citationImport
-							? {
-									folders: citationImport.folders,
-									lastImportParentDir: citationImport.lastImportParentDir,
-									importingId: citationImport.importingId,
-									onImport: citationImport.importCitation,
-									onOpenChange: (open) =>
-										open ? markCitationHoverEnter() : scheduleCitationHide(),
-									remotePaper: isRemotePaper,
-								}
-							: undefined,
-						onHoverEnter: markCitationHoverEnter,
-						onHoverLeave: scheduleCitationHide,
-					}}
-					crossrefPreview={{
-						state: crossrefPreview,
-						onHoverEnter: markCrossrefHoverEnter,
-						onHoverLeave: scheduleCrossrefHide,
-					}}
-					cardScreen={cardScreen}
-					onCardHoverEnter={markCardHoverEnter}
-					onCardHoverLeave={scheduleHoverHide}
-					ask={{
-						thread: activeThread,
-						paperTitle,
-						paperLink,
-						streaming,
-						error: askError,
-						onSend: sendAskQuestion,
-						onResend: resendAskQuestion,
-						onHide: hideAskThread,
-						onDelete: deleteAskThread,
-						onStop: stopAskStreaming,
-					}}
-					translate={{
-						record: activeTranslate,
-						streaming: translateStreaming,
-						error: translateError,
-						onOpenSettings: openTranslateSettings,
-						onHide: hideActiveCard,
-						onDelete: deleteTranslateCard,
-					}}
-					visual={{
-						trace: activeVisualTrace,
-						onHide: hideActiveCard,
-						onDelete: () => {
-							if (activeVisualTrace)
-								deleteVisualTraceById(activeVisualTrace.id);
-						},
-					}}
-				/>
-			)}
+				{!translationOnly && (
+					<PdfCardStack
+						hidden={privacyHidden}
+						selectionMenu={{
+							state: selectionMenu,
+							onHighlight: handleHighlight,
+							onAsk: handleMenuAsk,
+							onAddToChat: handleMenuAddToChat,
+							onTranslate: handleMenuTranslate,
+							readOnly: isRemotePaper,
+						}}
+						copiedLabelPos={copiedLabelPos}
+						citationPreview={{
+							state: citationPreview,
+							importMenu: citationImport
+								? {
+										folders: citationImport.folders,
+										lastImportParentDir: citationImport.lastImportParentDir,
+										importingId: citationImport.importingId,
+										onImport: citationImport.importCitation,
+										onOpenChange: (open) =>
+											open ? markCitationHoverEnter() : scheduleCitationHide(),
+										remotePaper: isRemotePaper,
+									}
+								: undefined,
+							onHoverEnter: markCitationHoverEnter,
+							onHoverLeave: scheduleCitationHide,
+						}}
+						crossrefPreview={{
+							state: crossrefPreview,
+							onHoverEnter: markCrossrefHoverEnter,
+							onHoverLeave: scheduleCrossrefHide,
+						}}
+						cardScreen={cardScreen}
+						onCardHoverEnter={markCardHoverEnter}
+						onCardHoverLeave={scheduleHoverHide}
+						ask={{
+							thread: activeThread,
+							paperTitle,
+							paperLink,
+							streaming,
+							error: askError,
+							onSend: sendAskQuestion,
+							onResend: resendAskQuestion,
+							onHide: hideAskThread,
+							onDelete: deleteAskThread,
+							onStop: stopAskStreaming,
+						}}
+						translate={{
+							record: activeTranslate,
+							streaming: translateStreaming,
+							error: translateError,
+							onOpenSettings: openTranslateSettings,
+							onHide: hideActiveCard,
+							onDelete: deleteTranslateCard,
+						}}
+						visual={{
+							trace: activeVisualTrace,
+							onHide: hideActiveCard,
+							onDelete: () => {
+								if (activeVisualTrace)
+									deleteVisualTraceById(activeVisualTrace.id);
+							},
+						}}
+					/>
+				)}
+			</LayoutGroup>
 
 			{!translationOnly && (
 				<PdfBottomBar

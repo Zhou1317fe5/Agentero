@@ -119,7 +119,7 @@ export function placeSelectionCard(
 	if (trackPin) {
 		// Content-sized cards: follow the pin; shrink maxHeight near edges
 		// instead of pre-shifting top by the full preferred height.
-		let top = screen.y - 8;
+		let top = screen.y;
 		if (top < edge) top = edge;
 		let maxHeight = Math.min(preferredMaxH, viewportCap, vh - edge - top);
 		if (
@@ -135,9 +135,9 @@ export function placeSelectionCard(
 	}
 
 	// Plan top against the largest height so expand does not re-anchor.
-	// Keep the card top near the pin; only slide up when it would overflow.
+	// Keep the card top flush with the pin so it appears to grow out of it.
 	const plannedMaxH = Math.min(planHeight, viewportCap);
-	let top = screen.y - 8;
+	let top = screen.y;
 	if (top + plannedMaxH > vh - edge) {
 		top = vh - edge - plannedMaxH;
 	}
@@ -195,6 +195,8 @@ type SelectionCardProps = {
 	preferRight?: boolean;
 	/** Gap between the anchor and the card edge (default 4). Pass 0 to make the card flush with a gutter pin. */
 	gap?: number;
+	/** Shared layout id with the gutter pin so the card morphs out of the pin. */
+	layoutId?: string;
 	title: string;
 	icon: LucideIcon;
 	/** Header trailing icon buttons (close / hide / delete …). */
@@ -230,6 +232,7 @@ export function SelectionCard({
 	bodyScroll = true,
 	preferRight = true,
 	gap = 4,
+	layoutId,
 	title,
 	icon: Icon,
 	actions,
@@ -253,12 +256,6 @@ export function SelectionCard({
 		preferRight,
 		gap,
 	});
-	// The gutter pin sits on the side the card opens toward. Reveal the card
-	// from that 24×24 corner so the pin appears to expand right/down (or left/down)
-	// into the full card without a gap.
-	const originClip = preferRight
-		? "inset(0 calc(100% - 24px) calc(100% - 24px) 0)"
-		: "inset(0 0 calc(100% - 24px) calc(100% - 24px))";
 	const transition = reduceMotion
 		? { duration: 0 }
 		: { type: "spring" as const, bounce: 0.15, duration: 0.35 };
@@ -289,9 +286,10 @@ export function SelectionCard({
 				PDF_FLOAT_CARD,
 				className,
 			)}
-			initial={{ clipPath: originClip }}
-			animate={{ clipPath: "inset(0 0 0 0)" }}
-			exit={{ clipPath: originClip }}
+			layoutId={layoutId}
+			initial={false}
+			animate={{ opacity: 1 }}
+			exit={{ opacity: 0 }}
 			transition={transition}
 			style={{
 				left,

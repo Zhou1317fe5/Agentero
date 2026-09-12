@@ -161,6 +161,7 @@ export function PdfCardStack({
 						onPointerEnter={onCardHoverEnter}
 						onPointerLeave={onCardHoverLeave}
 						onStop={ask.onStop}
+						layoutId={`pdf-pin-${ask.thread.id}`}
 					/>
 				) : null}
 			</AnimatePresence>
@@ -179,6 +180,7 @@ export function PdfCardStack({
 						onDelete={translate.onDelete}
 						onPointerEnter={onCardHoverEnter}
 						onPointerLeave={onCardHoverLeave}
+						layoutId={`pdf-pin-${translate.record.id}`}
 					/>
 				) : null}
 			</AnimatePresence>
@@ -194,6 +196,7 @@ export function PdfCardStack({
 						onDelete={visual.onDelete}
 						onPointerEnter={onCardHoverEnter}
 						onPointerLeave={onCardHoverLeave}
+						layoutId={`pdf-pin-${visual.trace.id}`}
 					/>
 				) : null}
 			</AnimatePresence>

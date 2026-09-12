@@ -4,6 +4,7 @@ import {
 	MessageSquareText,
 	ScanSearch,
 } from "lucide-react";
+import { motion } from "motion/react";
 import { memo } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/core/utils";
@@ -151,8 +152,9 @@ export const SelectionGutter = memo(function SelectionGutter({
 							transform: wrapTransform,
 						}}
 					>
-						<button
+						<motion.button
 							type="button"
+							layoutId={`pdf-pin-${item.id}`}
 							className={cn(
 								"flex size-6 items-center justify-center rounded-md border shadow-sm transition-[opacity,background-color] duration-150 hover:scale-110",
 								item.kind === "ask" && item.ended
@@ -185,7 +187,7 @@ export const SelectionGutter = memo(function SelectionGutter({
 							}}
 						>
 							<Icon className="size-3.5" strokeWidth={2} />
-						</button>
+						</motion.button>
 					</div>
 				);
 			})}

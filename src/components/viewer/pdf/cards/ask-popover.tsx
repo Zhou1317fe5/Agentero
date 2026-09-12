@@ -62,6 +62,8 @@ type AskPopoverProps = {
 	onPointerEnter?: () => void;
 	/** Schedule delayed hide when leaving dialog */
 	onPointerLeave?: () => void;
+	/** Shared layout id with the gutter pin so the card morphs out of the pin. */
+	layoutId?: string;
 };
 
 export function AskPopover({
@@ -80,6 +82,7 @@ export function AskPopover({
 	onStop,
 	onPointerEnter,
 	onPointerLeave,
+	layoutId,
 }: AskPopoverProps) {
 	const { t } = useTranslation("viewer");
 	const title = threadTitle(thread, t("pdfAsk.newTitle"));
@@ -192,6 +195,7 @@ export function AskPopover({
 			trackPin
 			preferRight={preferRight}
 			gap={0}
+			layoutId={layoutId}
 			title={title}
 			icon={MessageSquareIcon}
 			ariaLabel={t("pdfAsk.dialogLabel")}
