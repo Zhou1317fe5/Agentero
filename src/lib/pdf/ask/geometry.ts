@@ -24,12 +24,11 @@ export function popoverScreenPoint(
 	const box = pageEl.getBoundingClientRect();
 	if (pin) {
 		const preferRight = pin.side !== "left";
-		// Align the card's top-left/right corner with the pin's visual corner
-		// so the card appears to grow directly out of the gutter pin.
-		// The pin is a 24px pill centered on (pin.x, pin.y).
+		// Small outward nudge so the card edge clears the pin pill.
+		const nudge = preferRight ? 4 : -4;
 		return {
-			x: box.left + pin.x * box.width,
-			y: box.top + pin.y * box.height - 12,
+			x: box.left + pin.x * box.width + nudge,
+			y: box.top + pin.y * box.height - 8,
 			preferRight,
 		};
 	}

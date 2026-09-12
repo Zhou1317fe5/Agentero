@@ -21,8 +21,6 @@ type TranslateCardProps = {
 	onDelete: () => void;
 	onPointerEnter?: () => void;
 	onPointerLeave?: () => void;
-	/** Shared layout id with the gutter pin so the card morphs out of the pin. */
-	layoutId?: string;
 };
 
 /**
@@ -41,7 +39,6 @@ export function TranslateCard({
 	onDelete,
 	onPointerEnter,
 	onPointerLeave,
-	layoutId,
 }: TranslateCardProps) {
 	const { t } = useTranslation("viewer");
 	const showResult = result.trim().length > 0;
@@ -55,8 +52,6 @@ export function TranslateCard({
 			// Content-sized: follow the selection pin while the PDF scrolls.
 			trackPin
 			preferRight={preferRight}
-			gap={0}
-			layoutId={layoutId}
 			title={t("selection.translateTitle")}
 			icon={Languages}
 			ariaLive="polite"

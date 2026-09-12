@@ -130,13 +130,22 @@ export function usePdfCards({
 			} else {
 				return false;
 			}
-			// Open the card on the same side as the gutter pin so it appears to
-			// grow directly out of the pin (right pin → expand right/down;
-			// left pin → expand left/down).
+			// Same side choice as the gutter pin (page text → may flip left).
+			// Translate cards always open on the left of the selection so they
+			// don't cover the reading column; the gutter pin side is unchanged.
 			const pageText = pageTextMapRef.current.get(page - 1);
 			const pin = pinFromRects(rects, pageText);
 			const pageEl = pageElByIndex(host, page - 1);
-			const pt = popoverScreenPoint(pageEl, rects, pin);
+			const cardPin =
+				card.kind === "translate"
+					? (() => {
+							let minX = 1;
+							for (const r of rects) minX = Math.min(minX, r.x);
+							const leftX = Math.min(0.98, Math.max(0.02, minX - 0.014));
+							return { x: leftX, y: pin.y, side: "left" as const };
+						})()
+					: pin;
+			const pt = popoverScreenPoint(pageEl, rects, cardPin);
 			// Target page not in the virtual DOM yet — keep cardScreen null so the
 			// modal stays hidden until onScroll / rAF retry can place it for real.
 			if (!pt) return false;

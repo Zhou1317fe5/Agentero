@@ -22,8 +22,6 @@ type VisualTraceCardProps = {
 	onDelete: () => void;
 	onPointerEnter?: () => void;
 	onPointerLeave?: () => void;
-	/** Shared layout id with the gutter pin so the card morphs out of the pin. */
-	layoutId?: string;
 };
 
 /**
@@ -39,7 +37,6 @@ export function VisualTraceCard({
 	onDelete,
 	onPointerEnter,
 	onPointerLeave,
-	layoutId,
 }: VisualTraceCardProps) {
 	const { t } = useTranslation("viewer");
 	const title = tracePreview(trace, t("pdfExplain.visualAnnotation"));
@@ -52,8 +49,6 @@ export function VisualTraceCard({
 			height={360}
 			lockHeight
 			preferRight={preferRight}
-			gap={0}
-			layoutId={layoutId}
 			title={title}
 			icon={MessagesSquare}
 			ariaLabel={t("pdfExplain.traceCardTitle")}

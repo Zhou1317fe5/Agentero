@@ -119,7 +119,7 @@ export function placeSelectionCard(
 	if (trackPin) {
 		// Content-sized cards: follow the pin; shrink maxHeight near edges
 		// instead of pre-shifting top by the full preferred height.
-		let top = screen.y;
+		let top = screen.y - 8;
 		if (top < edge) top = edge;
 		let maxHeight = Math.min(preferredMaxH, viewportCap, vh - edge - top);
 		if (
@@ -135,9 +135,9 @@ export function placeSelectionCard(
 	}
 
 	// Plan top against the largest height so expand does not re-anchor.
-	// Keep the card top flush with the pin so it appears to grow out of it.
+	// Keep the card top near the pin; only slide up when it would overflow.
 	const plannedMaxH = Math.min(planHeight, viewportCap);
-	let top = screen.y;
+	let top = screen.y - 8;
 	if (top + plannedMaxH > vh - edge) {
 		top = vh - edge - plannedMaxH;
 	}
@@ -193,10 +193,6 @@ type SelectionCardProps = {
 	 */
 	bodyScroll?: boolean;
 	preferRight?: boolean;
-	/** Gap between the anchor and the card edge (default 4). Pass 0 to make the card flush with a gutter pin. */
-	gap?: number;
-	/** Shared layout id with the gutter pin so the card morphs out of the pin. */
-	layoutId?: string;
 	title: string;
 	icon: LucideIcon;
 	/** Header trailing icon buttons (close / hide / delete …). */
@@ -231,8 +227,6 @@ export function SelectionCard({
 	lockHeight = false,
 	bodyScroll = true,
 	preferRight = true,
-	gap = 4,
-	layoutId,
 	title,
 	icon: Icon,
 	actions,
@@ -254,15 +248,16 @@ export function SelectionCard({
 		placementHeight,
 		trackPin,
 		preferRight,
-		gap,
 	});
+	// The gutter pin sits on the side the card opens toward. Reveal the card
+	// from that corner so it looks like the pin expands into the full card.
+	const isRightSide = left + width / 2 >= screen.x;
+	const originClip = isRightSide
+		? "inset(0 100% 100% 0)"
+		: "inset(0 0 100% 100%)";
 	const transition = reduceMotion
 		? { duration: 0 }
-		: {
-				type: "spring" as const,
-				bounce: 0.1,
-				duration: 0.35,
-			};
+		: { type: "spring" as const, bounce: 0.15, duration: 0.35 };
 
 	// If the card mounts / remounts under an existing pointer (mode switch,
 	// open under cursor), browsers do not re-fire pointerenter — re-arm the
@@ -288,15 +283,11 @@ export function SelectionCard({
 				// Content-sized cards (no body scroll) should not clip children.
 				bodyScroll || lockHeight ? "overflow-hidden" : "overflow-visible",
 				PDF_FLOAT_CARD,
-				// Match the gutter pin radius so the shared-layout morph looks like
-				// the same surface expanding instead of a radius swap.
-				"rounded-md",
 				className,
 			)}
-			layoutId={layoutId}
-			initial={false}
-			animate={{ opacity: 1 }}
-			exit={{ opacity: 0 }}
+			initial={{ clipPath: originClip }}
+			animate={{ clipPath: "inset(0 0 0 0)" }}
+			exit={{ clipPath: originClip }}
 			transition={transition}
 			style={{
 				left,
@@ -319,17 +310,9 @@ export function SelectionCard({
 			onPointerEnter={onPointerEnter}
 			onPointerLeave={handlePointerLeave}
 		>
-			<header className="relative flex h-6 shrink-0 items-center border-border/60 border-b">
-				<motion.span
-					layout="position"
-					className="absolute left-1.5 top-1.5 inline-flex"
-				>
-					<Icon
-						className="size-3.5 shrink-0 text-muted-foreground"
-						aria-hidden
-					/>
-				</motion.span>
-				<span className="min-w-0 flex-1 truncate pl-7 pr-1 font-medium text-foreground text-sm">
+			<header className="flex shrink-0 items-center gap-2 border-border/60 border-b px-3 py-2">
+				<Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+				<span className="min-w-0 flex-1 truncate font-medium text-foreground text-sm">
 					{title}
 				</span>
 				{actions && actions.length > 0 ? (
