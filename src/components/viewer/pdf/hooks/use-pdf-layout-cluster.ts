@@ -117,6 +117,7 @@ export function usePdfLayoutCluster({
 		docCap,
 		docCapRef,
 		isRemotePaper,
+		translationPane,
 	});
 
 	const handleAnalyzeLayout = useCallback(() => {

@@ -118,18 +118,49 @@ export function usePdfScrollSync(docId: string): void {
 		const partner = getScrollSyncPeer(partnerId);
 		if (!me || !partner) return;
 
-		const applyScroll = (
+		let cancelled = false;
+		let scrollFrame: number | null = null;
+		let pendingScroll: {
+			from: typeof me;
+			to: typeof partner;
+			targetDocId: string;
+		} | null = null;
+
+		const applyScrollNow = (
 			from: typeof me,
 			to: typeof partner,
 			targetDocId: string,
 		) => {
-			if (isScrollSyncApplying(targetDocId)) return;
+			if (cancelled || isScrollSyncApplying(targetDocId)) return;
 			const mapped = mapScrollPosition(from.getMetrics(), to.getMetrics());
 			if (!mapped) return;
+			const current = to.getMetrics();
+			// Skip sub-pixel no-ops so paired scroll events do not fight each other.
+			if (
+				Math.abs(current.scrollLeft - mapped.x) < 0.5 &&
+				Math.abs(current.scrollTop - mapped.y) < 0.5
+			) {
+				return;
+			}
 			runSyncedScroll(targetDocId, () => to.scrollTo(mapped));
 		};
 
-		let cancelled = false;
+		const scheduleScroll = (
+			from: typeof me,
+			to: typeof partner,
+			targetDocId: string,
+		) => {
+			pendingScroll = { from, to, targetDocId };
+			if (scrollFrame != null) return;
+			scrollFrame = requestAnimationFrame(() => {
+				scrollFrame = null;
+				const next = pendingScroll;
+				pendingScroll = null;
+				if (!next || cancelled) return;
+				applyScrollNow(next.from, next.to, next.targetDocId);
+			});
+		};
+
 		const applyZoom = (
 			from: typeof me,
 			to: typeof partner,
@@ -145,18 +176,18 @@ export function usePdfScrollSync(docId: string): void {
 				// the target viewport has updated its metrics.
 				requestAnimationFrame(() => {
 					if (cancelled) return;
-					applyScroll(from, to, targetDocId);
+					applyScrollNow(from, to, targetDocId);
 				});
 			});
 		};
 
 		const unsubscribeMyScroll = me.onScrollChange(() => {
 			if (cancelled || isScrollSyncApplying(docId)) return;
-			applyScroll(me, partner, partnerId);
+			scheduleScroll(me, partner, partnerId);
 		});
 		const unsubscribePartnerScroll = partner.onScrollChange(() => {
 			if (cancelled || isScrollSyncApplying(partnerId)) return;
-			applyScroll(partner, me, docId);
+			scheduleScroll(partner, me, docId);
 		});
 		const unsubscribeMyZoom = me.onZoomChange((nextZoom) => {
 			if (cancelled || isZoomSyncApplying(docId)) return;
@@ -181,7 +212,7 @@ export function usePdfScrollSync(docId: string): void {
 			if (Math.abs(partner.getZoom() - nextZoom) >= 0.0001) {
 				applyZoom(me, partner, partnerId, nextZoom);
 			} else {
-				applyScroll(me, partner, partnerId);
+				applyScrollNow(me, partner, partnerId);
 			}
 		};
 		tryInitialSync();
@@ -189,6 +220,7 @@ export function usePdfScrollSync(docId: string): void {
 		return () => {
 			cancelled = true;
 			if (retryTimer) clearTimeout(retryTimer);
+			if (scrollFrame != null) cancelAnimationFrame(scrollFrame);
 			unsubscribeMyScroll();
 			unsubscribePartnerScroll();
 			unsubscribeMyZoom();

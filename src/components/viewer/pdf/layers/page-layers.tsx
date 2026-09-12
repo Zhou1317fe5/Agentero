@@ -145,6 +145,11 @@ export type PdfPageModeSlice = {
 	regionSelecting: boolean;
 	visualCropPending: boolean;
 	visualDraftOpen: boolean;
+	/**
+	 * Dual-pane translation companion: keep raster + translate overlay only.
+	 * Selection / annotation / search / citation chrome stay unmounted.
+	 */
+	translationOnly?: boolean;
 };
 
 export type PdfPageHandlers = {
@@ -348,6 +353,72 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 		!!emphasizedComment && emphasizedComment.id === marks.hoveredCommentId;
 	const isEditingComment =
 		!!emphasizedComment && emphasizedComment.id === marks.editingCommentId;
+
+	const paperRaster = (
+		<div className="absolute inset-0 isolate">
+			<RenderLayer
+				documentId={docId}
+				pageIndex={pageIndex}
+				scale={Math.min(zoomRef.current, PDF_BASE_LAYER_SCALE_CAP)}
+				dpr={pdfRasterDpr()}
+				className={pdfDark ? PDF_PAGE_RASTER_DARK_CLASS : undefined}
+				style={PAGE_LAYER_STYLE}
+			/>
+			<TilingLayer
+				documentId={docId}
+				pageIndex={pageIndex}
+				dpr={pdfTileDpr()}
+				className={pdfDark ? PDF_PAGE_RASTER_DARK_CLASS : undefined}
+				style={PAGE_LAYER_STYLE}
+			/>
+			{/*
+			 * Tinted paper: multiply over the rasters only, so white paper lands on
+			 * the tone while text stays black and figures keep their saturation.
+			 * Painted below the interaction layers so highlights stay untouched.
+			 */}
+			{paperTint ? (
+				<div
+					aria-hidden
+					className="pointer-events-none absolute inset-0 mix-blend-multiply"
+					style={{ backgroundColor: paperTint }}
+				/>
+			) : null}
+		</div>
+	);
+
+	const translateOverlay =
+		layoutTranslateOnPage && layoutTranslateOnPage.length > 0 ? (
+			<div className={PDF_PRIVACY_HIDE_CLASS}>
+				<LayoutTranslateOverlay
+					items={layoutTranslateOnPage}
+					pageWidthPx={width}
+					pageHeightPx={height}
+					tone={tone}
+					layoutRegions={layout.rawRegionsByPage.get(pageIndex)}
+				/>
+			</div>
+		) : null;
+
+	// Dual-pane companion: raster + translated text only. Skipping the full
+	// interaction stack halves per-page React work while the second EmbedPDF
+	// instance is still warming up.
+	if (mode.translationOnly) {
+		return (
+			<div
+				className={cn(
+					"relative overflow-visible rounded-sm shadow-sm ring-1",
+					PDF_PAPER_SHELL_CLASS[tone],
+					hidden && PDF_PRIVACY_ROOT_CLASS,
+				)}
+				style={{ width, height }}
+				{...{ [EMBED_PAGE_ATTR]: pageIndex }}
+			>
+				{paperRaster}
+				{translateOverlay}
+			</div>
+		);
+	}
+
 	// Page shell: matches the finished paper so loading gaps do not flash a
 	// different colour.
 	return (
@@ -372,35 +443,7 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 			 * annotation / pin overlays keep their intended colors. Agent crops
 			 * use engine.renderPageRect and are unaffected.
 			 */}
-			<div className="absolute inset-0 isolate">
-				<RenderLayer
-					documentId={docId}
-					pageIndex={pageIndex}
-					scale={Math.min(zoomRef.current, PDF_BASE_LAYER_SCALE_CAP)}
-					dpr={pdfRasterDpr()}
-					className={pdfDark ? PDF_PAGE_RASTER_DARK_CLASS : undefined}
-					style={PAGE_LAYER_STYLE}
-				/>
-				<TilingLayer
-					documentId={docId}
-					pageIndex={pageIndex}
-					dpr={pdfTileDpr()}
-					className={pdfDark ? PDF_PAGE_RASTER_DARK_CLASS : undefined}
-					style={PAGE_LAYER_STYLE}
-				/>
-				{/*
-				 * Tinted paper: multiply over the rasters only, so white paper lands on
-				 * the tone while text stays black and figures keep their saturation.
-				 * Painted below the interaction layers so highlights stay untouched.
-				 */}
-				{paperTint ? (
-					<div
-						aria-hidden
-						className="pointer-events-none absolute inset-0 mix-blend-multiply"
-						style={{ backgroundColor: paperTint }}
-					/>
-				) : null}
-			</div>
+			{paperRaster}
 			<SearchLayer
 				documentId={docId}
 				pageIndex={pageIndex}
@@ -520,17 +563,7 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 						})
 					: null}
 				{/* Bulk layout translate: progressive text overlays over body blocks. */}
-				{layoutTranslateOnPage && layoutTranslateOnPage.length > 0 ? (
-					<div className={PDF_PRIVACY_HIDE_CLASS}>
-						<LayoutTranslateOverlay
-							items={layoutTranslateOnPage}
-							pageWidthPx={width}
-							pageHeightPx={height}
-							tone={tone}
-							layoutRegions={layout.rawRegionsByPage.get(pageIndex)}
-						/>
-					</div>
-				) : null}
+				{translateOverlay}
 				{/*
 				 * Hit targets for post-merge figure/table/algorithm/formula.
 				 * Largest first so smaller boxes stack on top and win pointer hits.

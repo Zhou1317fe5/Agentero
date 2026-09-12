@@ -78,6 +78,11 @@ export type UsePdfLayoutRunOptions = {
 	docCapRef: RefObject<DocumentManagerCapability>;
 	/** True for remote papers with no local sidecar; disables layout analysis. */
 	isRemotePaper?: boolean;
+	/**
+	 * Dual-pane translation companion reuses the source pane's layout store /
+	 * sidecar; it must not enqueue a second analysis pass on open.
+	 */
+	translationPane?: boolean;
 };
 
 export type PdfLayoutRun = {
@@ -100,6 +105,7 @@ export function usePdfLayoutRun({
 	docCap,
 	docCapRef,
 	isRemotePaper = false,
+	translationPane = false,
 }: UsePdfLayoutRunOptions): PdfLayoutRun {
 	const { t } = useTranslation("viewer");
 	const layoutTaskRef = useRef<LayoutAnalysisTask | null>(null);
@@ -299,18 +305,19 @@ export function usePdfLayoutRun({
 
 	// Any open paper (active or not) → headless queue so multi-tab can all
 	// land in the background-tasks panel. Local ONNX stays serial (cap 1);
-	// the Paddle API backend is uncapped at JobCenter.
+	// the Paddle API backend is uncapped at JobCenter. Translation companions
+	// inherit layout from the source pane / store copy — do not re-queue.
 	useEffect(() => {
-		if (isRemotePaper || !paperAbsPath) return;
+		if (translationPane || isRemotePaper || !paperAbsPath) return;
 		enqueuePaperLayoutAnalysis({ paperAbsPath });
-	}, [isRemotePaper, paperAbsPath]);
+	}, [translationPane, isRemotePaper, paperAbsPath]);
 
 	// Active viewer: pull layout into the tab store once sidecar exists.
 	// Headless may still be writing it for this paper (or a sibling tab).
 	// Loose PDFs (no paper folder) still analyze in-viewer.
 	const layoutAutoStartedForDocRef = useRef<string | null>(null);
 	useEffect(() => {
-		if (isRemotePaper) return;
+		if (translationPane || isRemotePaper) return;
 		if (!isActive) return;
 		if (!layoutCap || totalPages <= 0) return;
 		if (getLayoutDocumentResult(docId)) return;
@@ -391,6 +398,7 @@ export function usePdfLayoutRun({
 			}
 		};
 	}, [
+		translationPane,
 		isRemotePaper,
 		isActive,
 		layoutCap,

@@ -178,13 +178,17 @@ export const PdfViewer = memo(function PdfViewer(props: PdfViewerProps) {
 	}, [sourceBytes]);
 	const effectiveSourceBytes = pdfBuffer ?? sourceBytes;
 
+	const translationOnly = Boolean(props.translationOnly);
 	const plugins = useMemo(() => {
 		if (!source && !effectiveSourceBytes) return null;
 		// Prefer bytes (no fetch step); fall back to a URL (remote https).
 		const initialDocument = effectiveSourceBytes
 			? { buffer: effectiveSourceBytes, documentId: docId, name: docId }
 			: { url: source as string, documentId: docId, name: docId };
-		return [
+		// Translation pane only needs raster + scroll/zoom. Skipping selection /
+		// annotation / search / ONNX layout avoids a second full viewer tax when
+		// dual-pane translation opens beside the source.
+		const core = [
 			createPluginRegistration(DocumentManagerPluginPackage, {
 				initialDocuments: [initialDocument],
 			}),
@@ -192,15 +196,15 @@ export const PdfViewer = memo(function PdfViewer(props: PdfViewerProps) {
 			createPluginRegistration(ScrollPluginPackage, {
 				// Manifest default (4) keeps ~8 off-screen pages mounted, and every
 				// mounted page re-renders whenever the scroller layout changes.
-				defaultBufferSize: 2,
+				defaultBufferSize: translationOnly ? 1 : 2,
 			}),
 			createPluginRegistration(RenderPluginPackage),
 			createPluginRegistration(TilingPluginPackage, {
 				// Pre-render one ring of tiles around the viewport so fast
 				// scrolling does not pop tiles in at the edges (rendering is
 				// off-main-thread in the worker engine, so the extra tiles are
-				// cheap).
-				extraRings: 1,
+				// cheap). Translation pane stays lean: no ring prefetch.
+				extraRings: translationOnly ? 0 : 1,
 				// Larger tiles → fewer render round-trips through the single
 				// worker, which matters on long documents.
 				tileSize: 1024,
@@ -211,6 +215,10 @@ export const PdfViewer = memo(function PdfViewer(props: PdfViewerProps) {
 				maxZoom: PDF_ZOOM_MAX,
 			}),
 			createPluginRegistration(InteractionManagerPluginPackage),
+		];
+		if (translationOnly) return core;
+		return [
+			...core,
 			createPluginRegistration(SelectionPluginPackage, {
 				// Text selection is enough for the floating menu. EmbedPDF's built-in
 				// marquee can be triggered by slight misses around glyphs and paints a
@@ -239,7 +247,7 @@ export const PdfViewer = memo(function PdfViewer(props: PdfViewerProps) {
 				renderScale: 2,
 			}),
 		];
-	}, [source, effectiveSourceBytes, docId]);
+	}, [source, effectiveSourceBytes, docId, translationOnly]);
 
 	const hostClass = cn(
 		"relative flex h-full min-h-0 flex-col bg-muted/40",
@@ -854,15 +862,16 @@ function PdfViewerInner({
 		paperTitle,
 	]);
 
-	// In the right-hand translation pane, automatically start the bulk layout
-	// translation job once so the translated overlay appears without requiring
-	// a second button click. The same cache key/sidecar as the source pane is
-	// used, so completed work is shared. A ref prevents re-starting after the
-	// user clears the translation from the pane itself. The effect also re-arms
-	// when layout regions arrive later (e.g. the source pane's result is copied
-	// into the store after the right pane has already mounted).
+	// Translation pane: wait for the sidecar hydrate in usePdfLayoutTranslate
+	// before deciding whether to start a job. Starting immediately races the
+	// cache read and can kick off a duplicate full-document translate while the
+	// second EmbedPDF instance is still parsing the PDF.
 	const translationAutoStartedRef = useRef(false);
 	const hadLayoutRegionsRef = useRef(false);
+	const layoutTranslateActiveRef = useRef(layoutTranslateActive);
+	layoutTranslateActiveRef.current = layoutTranslateActive;
+	const layoutTranslateRunningRef = useRef(layoutTranslateRunning);
+	layoutTranslateRunningRef.current = layoutTranslateRunning;
 	useEffect(() => {
 		if (!translationPane) return;
 		const hasRegions = (layoutRawRegions?.length ?? 0) > 0;
@@ -875,10 +884,25 @@ function PdfViewerInner({
 		}
 		if (!hasRegions) return;
 		if (translationAutoStartedRef.current) return;
-		if (!layoutTranslateActive && !layoutTranslateRunning) {
+		// Hydrate already painted cached translations (or a running job).
+		if (layoutTranslateActive || layoutTranslateRunning) {
+			translationAutoStartedRef.current = true;
+			return;
+		}
+		// Give the sidecar read time to land before starting network work.
+		const timer = window.setTimeout(() => {
+			if (translationAutoStartedRef.current) return;
+			if (
+				layoutTranslateActiveRef.current ||
+				layoutTranslateRunningRef.current
+			) {
+				translationAutoStartedRef.current = true;
+				return;
+			}
 			translationAutoStartedRef.current = true;
 			toggleLayoutTranslate();
-		}
+		}, 250);
+		return () => window.clearTimeout(timer);
 	}, [
 		translationPane,
 		layoutRawRegions,
@@ -1268,8 +1292,9 @@ function PdfViewerInner({
 			regionSelecting,
 			visualCropPending,
 			visualDraftOpen: false,
+			translationOnly,
 		}),
-		[regionSelecting, visualCropPending],
+		[regionSelecting, visualCropPending, translationOnly],
 	);
 
 	const handleLayoutRegionClick = useCallback(
@@ -1494,7 +1519,7 @@ function PdfViewerInner({
 			<DockviewViewport
 				documentId={docId}
 				hostRef={hostRef}
-				rightGutter={COMMENT_RAIL_WIDTH_PX}
+				rightGutter={translationOnly ? 0 : COMMENT_RAIL_WIDTH_PX}
 				className="agentero-scroll-both min-h-0 min-w-0 flex-1"
 			>
 				<WheelZoomHandler docId={docId} />
