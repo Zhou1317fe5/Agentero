@@ -132,4 +132,3 @@ pub fn save(cfg: &CliConfig) -> Result<PathBuf, CliError> {
     fs::write(&path, text)?;
     Ok(path)
 }
-

@@ -95,11 +95,7 @@ fn list(globals: &GlobalOpts) -> Result<Value, CliError> {
             } else {
                 style.dim(" ")
             };
-            let path_styled = if exists {
-                style.path(p)
-            } else {
-                style.dim(p)
-            };
+            let path_styled = if exists { style.path(p) } else { style.dim(p) };
             lines.push(format!("{marker} {path_styled}"));
             json!({
                 "path": p,
@@ -110,7 +106,11 @@ fn list(globals: &GlobalOpts) -> Result<Value, CliError> {
         .collect();
 
     if lines.is_empty() {
-        lines.push(style.dim("No known vaults. Use `agentero vault create <PATH>` to record one.").to_string());
+        lines.push(
+            style
+                .dim("No known vaults. Use `agentero vault create <PATH>` to record one.")
+                .to_string(),
+        );
     }
 
     let mut v = json!({ "vaults": items });
