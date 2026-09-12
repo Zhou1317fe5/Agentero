@@ -49,3 +49,16 @@ export function runSyncedScroll(docId: string, action: () => void): void {
 	action();
 	requestAnimationFrame(() => syncingDocIds.delete(docId));
 }
+
+/** Track document IDs whose zoom is being changed by their partner. */
+const syncingZoomDocIds = new Set<string>();
+
+export function isZoomSyncApplying(docId: string): boolean {
+	return syncingZoomDocIds.has(docId);
+}
+
+export function runSyncedZoom(docId: string, action: () => void): void {
+	syncingZoomDocIds.add(docId);
+	action();
+	requestAnimationFrame(() => syncingZoomDocIds.delete(docId));
+}
