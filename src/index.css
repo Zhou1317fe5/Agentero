@@ -641,6 +641,19 @@
 	width: 100%;
 }
 
+/* Tab context-menu rows that show a shortcut hint (see dock-workspace). */
+.agentero-dockview
+.dv-context-menu-item.agentero-dv-context-menu-item--with-shortcut {
+	justify-content: space-between;
+	gap: 1rem;
+	min-width: 11rem;
+}
+.agentero-dockview .agentero-dv-context-menu-shortcut {
+	color: var(--muted-foreground);
+	font-size: 0.75rem;
+	letter-spacing: 0.025em;
+}
+
 /* Context menu / overflow popovers mount on this anchor (prepended to root). */
 .agentero-dockview .dv-popover-anchor {
 	z-index: var(--dv-overlay-z-index, 1000);

@@ -16,7 +16,7 @@
 | 移至新窗口 | 文档 tab **右键** → **移动至新窗口** → 独立 `doc-*` Webview；源 panel 关闭（Library / Trash 除外）；弹出窗自带 Vault watcher，Markdown 外部改盘就地重载 |
 | Split pane | `⌘\` / `Ctrl+\` 向右新增 pane；当前论文未开 NOTES 时默认打开 NOTES，否则复制当前 pane；横向 pane 重新等宽 |
 | NOTES 开关 | Layout 菜单；优先叠右列 |
-| 打开笔记 | 论文 tab 右键 /文件树论文行右键 → NOTES 进右侧阅读列（已开则聚焦） |
+| 打开笔记 | 论文 tab 右键 /文件树论文行右键 → NOTES 进右侧阅读列（已开则聚焦；菜单显示 `⌘\` / `Ctrl+\`） |
 | 关光文档 | 回到全库 Library panel |
 
 标题栏 Layout 菜单中的窗口布局预设只改变当前论文的 Notes 分屏和外层 Agent panel 宽度：Agent 模式为 PDF / Agent `1:1`，笔记模式为 PDF / Notes / Agent `1:1:1`，阅读模式关闭 Notes 与 Agent。其它 PDF tab 保持打开。

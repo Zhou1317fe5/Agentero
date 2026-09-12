@@ -115,6 +115,7 @@ export function TreeContextMenuPortal({
 	const revealLabel = t(revealInOsLabelKey());
 	const revealShortcut = formatShortcutById("revealInFinder");
 	const openInTerminalShortcut = formatShortcutById("openInTerminal");
+	const openNotesShortcut = formatShortcutById("splitPane");
 	const deleteShortcut = formatShortcutById("deleteTreeItem");
 	const cutShortcut = formatShortcutById("cutTreeItem");
 	const pasteShortcut = formatShortcutById("pasteTreeItem");
@@ -219,10 +220,13 @@ export function TreeContextMenuPortal({
 						<button
 							type="button"
 							role="menuitem"
-							className="flex w-full cursor-default items-center gap-4 rounded-md px-2 py-1.5 text-left text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+							className="flex w-full cursor-default items-center justify-between gap-4 rounded-md px-2 py-1.5 text-left text-sm outline-hidden select-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
 							onClick={onOpenNotes}
 						>
 							<span>{t("fileTree.openNotes")}</span>
+							<span className="text-muted-foreground text-xs tracking-wide">
+								{openNotesShortcut}
+							</span>
 						</button>
 					) : null}
 					{menuCount === 1 && isPaperMenu && onEditMeta ? (
