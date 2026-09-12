@@ -32,7 +32,7 @@ Settings → **翻译**：
   - 译文按论文写入 `{paper}/source/layout-translate.json`。缓存命中需匹配 provider / 源语言 / 目标语言 / 非密钥服务配置，并逐块校验 region id + 原文（存的是归一化后的原文，归一化规则变化时旧缓存会 miss 一次并重译）；版面或目标语言变化时只复用仍匹配的块。
   - 单页翻译写缓存时按同一 cache key 增量合并，避免只翻译一页时覆盖其它页已经落盘的译文。
   - 运行中再点=停止；有译文再点=清除。实现：`layout-translate.ts` + `layout-translate-source.ts` + `layout-translate-overlay.tsx`。
-  - 覆盖层按当前 PDF 页面背景 tone 绘制纸面底色（深字）；暗色下套用与页面栅格相同的 invert filter（`PDF_PAGE_RASTER_DARK_CLASS`），使盖住原文的底色与反转后的纸面一致。排版先以原文尺度估算、再用真实浏览器度量校验：译文膨胀时依次收紧行距（1.25 → 1.10）、缩小字号；遵循严格 CJK 断行，只有不可断的 URL/标识符仍溢出时才允许词内断行。因此不会为普通段落过早缩成极小字，也不静默裁掉译文。
+  - 覆盖层按当前 PDF 页面背景 tone 绘制纸面底色（深字）；暗色下套用与页面栅格相同的 invert filter（`PDF_PAGE_RASTER_DARK_CLASS`），使盖住原文的底色与反转后的纸面一致。排版先以原文尺度估算、再用真实浏览器度量校验：译文膨胀时依次收紧行距（1.25 → 1.10）、缩小字号；遵循严格 CJK 断行，只有不可断的 URL/标识符仍溢出时才允许词内断行。因此普通段落不会过早缩成极小字，并尽量避免裁掉译文。
 - API：`runTranslate(task)`（`src/lib/translate/`）。
 
 ## Prompt
