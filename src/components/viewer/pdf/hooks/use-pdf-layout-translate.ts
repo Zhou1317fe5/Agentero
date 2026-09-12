@@ -163,6 +163,19 @@ export function usePdfLayoutTranslate({
 		setLayoutTranslateJob({ status: "idle", items: [] });
 	}, []);
 
+	// `runLayoutRegionTranslate` settles per-chain errors into item state instead
+	// of throwing, so a dead translation API would otherwise finish silently.
+	const notifyTranslateItemErrors = useCallback(
+		(items: readonly LayoutTranslateItem[]) => {
+			const failed = items.find((it) => it.status === "error" && it.error);
+			if (!failed) return;
+			notifyError(t("pdf.layoutTranslate.failed"), {
+				description: displayTranslateError(failed.error ?? ""),
+			});
+		},
+		[t],
+	);
+
 	const startLayoutTranslate = useCallback(() => {
 		const raw = layoutRawRegions;
 		if (!raw?.length) {
@@ -216,6 +229,7 @@ export function usePdfLayoutTranslate({
 				cacheKey,
 				finalItems,
 			);
+			notifyTranslateItemErrors(finalItems);
 			setLayoutTranslateJob({
 				status: hasPendingLayoutTranslateItems(finalItems) ? "partial" : "done",
 				items: applyHiddenPages(finalItems),
@@ -241,6 +255,7 @@ export function usePdfLayoutTranslate({
 		paperKey,
 		vaultPath,
 		applyHiddenPages,
+		notifyTranslateItemErrors,
 		t,
 	]);
 
@@ -336,6 +351,7 @@ export function usePdfLayoutTranslate({
 						replacePageIndexes: [pageIndex],
 					},
 				);
+				notifyTranslateItemErrors(finalPageItems);
 				setLayoutTranslateJob((prev) => {
 					const merged = mergeTranslatePageItems(
 						prev.items,
@@ -365,7 +381,15 @@ export function usePdfLayoutTranslate({
 					}
 				});
 		},
-		[layoutRawRegions, paperAbsPath, paperKey, vaultPath, applyHiddenPages, t],
+		[
+			layoutRawRegions,
+			paperAbsPath,
+			paperKey,
+			vaultPath,
+			applyHiddenPages,
+			notifyTranslateItemErrors,
+			t,
+		],
 	);
 
 	const togglePageLayoutTranslate = useCallback(
