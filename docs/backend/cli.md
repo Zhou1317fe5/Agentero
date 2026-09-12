@@ -16,7 +16,7 @@ Headless Vault / Catalog / Wiki 接口；**不含** BYOA / paper-reader。
 | 组 | 用途 |
 |---|---|
 | `open` | 在桌面 App 打开本地目录为 Vault（`agentero open <PATH>`；简写 `agentero <PATH>`） |
-| `vault` | create / which / info 等 |
+| `vault` | create / which / info / list / use 等 |
 | `tree` | 列树 |
 | `paper` | list/get、tag list/set/add/rm、move、download/parse… |
 | `import` | 标识符入库 |
@@ -114,6 +114,22 @@ cargo run -p agentero-cli -- doctor wiki papers/demo/NOTES.md --json
 cargo run -p agentero-cli -- doctor --json
 cargo run -p agentero-cli -- layout list papers/demo --json
 cargo test -p agentero-cli
+```
+
+### Vault 列表
+
+`agentero vault use <PATH>` 和 `agentero vault create <PATH>` 会把 Vault 绝对路径记录到 `~/.config/agentero/config.toml` 的 `known_vaults` 数组中（去重追加）。`agentero vault list` 可列出这些已知 Vault，并标出当前 `default_vault`：
+
+```bash
+agentero vault list
+agentero vault list --json
+```
+
+该配置与 GUI 设置隔离，可直接编辑 `config.toml`：
+
+```toml
+default_vault = "/Users/philfan/l/paper"
+known_vaults = ["/Users/philfan/l/paper", "/Users/philfan/l/video-acc"]
 ```
 
 ## 论文导入

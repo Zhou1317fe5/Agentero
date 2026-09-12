@@ -4,7 +4,7 @@ use assert_cmd::cargo::cargo_bin_cmd;
 use predicates::prelude::*;
 use serde_json::Value;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tempfile::tempdir;
 
 fn agentero() -> assert_cmd::Command {
@@ -12,12 +12,16 @@ fn agentero() -> assert_cmd::Command {
     cargo_bin_cmd!("agentero-cli")
 }
 
-fn create_vault(dir: &Path) {
+fn create_vault(dir: &Path) -> PathBuf {
+    let home = dir.parent().unwrap_or(dir).join(".test-home");
+    fs::create_dir_all(&home).unwrap();
     agentero()
+        .env("HOME", &home)
         .args(["vault", "create", dir.to_str().unwrap(), "--json"])
         .assert()
         .success()
         .stdout(predicate::str::contains("\"ok\":true"));
+    home
 }
 
 /// Minimal PDF (200x100 pt pages, Helvetica 12) with a real xref table, so
@@ -75,7 +79,7 @@ fn tiny_pdf_pages(texts: &[&str]) -> Vec<u8> {
 fn vault_create_which_info_check() {
     let tmp = tempdir().unwrap();
     let vault = tmp.path().join("v");
-    create_vault(&vault);
+    let home = create_vault(&vault);
 
     assert!(vault.join("papers").is_dir());
     assert!(vault.join(".agentero").join("catalog.sqlite").is_file());
@@ -787,6 +791,53 @@ fn paper_move_updates_filesystem_and_catalog() {
         .clone();
     let listed: Value = serde_json::from_slice(&listed).unwrap();
     assert_eq!(listed["data"][0]["path"], "papers/archive/demo");
+}
+
+/// Cross-vault paper move: vault-prefixed paths migrate the directory and catalog record.
+#[test]
+fn paper_move_cross_vault_migrates_directory_and_catalog() {
+    let tmp = tempdir().unwrap();
+    let src = tmp.path().join("src");
+    let dst = tmp.path().join("dst");
+    create_vault(&src);
+    create_vault(&dst);
+    fs::create_dir_all(src.join("papers/inbox/demo")).unwrap();
+    seed_paper(&src, "papers/inbox/demo", "demo", "Demo");
+
+    agentero()
+        .args([
+            "paper",
+            "move",
+            src.join("papers/inbox/demo").to_str().unwrap(),
+            dst.join("papers/archive").to_str().unwrap(),
+            "--json",
+        ])
+        .assert()
+        .success();
+
+    assert!(!src.join("papers/inbox/demo").exists());
+    assert!(dst.join("papers/archive/demo").is_dir());
+
+    let src_list = agentero()
+        .args(["--vault", src.to_str().unwrap(), "paper", "list", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let src_list: Value = serde_json::from_slice(&src_list).unwrap();
+    assert!(src_list["data"].as_array().unwrap().is_empty());
+
+    let dst_list = agentero()
+        .args(["--vault", dst.to_str().unwrap(), "paper", "list", "--json"])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let dst_list: Value = serde_json::from_slice(&dst_list).unwrap();
+    assert_eq!(dst_list["data"][0]["path"], "papers/archive/demo");
+    assert_eq!(dst_list["data"][0]["id"], "demo");
 }
 
 /// #166: create missing destination parent, reject conflict and path escape.

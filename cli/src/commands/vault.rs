@@ -27,8 +27,8 @@ pub enum VaultCmd {
     Which,
     /// Read-only discovery summary.
     Info,
-    /// Structural / schema health check (non-zero if issues).
-    Check,
+    /// List known vaults recorded by `vault use` / `vault create`.
+    List,
     /// Persist CLI default_vault.
     Use {
         #[arg(value_hint = ValueHint::DirPath)]
@@ -63,27 +63,12 @@ struct VaultLayers {
     l1: String,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CheckIssue {
-    code: String,
-    message: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct CheckData {
-    path: String,
-    ok: bool,
-    issues: Vec<CheckIssue>,
-}
-
 pub async fn run(cmd: VaultCmd, globals: &GlobalOpts) -> Result<Value, CliError> {
     match cmd {
         VaultCmd::Create { path, open } => create(&path, open, globals),
         VaultCmd::Which => which(globals),
         VaultCmd::Info => info(globals),
-        VaultCmd::Check => check(globals),
+        VaultCmd::List => list(globals),
         VaultCmd::Use { path } => use_vault(&path, globals),
     }
 }
@@ -108,6 +93,7 @@ fn create(path: &Path, open: bool, globals: &GlobalOpts) -> Result<Value, CliErr
     };
     let locale = detect_cli_locale();
     let result = vault_svc::create_vault(&abs, &locale)?;
+    let _ = config::record_vault(Path::new(&result.path));
     let mut v = to_value(&result)?;
     if open {
         if let Some(obj) = v.as_object_mut() {
@@ -214,86 +200,44 @@ fn info(globals: &GlobalOpts) -> Result<Value, CliError> {
     Ok(v)
 }
 
-fn check(globals: &GlobalOpts) -> Result<Value, CliError> {
-    let vault = resolve_vault(globals)?;
-    let path = vault.to_string_lossy().to_string();
-    let mut issues = Vec::new();
-
-    for dir in ["papers", "notes", ".agentero"] {
-        if !vault.join(dir).is_dir() {
-            issues.push(CheckIssue {
-                code: "missing_dir".into(),
-                message: format!("missing directory: {dir}/"),
-            });
-        }
-    }
-
-    let db = catalog::catalog_db_path(&vault);
-    if !db.is_file() {
-        issues.push(CheckIssue {
-            code: "catalog_missing".into(),
-            message: "catalog.sqlite not found (run vault create or open in app)".into(),
-        });
-    } else {
-        match catalog::ensure_catalog(&vault) {
-            Ok(conn) => match catalog::schema_version(&conn) {
-                Ok(v) if v < catalog::SCHEMA_VERSION => {
-                    issues.push(CheckIssue {
-                        code: "schema_outdated".into(),
-                        message: format!(
-                            "schema version {v} < expected {}",
-                            catalog::SCHEMA_VERSION
-                        ),
-                    });
-                }
-                Ok(_) => {}
-                Err(e) => issues.push(CheckIssue {
-                    code: "schema_error".into(),
-                    message: e.to_string(),
-                }),
-            },
-            Err(e) => issues.push(CheckIssue {
-                code: "catalog_open_failed".into(),
-                message: e.to_string(),
-            }),
-        }
-    }
-
-    let data = CheckData {
-        path,
-        ok: issues.is_empty(),
-        issues,
-    };
-
+fn list(globals: &GlobalOpts) -> Result<Value, CliError> {
+    let default = config::load().ok().and_then(|c| c.default_vault);
+    let known = config::list_known_vaults()?;
     let style = globals.style;
-    if !data.ok {
-        let mut v = to_value(&data)?;
-        if let Some(obj) = v.as_object_mut() {
-            let lines: Vec<String> = data
-                .issues
-                .iter()
-                .map(|i| {
-                    format!(
-                        "{} {}",
-                        style.bright_red(&format!("{}:", i.code)),
-                        i.message
-                    )
-                })
-                .collect();
-            obj.insert("lines".into(), json!(lines));
-        }
-        // cli.md: non-zero when issues.
-        return Err(CliError::with_details(
-            "vault_invalid",
-            "vault check found issues",
-            v,
-            crate::error::ExitCode::Business,
-        ));
+
+    let mut lines = Vec::new();
+    let items: Vec<Value> = known
+        .iter()
+        .map(|p| {
+            let is_default = default.as_ref().is_some_and(|d| d == p);
+            let exists = Path::new(p).is_dir();
+            let marker = if is_default {
+                style.bright_yellow("*")
+            } else {
+                style.dim(" ")
+            };
+            let path_styled = if exists {
+                style.path(p)
+            } else {
+                style.dim(p)
+            };
+            lines.push(format!("{marker} {path_styled}"));
+            json!({
+                "path": p,
+                "exists": exists,
+                "default": is_default,
+            })
+        })
+        .collect();
+
+    if lines.is_empty() {
+        lines.push(style.dim("No known vaults. Use `agentero vault use <PATH>` or `agentero vault create <PATH>` to record one.").to_string());
     }
 
-    let mut v = to_value(&data)?;
+    let mut v = json!({ "vaults": items });
     if let Some(obj) = v.as_object_mut() {
-        obj.insert("lines".into(), json!([style.ok("ok")]));
+        obj.insert("lines".into(), json!(lines));
+        obj.insert("count".into(), json!(items.len()));
     }
     Ok(v)
 }
@@ -311,6 +255,7 @@ fn use_vault(path: &Path, globals: &GlobalOpts) -> Result<Value, CliError> {
         )));
     }
     let abs = abs.canonicalize().unwrap_or(abs);
+    config::record_vault(&abs)?;
     let abs_str = abs.to_string_lossy().to_string();
     config::set_key("default_vault", &abs_str)?;
     let style = globals.style;

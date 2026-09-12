@@ -362,7 +362,7 @@ fn command_label(cmd: &Commands) -> &'static str {
             commands::vault::VaultCmd::Create { .. } => "cli.vault.create",
             commands::vault::VaultCmd::Which => "cli.vault.which",
             commands::vault::VaultCmd::Info => "cli.vault.info",
-            commands::vault::VaultCmd::Check => "cli.vault.check",
+            commands::vault::VaultCmd::List => "cli.vault.list",
             commands::vault::VaultCmd::Use { .. } => "cli.vault.use",
         },
         Commands::Tree { .. } => "cli.tree",
