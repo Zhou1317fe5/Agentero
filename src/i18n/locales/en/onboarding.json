@@ -102,7 +102,7 @@
 		},
 		"workspace": {
 			"title": "Split-screen reading",
-			"desc": "Papers open with the PDF on the left and notes on the right. Select text to highlight, annotate, translate or ask; the toolbar also offers full-text translation."
+			"desc": "Open any paper to split the view: PDF on the left, NOTES.md on the right. Select text to highlight, annotate, translate or ask questions. The PDF toolbar can run full-text translation, and the notes editor toolbar can fetch Cool Paper notes when available."
 		},
 		"agent": {
 			"title": "Your agent, ready to help",

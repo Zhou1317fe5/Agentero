@@ -11,7 +11,7 @@
 
 ## 功能导引（Feature tour）
 
-Onboarding 关闭、Vault 首次打开后，`useFeatureTour` 用 driver.js 高亮侧栏 / 论文库 / Cool Papers / 魔棒 / 阅读记笔记 / 工作区 / Agent / 标题栏。`featureTourDone === false` 且引导向导已关闭时自动开始；完成或跳过写入 `featureTourDone: true`。设置侧栏可手动重放（`onboarding:tour`）。
+Onboarding 关闭、Vault 首次打开后，`useFeatureTour` 用 driver.js 高亮侧栏 / 论文库 / Cool Papers / 魔棒 / 阅读记笔记 / 工作区 / Agent / 标题栏。工作区步骤文案会介绍 PDF 全文翻译与笔记编辑器里的 Cool Paper 笔记抓取。`featureTourDone === false` 且引导向导已关闭时自动开始；完成或跳过写入 `featureTourDone: true`。设置侧栏可手动重放（`onboarding:tour`）。
 
 `useFeatureTour` 订阅 `onboardingStore.open`，确保在 onboarding 覆盖层仍在显示时不提前启动，避免高亮层与向导覆盖层竞争。
 
