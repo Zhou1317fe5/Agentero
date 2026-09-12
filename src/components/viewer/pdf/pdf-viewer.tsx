@@ -1397,7 +1397,6 @@ function PdfViewerInner({
 		[docId, pdfTone, zoomRef, pageMarks, pageLayout, pageMode, pageHandlers],
 	);
 
-	// ---- Top toolbar auto show/hide (#400) ----
 	// ---- Left toolbar auto show/hide (#400); right toolbar stays pinned ----
 	const leftChromeVisible = usePdfChromeVisibility({
 		hostRef,
@@ -1460,7 +1459,6 @@ function PdfViewerInner({
 				layoutTranslateActive={layoutTranslateActive}
 				layoutTranslateLabel={layoutTranslateLabel}
 				onToggleLayoutTranslate={handleToggleLayoutTranslateWithDualPane}
-				visible={topChromeVisible}
 				isRemotePaper={isRemotePaper}
 				onImportToLibrary={handleImportToLibrary}
 				importBusy={importBusy}
