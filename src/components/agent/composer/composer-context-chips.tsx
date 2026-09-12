@@ -1,4 +1,4 @@
-import { ScanSearch, Sparkles, TextSelect, X } from "lucide-react";
+import { Quote, ScanSearch, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ContextPathIcon } from "@/components/agent/context-path-icon";
 import type { AgentSkill } from "@/lib/agent";
@@ -150,7 +150,7 @@ export function ComposerContextChips({
 						onClick={() => onRemoveSelection(sel.id)}
 						aria-label={t("composer.removeSelection")}
 					>
-						<TextSelect className="size-3.5 shrink-0 text-muted-foreground" />
+						<Quote className="size-3.5 shrink-0 text-muted-foreground" />
 						<ChipExpandTrail label={shortLabel} withRemove />
 					</button>
 				);

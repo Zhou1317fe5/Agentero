@@ -119,8 +119,11 @@ function cleanSkillDisplayName(name: string): string {
 		.replace(/^skill\s*:\s*/i, "");
 }
 
-/** Lucide `sparkles` glyph (skill affordance) for contenteditable chips. */
-function appendSkillIcon(chip: HTMLElement) {
+function appendLucideIcon(
+	chip: HTMLElement,
+	paths: string[],
+	className: string,
+) {
 	const ns = "http://www.w3.org/2000/svg";
 	const svg = document.createElementNS(ns, "svg");
 	svg.setAttribute("viewBox", "0 0 24 24");
@@ -129,21 +132,41 @@ function appendSkillIcon(chip: HTMLElement) {
 	svg.setAttribute("stroke-width", "2");
 	svg.setAttribute("stroke-linecap", "round");
 	svg.setAttribute("stroke-linejoin", "round");
-	svg.setAttribute("class", "size-3 shrink-0 text-muted-foreground");
+	svg.setAttribute("class", className);
 	svg.setAttribute("aria-hidden", "true");
-	const paths = [
-		"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z",
-		"M20 3v4",
-		"M22 5h-4",
-		"M4 17v2",
-		"M5 18H3",
-	];
 	for (const d of paths) {
 		const path = document.createElementNS(ns, "path");
 		path.setAttribute("d", d);
 		svg.appendChild(path);
 	}
 	chip.appendChild(svg);
+}
+
+/** Lucide `sparkles` glyph (skill affordance) for contenteditable chips. */
+function appendSkillIcon(chip: HTMLElement) {
+	appendLucideIcon(
+		chip,
+		[
+			"M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z",
+			"M20 3v4",
+			"M22 5h-4",
+			"M4 17v2",
+			"M5 18H3",
+		],
+		"size-3 shrink-0 text-muted-foreground",
+	);
+}
+
+/** Lucide `quote` glyph for selected-text chips. */
+function appendSelectionIcon(chip: HTMLElement) {
+	appendLucideIcon(
+		chip,
+		[
+			"M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z",
+			"M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z",
+		],
+		"size-3.5 shrink-0 text-primary",
+	);
 }
 
 function appendSkillLabel(chip: HTMLElement, name: string, skillId: string) {
@@ -268,11 +291,7 @@ function renderChip(
 		chip.dataset.selectionId = selection.id;
 		chip.setAttribute(TOKEN_ATTR, token);
 
-		const icon = document.createElement("span");
-		icon.setAttribute("aria-hidden", "true");
-		icon.innerHTML =
-			'<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-3.5 shrink-0 text-primary"><path d="M5 3a2 2 0 0 0-2 2"></path><path d="M19 3a2 2 0 0 1 2 2"></path><path d="M21 19a2 2 0 0 1-2 2"></path><path d="M5 21a2 2 0 0 1-2-2"></path><path d="M9 3h1"></path><path d="M9 21h1"></path><path d="M14 3h1"></path><path d="M14 21h1"></path><path d="M3 9v1"></path><path d="M21 9v1"></path><path d="M3 14v1"></path><path d="M21 14v1"></path><path d="M8 12h8"></path><path d="M12 8v8"></path></svg>';
-		chip.appendChild(icon.firstElementChild ?? icon);
+		appendSelectionIcon(chip);
 
 		const label = document.createElement("span");
 		label.className = "min-w-0 truncate";
