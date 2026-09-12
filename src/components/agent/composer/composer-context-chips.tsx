@@ -7,7 +7,7 @@ import type { PdfVisualDraft } from "@/lib/agent/visual-context-store";
 import { basenameOf } from "@/lib/core/path";
 import { cn, truncateToChars } from "@/lib/core/utils";
 
-const MAX_CHIP_TITLE_CHARS = 6;
+const MAX_CHIP_TITLE_CHARS = 9;
 
 function cleanSkillDisplayName(name: string): string {
 	return name
