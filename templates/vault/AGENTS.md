@@ -8,7 +8,7 @@ This file is the L0 map for agents working in this Agentero research vault.
 - `notes/` — free-form concept notes and ideas. Supports `[[wikilinks]]`, `![[embeds]]`, Mermaid diagrams, and Obsidian `> [!callout]` blocks.
 - `.agents/` — vault-local agent assets (e.g. `skills/<id>/SKILL.md` for Composer `$` skills).
 - `.agentero/catalog.sqlite` — paper **catalog** (collection + metadata). There is usually **no** root `PAPERS.md` or `library.bib` unless the user exports them.
-- Headless tooling: optional **`agentero` CLI** (discover / list / import). Prefer skill **`agentero-cli`** (`$agentero-cli` / `/agentero-cli`) with `--json`. CLI does **not** run agents or paper-reader.
+- Headless tooling: optional **`agentero` CLI** (discover / list / import). Prefer skill **`agentero-cli`** (`$agentero-cli` / `/agentero-cli`) with `--json`. Discover exact flags via `agentero describe --json`. CLI does **not** run agents or paper-reader.
 
 ## Paper reading order
 

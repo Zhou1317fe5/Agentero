@@ -17,6 +17,7 @@ Headless Vault / Catalog / Wiki 接口；**不含** BYOA / paper-reader。
 |---|---|
 | `open` | 在桌面 App 打开本地目录为 Vault（`agentero open <PATH>`；简写 `agentero <PATH>`） |
 | `vault` | create / list 等 |
+| `describe` | Agent 自省：策展型 op 目录与单 op 的 input/output/errors/examples（机器契约真源） |
 | `paper` | list/get、tag list/set/add/rm、move、download/parse… |
 | `import` | 标识符入库 |
 | `export` | 导出 |
@@ -26,6 +27,18 @@ Headless Vault / Catalog / Wiki 接口；**不含** BYOA / paper-reader。
 | `translate` | 免费机器翻译纯文本（无需 API Key，不读桌面 settings） |
 
 稳定 `--json` 输出，供脚本与外部 Agent 组合。JSON 默认 **compact 单行**（省 token），`--pretty` 恢复缩进美化（[#367](https://github.com/poco-ai/Agentero/issues/367)）。
+
+### Agent 自省（`describe`）
+
+Agent 不应背 flag 表；以 curated ops 目录为准（`agentero-core::ops`，与 MCP tool 名对齐）：
+
+```bash
+agentero describe --json
+agentero describe paper.list --json
+agentero describe paper_list --json   # MCP tool 名亦可
+```
+
+未知 id 返回 `usage`，并尽量提示相近 op。Skill `agentero-cli` 只保留协议与 invariants，细节指向本命令。
 
 `paper list --json` 默认每行只含 `id/path/title`；用 `--fields year,tags,abstract,…`（逗号分隔、可重复）按需加字段，或 `--full` 输出完整 `PaperRecord`。未知字段报 `usage` 错误并列出合法字段。text 表格输出不受影响。
 
