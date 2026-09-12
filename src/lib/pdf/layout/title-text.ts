@@ -50,7 +50,8 @@ function runsInBbox(
 				Boolean(run.text?.trim()) &&
 				runCenterInBbox(run, bbox, pageWidth, pageHeight),
 		)
-		.toSorted(
+		.slice()
+		.sort(
 			(a, b) =>
 				a.rect.origin.y - b.rect.origin.y || a.rect.origin.x - b.rect.origin.x,
 		);
@@ -86,7 +87,7 @@ export function splitBodyRegionAtParagraphGaps(
 	}
 	if (lines.length < 2) return [region];
 	const heights = lines.map((line) => Math.max(1, line.bottom - line.top));
-	const medianHeight = heights.toSorted((a, b) => a - b)[
+	const medianHeight = heights.slice().sort((a, b) => a - b)[
 		Math.floor(heights.length / 2)
 	];
 	const paragraphs: TextRunLine[][] = [];
