@@ -276,7 +276,7 @@ describe("expandLayoutTranslateBbox", () => {
 			kind,
 			readingOrder: 0,
 			source: "A long section title",
-			translated: "一个较长的章节标题",
+			translated: "这是一个用于验证安全扩框行为的更长章节标题",
 			status: "done",
 		};
 	}

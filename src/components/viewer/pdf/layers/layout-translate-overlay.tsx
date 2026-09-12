@@ -61,11 +61,18 @@ export function expandLayoutTranslateBbox(
 	item: LayoutTranslateItem,
 	blockers: readonly PdfLayoutRegion[] = [],
 ): LayoutTranslateItem["bbox"] {
-	const sourceLength = item.source.replace(/\s+/g, "").length;
+	const translated = item.translated?.trim();
+	const sourceWidth =
+		item.source.replace(/\s+/g, "").length * avgGlyphEm(item.source);
+	const translatedWidth = translated
+		? translated.replace(/\s+/g, "").length * avgGlyphEm(translated)
+		: 0;
+	// Raw layout boxes are reliable collision blockers for titles/captions, but
+	// not sufficiently complete to safely borrow space for body prose. Expand
+	// only when translated glyph width genuinely exceeds the source by 10%.
 	const expandable =
-		isLayoutTranslateHeadingKind(item.kind) ||
-		item.kind === "figure_title" ||
-		(item.kind === "text" && sourceLength <= 180 && item.bbox.h <= 0.08);
+		(isLayoutTranslateHeadingKind(item.kind) || item.kind === "figure_title") &&
+		translatedWidth > sourceWidth * 1.1;
 	if (!expandable) return item.bbox;
 	const original = item.bbox;
 	const x2 = original.x + original.w;
