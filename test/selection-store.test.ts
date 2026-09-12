@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
 	clearSelections,
 	consumeSelections,
+	currentSelections,
 	pinActiveSelection,
 	publishSelection,
 	selectionStore,
@@ -73,12 +74,27 @@ describe("selection-store PDF anchor", () => {
 			paperAbsPath: "/vault/papers/b",
 		});
 		const all = consumeSelections();
-		// live "pdf missing rects" + two pinned
-		expect(all.length).toBeGreaterThanOrEqual(2);
+		// Only pinned chips are consumed; the live "pdf missing rects" is dropped.
+		expect(all).toHaveLength(2);
+		expect(selectionStore.getState().active).toBeNull();
 		const anchored = selectionsWithPdfAnchor(all);
 		expect(anchored).toHaveLength(1);
 		expect(anchored[0]?.text).toBe("with geometry");
 		expect(anchored[0]?.page).toBe(2);
 		expect(anchored[0]?.paperAbsPath).toBe("/vault/papers/a");
+	});
+
+	it("currentSelections ignores the live active selection until pinned", () => {
+		publishSelection({
+			text: "live only",
+			sourcePath: "papers/x",
+			origin: "pdf",
+			page: 1,
+			rects: [rect],
+			paperAbsPath: "/vault/papers/x",
+		});
+		expect(currentSelections()).toEqual([]);
+		expect(pinActiveSelection()).toBe(true);
+		expect(currentSelections()).toHaveLength(1);
 	});
 });

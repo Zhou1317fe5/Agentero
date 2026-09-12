@@ -216,16 +216,9 @@ export function useAgentComposer({
 		[contextPaths, selectedVaultPath],
 	);
 
-	// Editor/PDF selection chips: pinned first, live selection last (Cursor-style).
-	const activeSelection = useSelectionStore((s) => s.active);
-	const pinnedSelections = useSelectionStore((s) => s.pinned);
-	const selectionChips = useMemo(
-		() =>
-			activeSelection
-				? [...pinnedSelections, activeSelection]
-				: pinnedSelections,
-		[activeSelection, pinnedSelections],
-	);
+	// Only explicitly pinned selections (Add to chat / ⌘K / ⌘L) become chips.
+	// Live drag-selection stays in the store for pinActiveSelection but is not shown.
+	const selectionChips = useSelectionStore((s) => s.pinned);
 	const visualDrafts = useVisualContextStore((s) => s.drafts);
 
 	// Markers count as atoms so `$` / `@` inside `{{s:…}}` / `{{m:…}}` stay inert.

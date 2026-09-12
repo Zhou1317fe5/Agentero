@@ -1,8 +1,9 @@
 /**
- * Editor/PDF text-selection → Agent context (zustand vanilla, Cursor-style).
- * `active` follows the latest live selection; `pinned` holds selections the
- * user froze via ⌘L or the PDF selection menu. Never persisted — selections
- * are ephemeral and consumed by the next submitted turn.
+ * Editor/PDF text-selection → Agent context (zustand vanilla).
+ * `active` mirrors the latest live selection so ⌘L / ⌘K can freeze it; it is
+ * never shown in the composer or included in a turn until pinned. `pinned`
+ * holds selections the user froze via ⌘L / ⌘K / Add to chat. Never persisted —
+ * selections are ephemeral and consumed by the next submitted turn.
  *
  * PDF selections may carry page geometry (`rects` + `paperAbsPath`) so a
  * submitted Agent turn can insert a conversation card (`kind: ask`) pin at
@@ -162,16 +163,17 @@ export function removeSelection(id: string): void {
 	selectionStore.setState({ pinned: pinned.filter((item) => item.id !== id) });
 }
 
-/** Snapshot chips for a turn: pinned first, live selection last. */
+/** Snapshot pinned chips for a turn (live `active` is staging-only, not sent). */
 export function currentSelections(): SelectionContext[] {
-	const { active, pinned } = selectionStore.getState();
-	return active ? [...pinned, active] : pinned;
+	return selectionStore.getState().pinned;
 }
 
-/** Snapshot and clear — a submitted turn consumes its selections. */
+/** Snapshot pinned chips and clear active + pinned after a submitted turn. */
 export function consumeSelections(): SelectionContext[] {
-	const all = currentSelections();
-	if (all.length) selectionStore.setState({ active: null, pinned: [] });
+	const { active, pinned } = selectionStore.getState();
+	const all = pinned;
+	if (active || all.length)
+		selectionStore.setState({ active: null, pinned: [] });
 	return all;
 }
 
