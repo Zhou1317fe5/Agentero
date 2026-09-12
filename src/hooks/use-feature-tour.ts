@@ -66,6 +66,16 @@ async function startTour(t: TFunction<"onboarding">): Promise<void> {
 		{ selector: "[data-magic-wand]", key: "magicWand", side: "bottom" },
 		{ selector: "[data-read-paper]", key: "readPaper", side: "right" },
 		{ selector: ".agentero-dockview", key: "workspace", side: "top" },
+		{
+			selector: "[data-full-text-translate]",
+			key: "fullTextTranslate",
+			side: "bottom",
+		},
+		{
+			selector: "[data-fetch-cool-papers-notes]",
+			key: "fetchCoolPapersNotes",
+			side: "bottom",
+		},
 		{ selector: "[data-agent-panel]", key: "agent", side: "left" },
 		{ selector: "[data-titlebar]", key: "titlebar", side: "bottom" },
 	] as const;

@@ -102,7 +102,15 @@
 		},
 		"workspace": {
 			"title": "分屏精读",
-			"desc": "打开任意论文即可分屏：左侧 PDF，右侧 NOTES.md。划词可高亮、批注、翻译或提问；PDF 工具栏支持全文翻译，笔记编辑器工具栏还能一键抓取 Cool Paper 笔记。"
+			"desc": "打开任意论文即可分屏：左侧 PDF，右侧 NOTES.md。划词可高亮、批注、翻译或提问。"
+		},
+		"fullTextTranslate": {
+			"title": "全文翻译",
+			"desc": "PDF 工具栏可一键翻译整篇论文。翻译一次后，既可以在原文上对照查看，也可以打开 side-by-side 译文面板。"
+		},
+		"fetchCoolPapersNotes": {
+			"title": "Cool Paper 笔记",
+			"desc": "编辑论文的 NOTES.md 时，点击此按钮即可从 Cool Papers 抓取公开的 Kimi 笔记，并合并到自己的笔记中。"
 		},
 		"agent": {
 			"title": "你的 Agent，随叫随到",

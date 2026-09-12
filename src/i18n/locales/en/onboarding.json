@@ -102,7 +102,15 @@
 		},
 		"workspace": {
 			"title": "Split-screen reading",
-			"desc": "Open any paper to split the view: PDF on the left, NOTES.md on the right. Select text to highlight, annotate, translate or ask questions. The PDF toolbar can run full-text translation, and the notes editor toolbar can fetch Cool Paper notes when available."
+			"desc": "Open any paper to split the view: PDF on the left, NOTES.md on the right. Select text to highlight, annotate, translate or ask questions."
+		},
+		"fullTextTranslate": {
+			"title": "Full-text translation",
+			"desc": "The PDF toolbar can translate the whole paper at once. Run it once, then browse the translation inline or open it side-by-side."
+		},
+		"fetchCoolPapersNotes": {
+			"title": "Cool Paper notes",
+			"desc": "While editing a paper's NOTES.md, click this button to fetch public Kimi notes from Cool Papers and merge them into your own notes."
 		},
 		"agent": {
 			"title": "Your agent, ready to help",
