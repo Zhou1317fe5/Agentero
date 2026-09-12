@@ -109,8 +109,8 @@
 			"desc": "Reuses your locally signed-in agent — no API keys. The current paper joins the context automatically; click a suggested question to summarize it."
 		},
 		"titlebar": {
-			"title": "That's it!",
-			"desc": "Toggle panels here. {{settingsShortcut}} opens Settings, {{quickOpenShortcut}} jumps anywhere. Tutorial notes were created in your vault — start there."
+			"title": "Start exploring",
+			"desc": "You're all set. {{settingsShortcut}} opens Settings, {{quickOpenShortcut}} jumps anywhere. Tutorial notes were created in your vault — start there."
 		},
 		"next": "Next",
 		"back": "Back",
