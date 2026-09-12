@@ -110,9 +110,9 @@ export function HighlightColorStack({
 								style={{
 									width: BTN,
 									height: BTN,
-									// Default yellow stays on top when collapsed; active
-									// recolor target rises above the deck.
-									zIndex: isActive ? COUNT + 1 : COUNT - i,
+									// Yellow stays on top when collapsed so the stack keeps
+									// the same overlap order as the text-selection toolbar.
+									zIndex: COUNT - i,
 								}}
 								initial={false}
 								animate={{ right: fromRight }}
