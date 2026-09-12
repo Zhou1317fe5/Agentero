@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
 	Tooltip,
@@ -23,13 +23,17 @@ const EXPANDED_STEP = 20;
 const HIT_PAD = 4;
 
 const COUNT = HIGHLIGHT_COLORS.length;
-/**
- * Always reserve the expanded width so sibling toolbar actions do not shift,
- * and so hover hit-testing covers every card (overflowing absolute children
- * would otherwise fire mouseleave on the collapsed border box).
- */
-const SLOT_W = CARD + (COUNT - 1) * EXPANDED_STEP + HIT_PAD * 2;
-const SLOT_H = CARD + HIT_PAD * 2;
+const BTN = CARD + HIT_PAD * 2;
+
+export const HIGHLIGHT_COLOR_STACK_COLLAPSED_W =
+	BTN + (COUNT - 1) * COLLAPSED_STEP;
+export const HIGHLIGHT_COLOR_STACK_EXPANDED_W =
+	BTN + (COUNT - 1) * EXPANDED_STEP;
+/** How far the stack grows to the left when expanded. */
+export const HIGHLIGHT_COLOR_STACK_WIDTH_DELTA =
+	HIGHLIGHT_COLOR_STACK_EXPANDED_W - HIGHLIGHT_COLOR_STACK_COLLAPSED_W;
+
+const SLOT_H = BTN;
 
 const SPRING = { type: "spring" as const, bounce: 0.2, duration: 0.32 };
 const SNAP = { type: "tween" as const, duration: 0 };
@@ -40,18 +44,22 @@ type HighlightColorStackProps = {
 	activeColor?: HighlightColor;
 	/** Tooltip / expand direction relative to the toolbar. */
 	tooltipSide?: "top" | "bottom";
+	/** Fires when hover/focus expands or collapses the stack. */
+	onExpandedChange?: (expanded: boolean) => void;
 	className?: string;
 };
 
 /**
  * Semi-overlapping highlight color cards. Hover / focus-within fans them out
  * to the left (right edge stays anchored near the toolbar divider) with a
- * compact spring.
+ * compact spring. Slot width animates with the cards so the toolbar's left
+ * edge can track the growth.
  */
 export function HighlightColorStack({
 	onSelect,
 	activeColor,
 	tooltipSide = "top",
+	onExpandedChange,
 	className,
 }: HighlightColorStackProps) {
 	const { t } = useTranslation("viewer");
@@ -61,15 +69,25 @@ export function HighlightColorStack({
 	const open = useCallback(() => setExpanded(true), []);
 	const close = useCallback(() => setExpanded(false), []);
 
+	useEffect(() => {
+		onExpandedChange?.(expanded);
+	}, [expanded, onExpandedChange]);
+
 	const step = expanded ? EXPANDED_STEP : COLLAPSED_STEP;
+	const width = expanded
+		? HIGHLIGHT_COLOR_STACK_EXPANDED_W
+		: HIGHLIGHT_COLOR_STACK_COLLAPSED_W;
 	const transition = reduceMotion ? SNAP : SPRING;
 
 	const colorLabel = (c: HighlightColor): string => t(`selection.color.${c}`);
 
 	return (
-		<fieldset
+		<motion.fieldset
 			className={cn("relative m-0 min-w-0 shrink-0 border-0 p-0", className)}
-			style={{ width: SLOT_W, height: SLOT_H }}
+			initial={false}
+			animate={{ width }}
+			transition={transition}
+			style={{ height: SLOT_H }}
 			onMouseEnter={open}
 			onMouseLeave={close}
 			onFocusCapture={open}
@@ -97,8 +115,8 @@ export function HighlightColorStack({
 									"active:scale-[0.94] motion-reduce:active:scale-100",
 								)}
 								style={{
-									width: CARD + HIT_PAD * 2,
-									height: CARD + HIT_PAD * 2,
+									width: BTN,
+									height: BTN,
 									// Default yellow stays on top when collapsed; active
 									// recolor target rises above the deck.
 									zIndex: isActive ? COUNT + 1 : COUNT - i,
@@ -110,7 +128,8 @@ export function HighlightColorStack({
 							>
 								<span
 									className={cn(
-										"block size-4 rounded-[5px] shadow-sm ring-1 ring-black/15 transition-[box-shadow] dark:ring-white/25",
+										// Dark edge so overlapping cards stay separable.
+										"block size-4 rounded-[5px] shadow-sm ring-1 ring-black/55 transition-[box-shadow] dark:ring-black/70 dark:ring-offset-0",
 										swatchColorClass(color),
 										isActive &&
 											"ring-2 ring-foreground/70 ring-offset-1 ring-offset-background",
@@ -126,6 +145,6 @@ export function HighlightColorStack({
 					</Tooltip>
 				);
 			})}
-		</fieldset>
+		</motion.fieldset>
 	);
 }

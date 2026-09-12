@@ -1,4 +1,6 @@
 import { Languages } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -7,11 +9,17 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { HighlightColorStack } from "@/components/viewer/pdf/cards/highlight-color-stack";
+import {
+	HIGHLIGHT_COLOR_STACK_WIDTH_DELTA,
+	HighlightColorStack,
+} from "@/components/viewer/pdf/cards/highlight-color-stack";
 import type { ScreenPoint } from "@/components/viewer/pdf/types";
 import { cn } from "@/lib/core/utils";
 import type { HighlightColor } from "@/lib/pdf/highlight/palette";
 import { formatModShortcut } from "@/lib/shell/shortcuts";
+
+const STACK_SPRING = { type: "spring" as const, bounce: 0.2, duration: 0.32 };
+const STACK_SNAP = { type: "tween" as const, duration: 0 };
 
 type SelectionMenuProps = {
 	/** Screen point near the top-center of the selection (toolbar anchor) */
@@ -46,9 +54,14 @@ export function SelectionMenu({
 	readOnly = false,
 }: SelectionMenuProps) {
 	const { t } = useTranslation("viewer");
+	const reduceMotion = useReducedMotion();
 	// ⌘K = in-page Quick chat (Ask); ⌘L = Add to chat (pin + open Agent).
 	const quickChatShortcut = formatModShortcut("k");
 	const addToChatShortcut = formatModShortcut("l");
+	const [colorsExpanded, setColorsExpanded] = useState(false);
+	const onColorsExpandedChange = useCallback((next: boolean) => {
+		setColorsExpanded(next);
+	}, []);
 
 	const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
 	const vh = typeof window !== "undefined" ? window.innerHeight : 800;
@@ -56,6 +69,10 @@ export function SelectionMenu({
 	const barW = readOnly ? 200 : 320;
 	let left = screen.x - barW / 2;
 	left = Math.min(Math.max(12, left), vw - barW - 12);
+	// Color stack grows to the left; shift the bar so action buttons stay put.
+	if (!readOnly && colorsExpanded) {
+		left = Math.max(12, left - HIGHLIGHT_COLOR_STACK_WIDTH_DELTA);
+	}
 	// Prefer just above the selection; flip below if near the top edge.
 	let top = screen.y - BAR_H - 10;
 	let overContent = false;
@@ -72,14 +89,17 @@ export function SelectionMenu({
 	const dimmed = overContent || scrolledAway;
 
 	return (
-		<div
+		<motion.div
 			className={cn(
 				"fixed z-50 flex h-8 items-center gap-0.5 rounded-lg border border-border/80 bg-background px-1 shadow-2xl ring-1 ring-black/5 transition-[background-color,opacity] duration-150 dark:ring-white/10",
 				// Dim when covering body text or when the selection scrolled away.
 				dimmed &&
 					"bg-background/80 opacity-70 backdrop-blur-sm hover:bg-background hover:opacity-100",
 			)}
-			style={{ left, top }}
+			style={{ top }}
+			initial={false}
+			animate={{ left }}
+			transition={reduceMotion ? STACK_SNAP : STACK_SPRING}
 			role="toolbar"
 			aria-label={t("selection.menuLabel")}
 			onMouseDown={(e) => e.stopPropagation()}
@@ -87,7 +107,10 @@ export function SelectionMenu({
 			<TooltipProvider delayDuration={200}>
 				{!readOnly ? (
 					<>
-						<HighlightColorStack onSelect={onHighlight} />
+						<HighlightColorStack
+							onSelect={onHighlight}
+							onExpandedChange={onColorsExpandedChange}
+						/>
 						<div className="mx-0.5 h-4 w-px shrink-0 bg-border" />
 					</>
 				) : null}
@@ -133,6 +156,6 @@ export function SelectionMenu({
 					</kbd>
 				</button>
 			</TooltipProvider>
-		</div>
+		</motion.div>
 	);
 }
