@@ -1,7 +1,10 @@
 import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { fontSizeForLayoutTranslateBox } from "@/components/viewer/pdf/layers/layout-translate-overlay";
+import {
+	fontSizeForLayoutTranslateBox,
+	LayoutTranslateParagraph,
+} from "@/components/viewer/pdf/layers/layout-translate-overlay";
 import { cn } from "@/lib/core/utils";
 import {
 	currentLayoutTranslateCacheKey,
@@ -145,14 +148,13 @@ function TranslatedBlock({
 				textAlign: isHeading ? "left" : "justify",
 			}}
 		>
-			<p
-				className={cn(
-					"m-0 h-full w-full overflow-hidden break-words whitespace-pre-wrap",
-					isHeading && "font-bold",
-				)}
-			>
-				{text}
-			</p>
+			<LayoutTranslateParagraph
+				text={text}
+				initialFontSize={fontSize}
+				boxWidthPx={pageWidthPx * item.bbox.w}
+				boxHeightPx={pageHeightPx * item.bbox.h}
+				isHeading={isHeading}
+			/>
 		</div>
 	);
 }

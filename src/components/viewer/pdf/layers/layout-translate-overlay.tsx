@@ -234,7 +234,7 @@ type ExactFitParagraphProps = {
  * necessary, binary-search the actual DOM font size so `overflow-hidden` never
  * silently chops off an otherwise complete translation.
  */
-const ExactFitParagraph = memo(function ExactFitParagraph({
+export const LayoutTranslateParagraph = memo(function LayoutTranslateParagraph({
 	text,
 	initialFontSize,
 	boxWidthPx,
@@ -355,7 +355,7 @@ export const LayoutTranslateOverlay = memo(function LayoutTranslateOverlay({
 						}}
 						aria-hidden="true"
 					>
-						<ExactFitParagraph
+						<LayoutTranslateParagraph
 							text={text}
 							initialFontSize={fontSize}
 							boxWidthPx={boxWidthPx}
