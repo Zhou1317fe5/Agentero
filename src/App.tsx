@@ -71,6 +71,7 @@ import {
 	toggleSidebar,
 } from "@/lib/shell/ui-store";
 import { openRightTab, toggleChat } from "@/lib/shell/ui-window-actions";
+import { toggleBorderlessFullscreen } from "@/lib/shell/window-fullscreen";
 import {
 	createNewVault,
 	deleteSelectedPath,
@@ -367,6 +368,10 @@ export default function App() {
 		// split), resolve the sibling paper tab instead of requiring mode=pdf.
 		visualAnnotation: () => {
 			resolveActivePdfHandle()?.toggleVisualAnnotation();
+		},
+		// F11 — Windows borderless fullscreen (no-op on other platforms).
+		toggleFullscreen: () => {
+			void toggleBorderlessFullscreen();
 		},
 	});
 

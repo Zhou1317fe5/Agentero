@@ -36,6 +36,7 @@
 		"splitPane": "向右分栏",
 		"nextTab": "下一个标签",
 		"prevTab": "上一个标签",
-		"visualAnnotation": "添加视觉批注（PDF）"
+		"visualAnnotation": "添加视觉批注（PDF）",
+		"toggleFullscreen": "切换无边框全屏"
 	}
 }

@@ -84,6 +84,7 @@
 | `⌘L` | 有选区时「加入对话」（固定选区并打开右侧 Agent）；无选区时开关右侧栏 |
 | `⌘K` | 有划词工具栏时「快速对话」（页内 Ask） |
 | `⇧⌘A` | 固定当前选区为 Agent 上下文，打开 Agent 面板并聚焦输入框（无选区时只打开并聚焦） |
+| `F11` | **Windows only**：切换无边框（exclusive）全屏；再按一次退出。实现：`toggleBorderlessFullscreen`（`src/lib/shell/window-fullscreen.ts`） |
 
 完整快捷键绑定：`src/lib/shell/shortcuts.ts`。文案 i18n 见 [settings.md](settings.md)。
 

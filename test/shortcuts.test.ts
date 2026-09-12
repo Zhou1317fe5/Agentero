@@ -1,4 +1,14 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/core/tauri", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@/lib/core/tauri")>();
+	return {
+		...actual,
+		getPlatformOS: vi.fn(() => "macos"),
+	};
+});
+
+import { getPlatformOS } from "@/lib/core/tauri";
 import { formatShortcut, resolveShortcutId } from "@/lib/shell/shortcuts";
 
 function keyEvent(init: {
@@ -18,6 +28,10 @@ function keyEvent(init: {
 }
 
 describe("shell shortcuts", () => {
+	afterEach(() => {
+		vi.mocked(getPlatformOS).mockReturnValue("macos");
+	});
+
 	it("resolves Obsidian-style split pane shortcut", () => {
 		expect(
 			resolveShortcutId(keyEvent({ key: "\\", metaKey: true }), {
@@ -80,5 +94,17 @@ describe("shell shortcuts", () => {
 				settingsOpen: false,
 			}),
 		).toBe("toggleChat");
+	});
+
+	it("binds F11 to borderless fullscreen only on Windows", () => {
+		vi.mocked(getPlatformOS).mockReturnValue("windows");
+		expect(
+			resolveShortcutId(keyEvent({ key: "F11" }), { settingsOpen: false }),
+		).toBe("toggleFullscreen");
+
+		vi.mocked(getPlatformOS).mockReturnValue("macos");
+		expect(
+			resolveShortcutId(keyEvent({ key: "F11" }), { settingsOpen: false }),
+		).toBeNull();
 	});
 });

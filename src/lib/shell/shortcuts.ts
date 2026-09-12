@@ -3,6 +3,8 @@
  * Display uses Apple symbols: ⌘ ⌥ ⇧ ⌃
  */
 
+import { getPlatformOS } from "@/lib/core/tauri";
+
 export type ShortcutId =
 	| "settings"
 	| "newWindow"
@@ -43,9 +45,13 @@ export type ShortcutId =
 	| "zoomOut"
 	| "zoomReset"
 	/** ⌘. — start/cancel PDF visual-region annotation (active PDF tab). */
-	| "visualAnnotation";
+	| "visualAnnotation"
+	/** F11 — borderless fullscreen (Windows only). */
+	| "toggleFullscreen";
 
 export type ShortcutGroup = "App" | "Navigation" | "Vault";
+
+export type ShortcutPlatform = "windows" | "macos" | "linux";
 
 export type ShortcutDef = {
 	id: ShortcutId;
@@ -64,6 +70,8 @@ export type ShortcutDef = {
 	whenSettingsOpen?: boolean;
 	/** When true, only matches if no app overlay is open. */
 	whenSettingsClosed?: boolean;
+	/** When set, only active / listed on these desktop OSes. */
+	platforms?: readonly ShortcutPlatform[];
 };
 
 export const SHORTCUTS: ShortcutDef[] = [
@@ -326,7 +334,22 @@ export const SHORTCUTS: ShortcutDef[] = [
 		meta: true,
 		whenSettingsClosed: true,
 	},
+	{
+		id: "toggleFullscreen",
+		group: "App",
+		// F11 — exclusive (borderless) fullscreen; Windows only
+		key: "F11",
+		platforms: ["windows"],
+	},
 ];
+
+function shortcutAvailableOnPlatform(def: ShortcutDef): boolean {
+	if (!def.platforms?.length) return true;
+	const os = getPlatformOS();
+	return os === "windows" || os === "macos" || os === "linux"
+		? def.platforms.includes(os)
+		: false;
+}
 
 /** Secondary aliases that still work (documented lightly). */
 const ALIASES: Partial<Record<ShortcutId, ShortcutDef[]>> = {
@@ -451,6 +474,7 @@ export function resolveShortcutId(
 	});
 
 	for (const def of candidates) {
+		if (!shortcutAvailableOnPlatform(def)) continue;
 		if (def.whenSettingsOpen && !overlayOpen) continue;
 		if (def.whenSettingsClosed && overlayOpen) continue;
 		if (matchShortcut(event, def)) return def.id;
@@ -465,6 +489,8 @@ export function shortcutsByGroup(): {
 	const order = ["App", "Vault", "Navigation"] as const;
 	return order.map((group) => ({
 		group,
-		items: SHORTCUTS.filter((s) => s.group === group),
+		items: SHORTCUTS.filter(
+			(s) => s.group === group && shortcutAvailableOnPlatform(s),
+		),
 	}));
 }

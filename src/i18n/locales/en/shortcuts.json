@@ -36,6 +36,7 @@
 		"splitPane": "Split pane right",
 		"nextTab": "Next tab",
 		"prevTab": "Previous tab",
-		"visualAnnotation": "Add visual annotation (PDF)"
+		"visualAnnotation": "Add visual annotation (PDF)",
+		"toggleFullscreen": "Toggle borderless fullscreen"
 	}
 }
