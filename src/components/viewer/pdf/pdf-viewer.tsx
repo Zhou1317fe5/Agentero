@@ -97,6 +97,7 @@ import {
 	type PdfPageModeSlice,
 } from "@/components/viewer/pdf/layers/page-layers";
 import { buildMarksIndex } from "@/components/viewer/pdf/marks-index";
+import { PdfTranslationViewerInner } from "@/components/viewer/pdf/pdf-translation-viewer-inner";
 import type {
 	PageAnnotationComment,
 	PdfViewerInnerProps,
@@ -313,7 +314,13 @@ export const PdfViewer = memo(function PdfViewer(props: PdfViewerProps) {
 								</p>
 							);
 						}
-						return (
+						return props.translationOnly ? (
+							<PdfTranslationViewerInner
+								{...props}
+								docId={docId}
+								sourceBytes={effectiveSourceBytes}
+							/>
+						) : (
 							<PdfViewerInner
 								{...props}
 								docId={docId}
