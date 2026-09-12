@@ -1,4 +1,5 @@
 import { useDocumentManagerCapability } from "@embedpdf/plugin-document-manager/react";
+import { useScrollCapability } from "@embedpdf/plugin-scroll/react";
 import { useViewportCapability } from "@embedpdf/plugin-viewport/react";
 import { useZoomCapability } from "@embedpdf/plugin-zoom/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -33,6 +34,7 @@ type SyncScrollMetrics = {
  */
 export function usePdfScrollSync(docId: string): void {
 	const viewportCap = useViewportCapability().provides;
+	const scrollCap = useScrollCapability().provides;
 	const docCap = useDocumentManagerCapability().provides;
 	const zoomCap = useZoomCapability().provides;
 	const partnerId = useMemo(() => getScrollSyncPartner(docId), [docId]);
@@ -48,12 +50,13 @@ export function usePdfScrollSync(docId: string): void {
 	);
 
 	useEffect(() => {
-		if (!partnerId || !viewportCap || !docCap || !zoomCap) return;
+		if (!partnerId || !viewportCap || !scrollCap || !docCap || !zoomCap) return;
 		if (!docCap.isDocumentOpen(docId)) return;
 
 		const myScope = viewportCap.forDocument(docId);
+		const myScrollScope = scrollCap.forDocument(docId);
 		const myZoomScope = zoomCap.forDocument(docId);
-		if (!myScope || !myZoomScope) return;
+		if (!myScope || !myScrollScope || !myZoomScope) return;
 
 		const externalPartner = getExternalScrollSyncViewport(partnerId);
 		if (externalPartner) {
@@ -88,7 +91,7 @@ export function usePdfScrollSync(docId: string): void {
 					}),
 				);
 			};
-			const unsubscribeSource = myScope.onScrollChange(applyExternalScroll);
+			const unsubscribeSource = myScrollScope.onScroll(applyExternalScroll);
 			const unsubscribeExternal =
 				externalPartner.onScrollChange(applySourceScroll);
 			const unsubscribeZoom = myZoomScope.onZoomChange(() => {
@@ -114,8 +117,9 @@ export function usePdfScrollSync(docId: string): void {
 			return () => window.clearTimeout(retry);
 		}
 		const partnerScope = viewportCap.forDocument(partnerId);
+		const partnerScrollScope = scrollCap.forDocument(partnerId);
 		const partnerZoomScope = zoomCap.forDocument(partnerId);
-		if (!partnerScope || !partnerZoomScope) return;
+		if (!partnerScope || !partnerScrollScope || !partnerZoomScope) return;
 
 		const applyScroll = (
 			fromScope: typeof myScope,
@@ -172,14 +176,14 @@ export function usePdfScrollSync(docId: string): void {
 			});
 		};
 
-		const unsubscribeMy = myScope.onScrollChange((metrics) => {
+		const unsubscribeMy = myScrollScope.onScroll((metrics) => {
 			applyScroll(myScope, partnerScope, partnerId, {
 				...myScope.getMetrics(),
 				...metrics,
 			});
 		});
 
-		const unsubscribePartner = partnerScope.onScrollChange((metrics) => {
+		const unsubscribePartner = partnerScrollScope.onScroll((metrics) => {
 			applyScroll(partnerScope, myScope, docId, {
 				...partnerScope.getMetrics(),
 				...metrics,
@@ -211,5 +215,5 @@ export function usePdfScrollSync(docId: string): void {
 			unsubscribeMyZoom();
 			unsubscribePartnerZoom();
 		};
-	}, [docId, partnerId, viewportCap, docCap, zoomCap]);
+	}, [docId, partnerId, viewportCap, scrollCap, docCap, zoomCap]);
 }
