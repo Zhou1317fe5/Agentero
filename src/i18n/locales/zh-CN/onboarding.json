@@ -1,6 +1,7 @@
 {
 	"title": "欢迎使用 Agentero",
 	"subtitle": "在这里，你和 AI 助手一起读论文、记笔记。接下来几步，帮你把工作台调成顺手的样子。",
+	"recommended": "推荐",
 	"steps": {
 		"welcome": "欢迎",
 		"theme": "外观",
@@ -78,8 +79,16 @@
 	},
 	"tour": {
 		"sidebar": {
-			"title": "你的 Vault，就是普通文件夹",
-			"desc": "每篇论文是一个文件夹单元，含 PDF、笔记与 LaTeX 源码，Obsidian、VS Code、Git 随时接管。"
+			"title": "文献库与 Vault",
+			"desc": "侧边栏集中了论文库、Vault 文件夹和发现源。所有内容都是你电脑上的 Markdown 与普通文件。"
+		},
+		"library": {
+			"title": "论文库",
+			"desc": "Vault 里的每篇论文都会出现在这里。可排序、按标签筛选、编辑元数据，还能一键导出 BibTeX。"
+		},
+		"coolPapers": {
+			"title": "Cool Papers",
+			"desc": "浏览 arXiv 热门与趋势论文。看到感兴趣的论文，一键在工作区中打开。"
 		},
 		"magicWand": {
 			"title": "魔棒一键入库",
@@ -87,7 +96,7 @@
 		},
 		"workspace": {
 			"title": "分屏精读",
-			"desc": "打开论文默认左 PDF、右笔记分屏，划词即可高亮、批注、翻译或提问。"
+			"desc": "打开论文默认左 PDF、右笔记分屏，划词即可高亮、批注、翻译或提问；工具栏还提供全文翻译。"
 		},
 		"agent": {
 			"title": "你的 Agent，随叫随到",

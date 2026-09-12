@@ -1,6 +1,7 @@
 {
 	"title": "Welcome to Agentero",
 	"subtitle": "Read papers and take notes alongside your AI assistant. A few quick steps to set up your workspace.",
+	"recommended": "Recommended",
 	"steps": {
 		"welcome": "Welcome",
 		"theme": "Appearance",
@@ -78,8 +79,16 @@
 	},
 	"tour": {
 		"sidebar": {
-			"title": "Your vault, your files",
-			"desc": "Each paper is a plain folder with its PDF, notes and LaTeX source — Obsidian, VS Code and Git can take over anytime."
+			"title": "Your library & vault",
+			"desc": "The sidebar holds your paper library, vault folders and discovery sources. Everything is just Markdown and files on your computer."
+		},
+		"library": {
+			"title": "Papers library",
+			"desc": "Every paper in your vault shows up here. Sort columns, filter by tags, edit metadata and export BibTeX in one place."
+		},
+		"coolPapers": {
+			"title": "Cool Papers",
+			"desc": "Browse arXiv highlights and trending papers. One click opens an interesting paper in the workspace."
 		},
 		"magicWand": {
 			"title": "One-click import",
@@ -87,7 +96,7 @@
 		},
 		"workspace": {
 			"title": "Split-screen reading",
-			"desc": "Papers open with the PDF on the left and notes on the right. Select text to highlight, annotate, translate or ask."
+			"desc": "Papers open with the PDF on the left and notes on the right. Select text to highlight, annotate, translate or ask; the toolbar also offers full-text translation."
 		},
 		"agent": {
 			"title": "Your agent, ready to help",
