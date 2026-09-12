@@ -17,6 +17,15 @@ export type PdfScrollPosition = {
 	y: number;
 };
 
+type SyncScrollMetrics = {
+	scrollTop: number;
+	scrollLeft: number;
+	scrollHeight: number;
+	scrollWidth: number;
+	clientHeight: number;
+	clientWidth: number;
+};
+
 /**
  * Bidirectionally sync scroll position between this PDF viewer and its paired
  * partner (e.g. the right-hand translation pane). Synchronization uses relative
@@ -112,9 +121,9 @@ export function usePdfScrollSync(docId: string): void {
 			fromScope: typeof myScope,
 			toScope: typeof partnerScope,
 			targetDocId: string,
+			fromMetrics: SyncScrollMetrics = fromScope.getMetrics(),
 		) => {
 			if (isScrollSyncApplying(targetDocId)) return;
-			const fromMetrics = fromScope.getMetrics();
 			if (fromMetrics.scrollHeight <= 0 || fromMetrics.scrollWidth <= 0) return;
 			const toMetrics = toScope.getMetrics();
 			if (toMetrics.scrollHeight <= 0 || toMetrics.scrollWidth <= 0) return;
@@ -148,12 +157,11 @@ export function usePdfScrollSync(docId: string): void {
 		};
 
 		const applyZoom = (
-			fromScope: typeof myZoomScope,
 			toScope: typeof partnerZoomScope,
 			targetDocId: string,
+			nextZoom: number,
 		) => {
 			if (isZoomSyncApplying(targetDocId)) return;
-			const nextZoom = fromScope.getState().currentZoomLevel;
 			if (!Number.isFinite(nextZoom) || nextZoom <= 0) return;
 			runSyncedZoom(targetDocId, () => {
 				try {
@@ -164,18 +172,24 @@ export function usePdfScrollSync(docId: string): void {
 			});
 		};
 
-		const unsubscribeMy = myScope.onScrollChange(() => {
-			applyScroll(myScope, partnerScope, partnerId);
+		const unsubscribeMy = myScope.onScrollChange((metrics) => {
+			applyScroll(myScope, partnerScope, partnerId, {
+				...myScope.getMetrics(),
+				...metrics,
+			});
 		});
 
-		const unsubscribePartner = partnerScope.onScrollChange(() => {
-			applyScroll(partnerScope, myScope, docId);
+		const unsubscribePartner = partnerScope.onScrollChange((metrics) => {
+			applyScroll(partnerScope, myScope, docId, {
+				...partnerScope.getMetrics(),
+				...metrics,
+			});
 		});
-		const unsubscribeMyZoom = myZoomScope.onZoomChange(() => {
-			applyZoom(myZoomScope, partnerZoomScope, partnerId);
+		const unsubscribeMyZoom = myZoomScope.onZoomChange((event) => {
+			applyZoom(partnerZoomScope, partnerId, event.newZoom);
 		});
-		const unsubscribePartnerZoom = partnerZoomScope.onZoomChange(() => {
-			applyZoom(partnerZoomScope, myZoomScope, docId);
+		const unsubscribePartnerZoom = partnerZoomScope.onZoomChange((event) => {
+			applyZoom(myZoomScope, docId, event.newZoom);
 		});
 
 		// One-time initial alignment: when the translation pane first loads,
@@ -184,7 +198,11 @@ export function usePdfScrollSync(docId: string): void {
 		if (!initialSyncDoneRef.current) {
 			initialSyncDoneRef.current = true;
 			applyScroll(myScope, partnerScope, partnerId);
-			applyZoom(myZoomScope, partnerZoomScope, partnerId);
+			applyZoom(
+				partnerZoomScope,
+				partnerId,
+				myZoomScope.getState().currentZoomLevel,
+			);
 		}
 
 		return () => {
