@@ -567,6 +567,9 @@ export function openTranslationTab(
 		(t) => t.id === `${tabIdForPath(paperAbsPath)}::translation`,
 	);
 	if (existing) {
+		// Restored/reused translation tabs do not pass through the creation path;
+		// re-bind the two PDF documents every time the source opens translation.
+		registerScrollSyncPair(paperTabId, existing.id);
 		dockHandle()?.activatePanel(existing.id);
 		return;
 	}
