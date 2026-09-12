@@ -13,7 +13,7 @@ import {
 	swatchColorClass,
 } from "@/lib/pdf/highlight/palette";
 
-/** Visual size of each color card (px). */
+/** Visual size of each color dot (px). */
 const CARD = 16;
 /** Collapsed center-to-center step — ~50% overlap. */
 const COLLAPSED_STEP = 8;
@@ -50,9 +50,9 @@ type HighlightColorStackProps = {
 };
 
 /**
- * Semi-overlapping highlight color cards. Hover / focus-within fans them out
+ * Semi-overlapping highlight color dots. Hover / focus-within fans them out
  * to the left (right edge stays anchored near the toolbar divider) with a
- * compact spring. Slot width animates with the cards so the toolbar's left
+ * compact spring. Slot width animates with the dots so the toolbar's left
  * edge can track the growth.
  */
 export function HighlightColorStack({
@@ -110,7 +110,7 @@ export function HighlightColorStack({
 								aria-label={colorLabel(color)}
 								aria-pressed={activeColor ? isActive : undefined}
 								className={cn(
-									"absolute top-0 inline-flex items-center justify-center rounded-md outline-none",
+									"absolute top-0 inline-flex items-center justify-center rounded-full outline-none",
 									"focus-visible:ring-2 focus-visible:ring-ring/50",
 									"active:scale-[0.94] motion-reduce:active:scale-100",
 								)}
@@ -128,8 +128,8 @@ export function HighlightColorStack({
 							>
 								<span
 									className={cn(
-										// Dark edge so overlapping cards stay separable.
-										"block size-4 rounded-[5px] shadow-sm ring-1 ring-black/55 transition-[box-shadow] dark:ring-black/70 dark:ring-offset-0",
+										// Dark edge so overlapping dots stay separable.
+										"block size-4 rounded-full shadow-sm ring-1 ring-black/55 transition-[box-shadow] dark:ring-black/70 dark:ring-offset-0",
 										swatchColorClass(color),
 										isActive &&
 											"ring-2 ring-foreground/70 ring-offset-1 ring-offset-background",
