@@ -527,6 +527,7 @@ export const PdfPageLayers = memo(function PdfPageLayers({
 							pageWidthPx={width}
 							pageHeightPx={height}
 							tone={tone}
+							layoutRegions={layout.rawRegionsByPage.get(pageIndex)}
 						/>
 					</div>
 				) : null}

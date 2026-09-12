@@ -4,10 +4,11 @@
  * body size, then re-fits so the translation fills the block without huge gaps.
  */
 
-import { memo, useLayoutEffect, useRef } from "react";
+import { memo, useLayoutEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/core/utils";
 import { isLayoutTranslateHeadingKind } from "@/lib/pdf/layout/labels";
 import type { LayoutTranslateItem } from "@/lib/pdf/layout/layout-translate";
+import type { PdfLayoutRegion } from "@/lib/pdf/layout/types";
 import {
 	PDF_PAGE_RASTER_DARK_CLASS,
 	PDF_PAPER_BLOCK_CLASS,
@@ -22,6 +23,8 @@ type LayoutTranslateOverlayProps = {
 	pageHeightPx: number;
 	/** Match PDF page paper (not app chrome). */
 	tone?: PdfPaperTone;
+	/** Raw page regions; used as collision blockers for safe overlay expansion. */
+	layoutRegions?: readonly PdfLayoutRegion[];
 };
 
 const LINE_HEIGHT = 1.25;
@@ -41,6 +44,62 @@ const DOM_FIT_EPSILON_PX = 0.5;
  * immediately making a dense CJK paragraph tiny.
  */
 const DOM_FIT_LINE_HEIGHTS = [LINE_HEIGHT, 1.2, 1.15, 1.1] as const;
+const OVERLAY_PAGE_RIGHT = 0.97;
+const OVERLAY_GUTTER = 0.006;
+
+function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
+	return Math.min(aEnd, bEnd) - Math.max(aStart, bStart) > 0;
+}
+
+/**
+ * Conservative counterpart to BabelDOC's paragraph-box expansion. We never
+ * cross a detected layout region and cap each direction at half the original
+ * box, so a missed detection cannot turn one translated label into a page-wide
+ * white slab.
+ */
+export function expandLayoutTranslateBbox(
+	item: LayoutTranslateItem,
+	blockers: readonly PdfLayoutRegion[] = [],
+): LayoutTranslateItem["bbox"] {
+	const sourceLength = item.source.replace(/\s+/g, "").length;
+	const expandable =
+		isLayoutTranslateHeadingKind(item.kind) ||
+		item.kind === "figure_title" ||
+		(item.kind === "text" && sourceLength <= 180 && item.bbox.h <= 0.08);
+	if (!expandable) return item.bbox;
+	const original = item.bbox;
+	const x2 = original.x + original.w;
+	const y2 = original.y + original.h;
+	let right = OVERLAY_PAGE_RIGHT;
+	let bottom = 1 - OVERLAY_GUTTER;
+	for (const blocker of blockers) {
+		if (blocker.id === item.id) continue;
+		const b = blocker.bbox;
+		if (
+			b.x >= x2 - OVERLAY_GUTTER &&
+			overlaps(original.y, y2, b.y, b.y + b.h)
+		) {
+			right = Math.min(right, b.x - OVERLAY_GUTTER);
+		}
+		if (
+			b.y >= y2 - OVERLAY_GUTTER &&
+			overlaps(original.x, x2, b.x, b.x + b.w)
+		) {
+			bottom = Math.min(bottom, b.y - OVERLAY_GUTTER);
+		}
+	}
+	const width = Math.max(
+		original.w,
+		Math.min(right - original.x, original.w * 1.5),
+	);
+	// Prefer one-direction expansion. Expanding both could cover a diagonal
+	// figure/table that does not overlap the original narrow title box.
+	if (width > original.w + 0.001) return { ...original, w: width };
+	return {
+		...original,
+		h: Math.max(original.h, Math.min(bottom - original.y, original.h * 1.75)),
+	};
+}
 
 /** Wider glyphs for CJK; narrower for Latin (academic body). */
 function avgGlyphEm(text: string): number {
@@ -341,12 +400,22 @@ export const LayoutTranslateOverlay = memo(function LayoutTranslateOverlay({
 	pageWidthPx,
 	pageHeightPx,
 	tone = "white",
+	layoutRegions,
 }: LayoutTranslateOverlayProps) {
-	const onPage = items.filter(
-		(it) =>
-			it.status === "done" ||
-			it.status === "running" ||
-			(it.status === "error" && it.translated),
+	const onPage = useMemo(
+		() =>
+			items
+				.filter(
+					(it) =>
+						it.status === "done" ||
+						it.status === "running" ||
+						(it.status === "error" && it.translated),
+				)
+				.map((item) => ({
+					...item,
+					bbox: expandLayoutTranslateBbox(item, layoutRegions),
+				})),
+		[items, layoutRegions],
 	);
 	if (onPage.length === 0) return null;
 
