@@ -20,6 +20,7 @@ import {
 	listAgents,
 	runOnce,
 } from "@/lib/agent";
+import { registerSelectionQuickChat } from "@/lib/agent/selection-quick-chat";
 import {
 	pinActiveSelection,
 	publishSelection,
@@ -250,6 +251,19 @@ export function usePlazaFeedSelection({
 		setAskError(null);
 		setAsk({ thread, screen });
 	}, [menu, sourcePath, clearNativeSelection]);
+
+	// ⌘K Quick chat — while this Plaza selection toolbar is armed.
+	const menuRef = useRef(menu);
+	menuRef.current = menu;
+	const handleAskRef = useRef(handleAsk);
+	handleAskRef.current = handleAsk;
+	useEffect(() => {
+		return registerSelectionQuickChat(() => {
+			if (!menuRef.current) return false;
+			handleAskRef.current();
+			return true;
+		});
+	}, []);
 
 	const resolveAskAgent = useCallback(async () => {
 		const registry = await listAgents().catch(() => null);

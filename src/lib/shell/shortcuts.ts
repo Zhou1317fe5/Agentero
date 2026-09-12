@@ -25,7 +25,9 @@ export type ShortcutId =
 	| "commandPalette"
 	| "toggleSidebar"
 	| "toggleChat"
-	/** ⌘K — pin the live selection into the Agent context and focus the composer */
+	/** ⌘K — in-page Quick chat (Ask) from the live selection */
+	| "quickChat"
+	/** ⇧⌘A — pin the live selection into the Agent context and focus the composer */
 	| "addSelectionToChat"
 	| "closeSheet"
 	| "focusSidebar"
@@ -230,16 +232,26 @@ export const SHORTCUTS: ShortcutDef[] = [
 	{
 		id: "toggleChat",
 		group: "Navigation",
+		// ⌘L — with a selection: Add to chat (pin + open Agent); else toggle rail.
 		key: "l",
+		meta: true,
+		whenSettingsClosed: true,
+	},
+	{
+		id: "quickChat",
+		group: "Navigation",
+		// ⌘K — in-page Quick chat (Ask) from the live PDF / Plaza selection.
+		key: "k",
 		meta: true,
 		whenSettingsClosed: true,
 	},
 	{
 		id: "addSelectionToChat",
 		group: "Navigation",
-		// ⌘K — pin the live selection as Agent context and focus the composer.
-		key: "k",
+		// ⇧⌘A — pin the live selection as Agent context and focus the composer.
+		key: "a",
 		meta: true,
+		shift: true,
 		whenSettingsClosed: true,
 	},
 	{
@@ -318,17 +330,6 @@ export const SHORTCUTS: ShortcutDef[] = [
 
 /** Secondary aliases that still work (documented lightly). */
 const ALIASES: Partial<Record<ShortcutId, ShortcutDef[]>> = {
-	addSelectionToChat: [
-		{
-			id: "addSelectionToChat",
-			group: "Navigation",
-			// ⇧⌘A — prior binding; still focuses the composer with the selection.
-			key: "a",
-			meta: true,
-			shift: true,
-			whenSettingsClosed: true,
-		},
-	],
 	toggleSidebar: [
 		{
 			id: "toggleSidebar",

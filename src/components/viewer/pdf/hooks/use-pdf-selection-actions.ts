@@ -12,8 +12,15 @@ import type {
 	FormattedSelection,
 	useSelectionCapability,
 } from "@embedpdf/plugin-selection/react";
-import { type Dispatch, type SetStateAction, useCallback, useRef } from "react";
+import {
+	type Dispatch,
+	type SetStateAction,
+	useCallback,
+	useEffect,
+	useRef,
+} from "react";
 import type { SelectionMenuState } from "@/components/viewer/pdf/types";
+import { registerSelectionQuickChat } from "@/lib/agent/selection-quick-chat";
 import {
 	pinActiveSelection,
 	publishSelection,
@@ -139,6 +146,15 @@ export function usePdfSelectionActions({
 		selectionCap?.clear(docId);
 		startFromAnchor(anchor);
 	}, [startFromAnchor, selectionCap, docId, setSelectionMenu]);
+
+	// ⌘K Quick chat — only while this viewer's selection toolbar is armed.
+	useEffect(() => {
+		return registerSelectionQuickChat(() => {
+			if (!selectionMenuRef.current) return false;
+			handleMenuAsk();
+			return true;
+		});
+	}, [handleMenuAsk]);
 
 	const handleMenuAddToChat = useCallback(() => {
 		const menu = selectionMenuRef.current;

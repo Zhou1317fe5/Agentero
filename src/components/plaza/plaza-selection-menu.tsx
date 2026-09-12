@@ -1,6 +1,6 @@
 /**
  * Lightweight selection toolbar for Plaza text surfaces (RSS detail).
- * Add to chat / Quick chat — no highlight / note / translate (nothing to persist).
+ * Quick chat / Add to chat — no highlight / note / translate (nothing to persist).
  * Selected text is copied to the clipboard automatically.
  */
 
@@ -24,8 +24,8 @@ export function PlazaSelectionMenu({
 	onAddToChat,
 }: PlazaSelectionMenuProps) {
 	const { t } = useTranslation("viewer");
-	const addToChatShortcut = formatModShortcut("k");
-	const openChatShortcut = formatModShortcut("l");
+	const quickChatShortcut = formatModShortcut("k");
+	const addToChatShortcut = formatModShortcut("l");
 
 	const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
 	const vh = typeof window !== "undefined" ? window.innerHeight : 800;
@@ -55,23 +55,23 @@ export function PlazaSelectionMenu({
 			<button
 				type="button"
 				className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-caption font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-[0.97] motion-reduce:active:scale-100"
+				aria-label={`${t("selection.quickChat")} ${quickChatShortcut}`}
+				onClick={onAsk}
+			>
+				<span>{t("selection.quickChat")}</span>
+				<kbd className="translate-y-px scale-90 text-caption font-normal text-muted-foreground/80 tabular-nums">
+					{quickChatShortcut}
+				</kbd>
+			</button>
+			<button
+				type="button"
+				className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-caption font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-[0.97] motion-reduce:active:scale-100"
 				aria-label={`${t("selection.addToChat")} ${addToChatShortcut}`}
 				onClick={onAddToChat}
 			>
 				<span>{t("selection.addToChat")}</span>
 				<kbd className="translate-y-px scale-90 text-caption font-normal text-muted-foreground/80 tabular-nums">
 					{addToChatShortcut}
-				</kbd>
-			</button>
-			<button
-				type="button"
-				className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-caption font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-[0.97] motion-reduce:active:scale-100"
-				aria-label={`${t("selection.quickChat")} ${openChatShortcut}`}
-				onClick={onAsk}
-			>
-				<span>{t("selection.quickChat")}</span>
-				<kbd className="translate-y-px scale-90 text-caption font-normal text-muted-foreground/80 tabular-nums">
-					{openChatShortcut}
 				</kbd>
 			</button>
 		</div>

@@ -49,6 +49,7 @@ import {
 	listenOpenAgentWithPrompt,
 	setPendingAgentComposerPrompt,
 } from "@/lib/agent/composer-seed";
+import { runSelectionQuickChat } from "@/lib/agent/selection-quick-chat";
 import { pinActiveSelection } from "@/lib/agent/selection-store";
 import { closeTopOverlay } from "@/lib/core/overlay-stack";
 import { isMacOS, isTauri } from "@/lib/core/tauri";
@@ -334,14 +335,17 @@ export default function App() {
 		quickOpen: () => openPalette("go"),
 		commandPalette: () => openPalette("commands"),
 		toggleSidebar,
-		// ⌘L: with a live selection, pin it and open the Agent sidebar; otherwise
-		// toggle the right rail (Cursor-style).
+		// ⌘L: Add to chat when a selection is staged; otherwise toggle the rail.
 		toggleChat: () => {
 			if (pinActiveSelection()) {
 				openRightTab("agent");
 			} else toggleChat();
 		},
-		// ⌘K (⇧⌘A alias): pin the selection, open Agent, and focus the composer.
+		// ⌘K: in-page Quick chat (Ask) from the armed PDF / Plaza selection.
+		quickChat: () => {
+			runSelectionQuickChat();
+		},
+		// ⇧⌘A: pin the selection, open Agent, and focus the composer.
 		addSelectionToChat: () => {
 			pinActiveSelection();
 			openRightTab("agent");
