@@ -68,6 +68,8 @@
 		"removeSkill": "从上下文移除 ${{skill}}",
 		"removeSelection": "从上下文移除选中文本",
 		"selection": "选中文本",
+		"selectionChip": "{{title}}",
+		"selectionChipWithPage": "{{title}}:{{page}}页",
 		"removeVisualDraft": "从上下文移除视觉批注",
 		"visualAnnotation": "视觉批注",
 		"visualAnnotationPage": "第{{page}}页",

@@ -130,6 +130,17 @@ describe("composer inline tokens", () => {
 			expect(recovered).toEqual([withGeometry]);
 		});
 
+		it("round-trips selection text with Unicode characters", () => {
+			const unicode: SelectionContext = {
+				...selection,
+				text: "注意力机制 你好 🌍",
+				sourcePath: "papers/注意力机制",
+			};
+			const token = encodeSelectionToken(unicode);
+			const recovered = extractSelectionTokens(`x ${token} y`);
+			expect(recovered).toEqual([unicode]);
+		});
+
 		it("parses selection parts for rendering", () => {
 			const token = encodeSelectionToken(selection);
 			const parts = parseInlineTokenParts(`A ${token} B`);

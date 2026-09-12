@@ -242,7 +242,10 @@ export function useAgentComposer({
 		const inserted: SelectionContext[] = [];
 		for (const sel of pinnedSelections) {
 			if (!prev.some((p) => p.id === sel.id)) {
-				composerInputRef.current?.insertAtCursor(encodeSelectionToken(sel));
+				composerInputRef.current?.insertAtCursor(
+					encodeSelectionToken(sel),
+					true,
+				);
 				inserted.push(sel);
 			}
 		}

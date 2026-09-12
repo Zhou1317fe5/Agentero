@@ -11,6 +11,7 @@ import {
 	useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { useStickToBottomContext } from "use-stick-to-bottom";
 import { AgentThinkingOrb } from "@/components/agent/agent-thinking-orb";
 import {
 	ChatAttachedImages,
@@ -107,6 +108,21 @@ function isNonTextPart(part: AgentPart): boolean {
 	return (
 		part.type === "reasoning" || part.type === "plan" || part.type === "tool"
 	);
+}
+
+/** On tab switch, jump to the latest messages instead of keeping the old scroll position. */
+function TabScrollToBottom({ activeTabId }: { activeTabId: string }) {
+	const { scrollToBottom } = useStickToBottomContext();
+	const prevTabIdRef = useRef(activeTabId);
+
+	useEffect(() => {
+		if (prevTabIdRef.current !== activeTabId) {
+			prevTabIdRef.current = activeTabId;
+			scrollToBottom({ animation: "instant" });
+		}
+	}, [activeTabId, scrollToBottom]);
+
+	return null;
 }
 
 type AgentProcessCollapsibleProps = {
@@ -867,6 +883,7 @@ export function ChatTranscript({
 						: undefined
 				}
 			>
+				<TabScrollToBottom activeTabId={activeTabId} />
 				{lines.length === 0 ? (
 					<div className="flex w-full flex-col gap-6">
 						<ConversationEmptyState

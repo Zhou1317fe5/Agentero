@@ -68,6 +68,8 @@
 		"removeSkill": "Remove ${{skill}} from context",
 		"removeSelection": "Remove selected text from context",
 		"selection": "Selection",
+		"selectionChip": "{{title}}",
+		"selectionChipWithPage": "{{title}}:p.{{page}}",
 		"removeVisualDraft": "Remove visual annotation from context",
 		"visualAnnotation": "Visual annotation",
 		"visualAnnotationPage": "p.{{page}}",

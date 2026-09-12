@@ -46,7 +46,12 @@ export function decodeCommandTokenPayload(payload: string): string {
 }
 
 function base64UrlEncode(input: string): string {
-	return btoa(input).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+	const bytes = new TextEncoder().encode(input);
+	const binString = Array.from(bytes, (b) => String.fromCharCode(b)).join("");
+	return btoa(binString)
+		.replace(/\+/g, "-")
+		.replace(/\//g, "_")
+		.replace(/=+$/, "");
 }
 
 function base64UrlDecode(input: string): string {
@@ -54,7 +59,9 @@ function base64UrlDecode(input: string): string {
 		input.replace(/-/g, "+").replace(/_/g, "/") +
 		"===".slice((input.length + 3) % 4);
 	try {
-		return atob(padded);
+		const binString = atob(padded);
+		const bytes = Uint8Array.from(binString, (c) => c.charCodeAt(0));
+		return new TextDecoder().decode(bytes);
 	} catch {
 		return "";
 	}

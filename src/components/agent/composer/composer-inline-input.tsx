@@ -26,13 +26,14 @@ import {
 	parseInlineTokenParts,
 	stripInlineTokens,
 } from "@/lib/agent/composer-inline-tokens";
+import { isImeKeyboardEvent } from "@/lib/core/ime";
 import { basenameOf } from "@/lib/core/path";
 import { cn } from "@/lib/core/utils";
 
 const CHIP_ATTR = "data-composer-chip";
 const TOKEN_ATTR = "data-composer-token";
-/** Invisible padding after every chip so the caret has a landing spot. */
-const ZWSP = "\u200B";
+/** Zero-width, non-breaking padding after chips so the caret has a landing spot. */
+const CARET_PAD = "\u2060";
 
 const INLINE_CHIP_CLASS =
 	"composer-inline-chip mx-0.5 inline-flex max-w-[7rem] shrink-0 items-center gap-0.5 rounded-md border border-border/80 bg-muted/40 px-1 align-middle text-[0.8125em] leading-[1.25] text-foreground hover:bg-muted";
@@ -47,7 +48,7 @@ function serializeEditor(root: HTMLElement): string {
 	let out = "";
 	const walk = (node: Node) => {
 		if (node.nodeType === Node.TEXT_NODE) {
-			out += (node.textContent ?? "").replaceAll(ZWSP, "");
+			out += (node.textContent ?? "").replaceAll(CARET_PAD, "");
 			return;
 		}
 		if (node.nodeType !== Node.ELEMENT_NODE) return;
@@ -157,18 +158,6 @@ function appendSkillIcon(chip: HTMLElement) {
 	);
 }
 
-/** Lucide `quote` glyph for selected-text chips. */
-function appendSelectionIcon(chip: HTMLElement) {
-	appendLucideIcon(
-		chip,
-		[
-			"M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z",
-			"M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z",
-		],
-		"size-3.5 shrink-0 text-primary",
-	);
-}
-
 function appendSkillLabel(chip: HTMLElement, name: string, skillId: string) {
 	appendSkillIcon(chip);
 	const label = document.createElement("span");
@@ -182,8 +171,20 @@ function placeCaretAtEnd(el: HTMLElement) {
 	const selection = window.getSelection();
 	if (!selection) return;
 	const range = document.createRange();
-	range.selectNodeContents(el);
-	range.collapse(false);
+	let node: Node | null = el.lastChild;
+	// selectNodeContents + collapse(false) is unreliable when the editor ends
+	// with a contentEditable=false chip: browsers may normalize the caret to
+	// before the chip. Walk back to a real text node (caret pad / trailing text)
+	// and place the caret at its end.
+	while (node && node.nodeType !== Node.TEXT_NODE) {
+		node = node.previousSibling;
+	}
+	if (node) {
+		range.setStart(node, (node as Text).data.length);
+	} else {
+		range.setStart(el, el.childNodes.length);
+	}
+	range.collapse(true);
 	selection.removeAllRanges();
 	selection.addRange(range);
 }
@@ -198,24 +199,207 @@ function placeCaretAfter(node: Node) {
 	selection.addRange(range);
 }
 
-function deleteChipElement(chip: HTMLElement) {
+function isZwspPad(node: Node | null): node is Text {
+	return (
+		node?.nodeType === Node.TEXT_NODE &&
+		(node as Text).data.replaceAll(CARET_PAD, "").length === 0
+	);
+}
+
+function leadingCaretPadLength(text: Text): number {
+	const match = text.data.match(/^\u2060+/);
+	return match?.[0].length ?? 0;
+}
+
+function findAdjacentTextNode(
+	start: Node | null,
+	direction: 1 | -1,
+): Text | null {
+	let node: Node | null = start;
+	while (node) {
+		if (node.nodeType === Node.TEXT_NODE) {
+			const text = node as Text;
+			if (text.data.replaceAll(CARET_PAD, "").length > 0) {
+				return text;
+			}
+		}
+		node = direction === 1 ? node.nextSibling : node.previousSibling;
+	}
+	return null;
+}
+
+function deleteChipElement(
+	chip: HTMLElement,
+	pads: Node[] = [],
+	direction: "before" | "after" = "before",
+) {
 	const parent = chip.parentNode;
 	if (!parent) return;
-	const next = chip.nextSibling;
+
+	// Decide the caret landing spot before we mutate the DOM.
+	const previousText = findAdjacentTextNode(chip.previousSibling, -1);
+	const nextText = findAdjacentTextNode(chip.nextSibling, 1);
+	const landingText =
+		direction === "before"
+			? (previousText ?? nextText)
+			: (nextText ?? previousText);
+	// Backspace normally lands at the end of the previous text; Delete lands at
+	// the start of the next text. If one side is absent, use the available side.
+	let landingOffset =
+		landingText === previousText ? (landingText?.data.length ?? 0) : 0;
+
+	// Collect any caret pads touching the chip so they don't become
+	// invisible traps that need a second Backspace/Delete.
+	const adjacentPads: Node[] = [];
+	let prev = chip.previousSibling;
+	while (isZwspPad(prev)) {
+		adjacentPads.push(prev);
+		prev = prev.previousSibling;
+	}
+	let next = chip.nextSibling;
+	while (isZwspPad(next)) {
+		adjacentPads.push(next);
+		next = next.nextSibling;
+	}
+
+	for (const pad of pads) pad.parentNode?.removeChild(pad);
+	for (const pad of adjacentPads) pad.parentNode?.removeChild(pad);
+	// Chromium/WebView may merge the caret pad after a chip into the following
+	// text node. Remove only that prefix so the visible text stays intact.
+	if (landingText) {
+		const leadingPadLength = leadingCaretPadLength(landingText);
+		if (leadingPadLength > 0) {
+			landingText.deleteData(0, leadingPadLength);
+			landingOffset = Math.min(landingOffset, landingText.data.length);
+		}
+	}
+	chip.remove();
+
 	const selection = window.getSelection();
 	const range = document.createRange();
-	range.setStartBefore(chip);
-	range.collapse(true);
-	chip.remove();
-	// Remove the isolated zero-width space pad that follows the chip.
-	if (
-		next?.nodeType === Node.TEXT_NODE &&
-		(next as Text).data.replaceAll(ZWSP, "").length === 0
-	) {
-		next.remove();
+	if (landingText) {
+		range.setStart(landingText, landingOffset);
+	} else {
+		range.setStart(parent, 0);
 	}
+	range.collapse(true);
 	selection?.removeAllRanges();
 	selection?.addRange(range);
+}
+
+function isChip(node: Node): node is HTMLElement {
+	return (
+		node.nodeType === Node.ELEMENT_NODE &&
+		(node as HTMLElement).getAttribute(CHIP_ATTR) !== null
+	);
+}
+
+function findChipBefore(
+	root: HTMLElement,
+	range: Range,
+): { chip: HTMLElement; pads: Node[] } | null {
+	const node = range.startContainer;
+	const offset = range.startOffset;
+	const pads: Node[] = [];
+	let target: Node | null = null;
+
+	// Caret landed inside a chip (e.g. user clicked the chip label): Backspace
+	// should delete the whole chip, not move the caret around it.
+	if (node.nodeType === Node.ELEMENT_NODE) {
+		const chipEl = (node as HTMLElement).closest?.(
+			`[${CHIP_ATTR}]`,
+		) as HTMLElement | null;
+		if (chipEl && root.contains(chipEl)) {
+			return { chip: chipEl, pads: [] };
+		}
+	}
+
+	if (node === root) {
+		if (offset === 0) return null;
+		target = root.childNodes[offset - 1];
+	} else if (node.nodeType === Node.TEXT_NODE) {
+		const text = node as Text;
+		if (offset === 0) {
+			// Caret at the start of a real text node: the chip could be right before it.
+			target = text.previousSibling;
+		} else if (offset <= leadingCaretPadLength(text)) {
+			// The browser can merge the chip's caret pad into the following text
+			// node; the caret immediately after that prefix is still next to the chip.
+			target = text.previousSibling;
+		} else if (offset === text.data.length && text.data.trim().length === 0) {
+			// Caret inside a whitespace-only pad: treat it as a pad and look further back.
+			pads.unshift(text);
+			target = text.previousSibling;
+		} else {
+			return null;
+		}
+	} else {
+		return null;
+	}
+
+	// Skip whitespace/caret pads between the caret and the chip.
+	while (
+		target?.nodeType === Node.TEXT_NODE &&
+		((target as Text).data.replaceAll(CARET_PAD, "").length === 0 ||
+			(target as Text).data.trim().length === 0)
+	) {
+		pads.unshift(target);
+		target = target.previousSibling;
+	}
+
+	return target && isChip(target) ? { chip: target, pads } : null;
+}
+
+function findChipAfter(
+	root: HTMLElement,
+	range: Range,
+): { chip: HTMLElement; pads: Node[] } | null {
+	const node = range.startContainer;
+	const offset = range.startOffset;
+	const pads: Node[] = [];
+	let target: Node | null = null;
+
+	// Caret landed inside a chip (e.g. user clicked the chip label): Delete
+	// should delete the whole chip, not move the caret around it.
+	if (node.nodeType === Node.ELEMENT_NODE) {
+		const chipEl = (node as HTMLElement).closest?.(
+			`[${CHIP_ATTR}]`,
+		) as HTMLElement | null;
+		if (chipEl && root.contains(chipEl)) {
+			return { chip: chipEl, pads: [] };
+		}
+	}
+
+	if (node === root) {
+		if (offset >= root.childNodes.length) return null;
+		target = root.childNodes[offset];
+	} else if (node.nodeType === Node.TEXT_NODE) {
+		const text = node as Text;
+		if (offset === text.data.length) {
+			// Caret at the end of a real text node: the chip could be right after it.
+			target = text.nextSibling;
+		} else if (offset === 0 && text.data.trim().length === 0) {
+			// Caret inside a whitespace-only pad: treat it as a pad and look further ahead.
+			pads.push(text);
+			target = text.nextSibling;
+		} else {
+			return null;
+		}
+	} else {
+		return null;
+	}
+
+	// Skip whitespace/caret pads between the caret and the chip.
+	while (
+		target?.nodeType === Node.TEXT_NODE &&
+		((target as Text).data.replaceAll(CARET_PAD, "").length === 0 ||
+			(target as Text).data.trim().length === 0)
+	) {
+		pads.push(target);
+		target = target.nextSibling;
+	}
+
+	return target && isChip(target) ? { chip: target, pads } : null;
 }
 
 function chipToken(part: InlineTokenPart): string {
@@ -291,12 +475,12 @@ function renderChip(
 		chip.dataset.selectionId = selection.id;
 		chip.setAttribute(TOKEN_ATTR, token);
 
-		appendSelectionIcon(chip);
-
 		const label = document.createElement("span");
 		label.className = "min-w-0 truncate";
-		const name = basenameOf(selection.sourcePath) || selection.sourcePath;
-		label.textContent = selection.page ? `${name} · p.${selection.page}` : name;
+		const title = labelForPath(selection.sourcePath);
+		label.textContent = selection.page
+			? t("composer.selectionChipWithPage", { title, page: selection.page })
+			: t("composer.selectionChip", { title });
 		label.title = selection.text.slice(0, 200);
 		chip.appendChild(label);
 
@@ -307,8 +491,12 @@ function renderChip(
 }
 
 export type ComposerInlineInputHandle = {
-	/** Insert an inline token at the current caret position and focus the field. */
-	insertAtCursor: (token: string) => void;
+	/**
+	 * Insert an inline token and focus the field.
+	 * @param atEnd - when true, append to the end of the draft instead of the
+	 *   current caret position.
+	 */
+	insertAtCursor: (token: string, atEnd?: boolean) => void;
 	/** Return the underlying contenteditable element. */
 	getEditorElement: () => HTMLElement | null;
 };
@@ -354,7 +542,7 @@ export const ComposerInlineInput = forwardRef<
 		const editorRef = useRef<HTMLDivElement>(null);
 		/** null until first paint so the initial `value` always hydrates into the DOM. */
 		const lastValueRef = useRef<string | null>(null);
-		const { isBlockedByIme, compositionProps } = useImeGuard();
+		const { isBlockedByIme, isComposing, compositionProps } = useImeGuard();
 		const renderedTokensRef = useRef<Set<string>>(new Set());
 		const isFirstRenderRef = useRef(true);
 
@@ -365,6 +553,12 @@ export const ComposerInlineInput = forwardRef<
 			lastValueRef.current = next;
 			onValueChange(next);
 		}, [onValueChange]);
+
+		const scrollEditorToBottom = useCallback(() => {
+			const root = editorRef.current;
+			if (!root || document.activeElement !== root) return;
+			root.scrollTop = root.scrollHeight;
+		}, []);
 
 		const renderValue = useCallback(
 			(text: string) => {
@@ -398,7 +592,7 @@ export const ComposerInlineInput = forwardRef<
 						isNew,
 					});
 					root.appendChild(chip);
-					root.appendChild(document.createTextNode(ZWSP));
+					root.appendChild(document.createTextNode(CARET_PAD));
 				}
 				renderedTokensRef.current = nextTokens;
 				isFirstRenderRef.current = false;
@@ -413,8 +607,9 @@ export const ComposerInlineInput = forwardRef<
 			const root = editorRef.current;
 			if (root && document.activeElement === root) {
 				placeCaretAtEnd(root);
+				scrollEditorToBottom();
 			}
-		}, [renderValue, value]);
+		}, [renderValue, value, scrollEditorToBottom]);
 
 		useEffect(() => {
 			if (!autoFocus) return;
@@ -425,7 +620,7 @@ export const ComposerInlineInput = forwardRef<
 			ref,
 			() => ({
 				getEditorElement: () => editorRef.current,
-				insertAtCursor: (token: string) => {
+				insertAtCursor: (token: string, atEnd = false) => {
 					const root = editorRef.current;
 					if (!root) return;
 					root.focus();
@@ -448,12 +643,13 @@ export const ComposerInlineInput = forwardRef<
 						inserted = document.createTextNode(token);
 					}
 
-					const pad = document.createTextNode(ZWSP);
-					if (
+					const pad = document.createTextNode(CARET_PAD);
+					const hasValidRange =
+						!atEnd &&
 						selection &&
 						selection.rangeCount > 0 &&
-						root.contains(selection.getRangeAt(0).commonAncestorContainer)
-					) {
+						root.contains(selection.getRangeAt(0).commonAncestorContainer);
+					if (hasValidRange) {
 						const range = selection.getRangeAt(0);
 						range.deleteContents();
 						range.insertNode(inserted);
@@ -463,17 +659,19 @@ export const ComposerInlineInput = forwardRef<
 					} else {
 						root.appendChild(inserted);
 						root.appendChild(pad);
-						placeCaretAtEnd(root);
+						placeCaretAfter(pad);
 					}
 
 					emitFromDom();
+					scrollEditorToBottom();
 				},
 			}),
-			[emitFromDom, labelForPath, skillLabel, t],
+			[emitFromDom, labelForPath, scrollEditorToBottom, skillLabel, t],
 		);
 
 		const handleInput = (_event: FormEvent<HTMLDivElement>) => {
 			emitFromDom();
+			scrollEditorToBottom();
 		};
 
 		const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -483,7 +681,8 @@ export const ComposerInlineInput = forwardRef<
 
 			if (
 				(event.key === "Backspace" || event.key === "Delete") &&
-				!isBlockedByIme(event)
+				!isComposing &&
+				!isImeKeyboardEvent(event)
 			) {
 				const selection = window.getSelection();
 				if (!selection || selection.rangeCount === 0) {
@@ -527,11 +726,6 @@ export const ComposerInlineInput = forwardRef<
 
 						// Extend range to fully cover chips at the boundaries.
 						for (const chip of touchedChips) {
-							if (
-								newRange.compareBoundaryPoints(Range.START_TO_START, range) > 0
-							) {
-								// not reachable; keep logic simple below
-							}
 							const chipRange = document.createRange();
 							chipRange.selectNode(chip);
 							if (
@@ -567,73 +761,25 @@ export const ComposerInlineInput = forwardRef<
 				// Collapsed caret next to a chip.
 				if (selection.isCollapsed) {
 					const range = selection.getRangeAt(0);
-					const isBackspace = event.key === "Backspace";
-
-					// Case 1: caret is at an element offset inside the editor root.
-					if (range.startContainer.nodeType === Node.ELEMENT_NODE) {
-						const parent = range.startContainer as HTMLElement;
-						const index = range.startOffset;
-						const target = isBackspace
-							? parent.childNodes[index - 1]
-							: parent.childNodes[index];
-						if (
-							target?.nodeType === Node.ELEMENT_NODE &&
-							(target as HTMLElement).getAttribute(CHIP_ATTR)
-						) {
-							event.preventDefault();
-							deleteChipElement(target as HTMLElement);
-							emitFromDom();
-							return;
-						}
+					const root = editorRef.current;
+					if (!root) {
+						onKeyDown?.(event);
+						return;
 					}
 
-					// Case 2: caret is inside a text node adjacent to a chip.
-					const node = range.startContainer;
-					if (node.nodeType === Node.TEXT_NODE) {
-						const text = node as Text;
-						const offset = range.startOffset;
-						if (isBackspace && offset === 0) {
-							const prev = text.previousSibling;
-							if (
-								prev?.nodeType === Node.ELEMENT_NODE &&
-								(prev as HTMLElement).getAttribute(CHIP_ATTR)
-							) {
-								event.preventDefault();
-								deleteChipElement(prev as HTMLElement);
-								emitFromDom();
-								return;
-							}
-						}
-						if (
-							isBackspace &&
-							offset === text.data.length &&
-							text.data.replaceAll(ZWSP, "").length === 0
-						) {
-							// The caret is right after a chip, separated only by the
-							// invisible ZWSP pad. Delete the chip atomically.
-							const prev = text.previousSibling;
-							if (
-								prev?.nodeType === Node.ELEMENT_NODE &&
-								(prev as HTMLElement).getAttribute(CHIP_ATTR)
-							) {
-								event.preventDefault();
-								deleteChipElement(prev as HTMLElement);
-								emitFromDom();
-								return;
-							}
-						}
-						if (!isBackspace && offset === text.data.length) {
-							const next = text.nextSibling;
-							if (
-								next?.nodeType === Node.ELEMENT_NODE &&
-								(next as HTMLElement).getAttribute(CHIP_ATTR)
-							) {
-								event.preventDefault();
-								deleteChipElement(next as HTMLElement);
-								emitFromDom();
-								return;
-							}
-						}
+					const found =
+						event.key === "Backspace"
+							? findChipBefore(root, range)
+							: findChipAfter(root, range);
+					if (found) {
+						event.preventDefault();
+						deleteChipElement(
+							found.chip,
+							found.pads,
+							event.key === "Backspace" ? "before" : "after",
+						);
+						emitFromDom();
+						return;
 					}
 				}
 			}
@@ -666,15 +812,17 @@ export const ComposerInlineInput = forwardRef<
 			if (!chip || !editorRef.current?.contains(chip)) return;
 			event.preventDefault();
 			event.stopPropagation();
+			// Focus before changing the DOM. Focusing after setting the Range lets
+			// WebView normalize the caret and discard the landing position.
+			editorRef.current?.focus({ preventScroll: true });
 			deleteChipElement(chip);
 			emitFromDom();
-			editorRef.current?.focus();
 		};
 
 		const isVisuallyEmpty = parseInlineTokenParts(value).every(
 			(part) =>
 				part.type === "text" &&
-				part.value.replaceAll(ZWSP, "").trim().length === 0,
+				part.value.replaceAll(CARET_PAD, "").trim().length === 0,
 		);
 
 		return (
@@ -690,7 +838,7 @@ export const ComposerInlineInput = forwardRef<
 				/>
 				<div
 					className={cn(
-						"relative min-h-0",
+						"relative flex min-h-0 flex-col",
 						compact ? "min-w-0 flex-1" : "flex-1",
 					)}
 				>
