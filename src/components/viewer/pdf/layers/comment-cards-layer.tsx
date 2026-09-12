@@ -823,7 +823,7 @@ export const CommentCardsLayer = memo(function CommentCardsLayer({
 					<path
 						d={connectorD}
 						fill="none"
-						className="stroke-foreground/70 dark:stroke-foreground/80"
+						className="stroke-foreground/90 dark:stroke-foreground"
 						strokeWidth={1.5}
 						strokeLinecap="round"
 						strokeLinejoin="round"
