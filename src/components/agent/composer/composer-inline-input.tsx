@@ -28,9 +28,10 @@ import {
 } from "@/lib/agent/composer-inline-tokens";
 import { isImeKeyboardEvent } from "@/lib/core/ime";
 import { basenameOf } from "@/lib/core/path";
-import { cn } from "@/lib/core/utils";
+import { cn, truncateToChars } from "@/lib/core/utils";
 
 const CHIP_ATTR = "data-composer-chip";
+const MAX_CHIP_TITLE_CHARS = 9;
 const TOKEN_ATTR = "data-composer-token";
 /** Zero-width, non-breaking padding after chips so the caret has a landing spot. */
 const CARET_PAD = "\u2060";
@@ -477,7 +478,10 @@ function renderChip(
 
 		const label = document.createElement("span");
 		label.className = "min-w-0 truncate";
-		const title = labelForPath(selection.sourcePath);
+		const title = truncateToChars(
+			labelForPath(selection.sourcePath),
+			MAX_CHIP_TITLE_CHARS,
+		);
 		label.textContent = selection.page
 			? t("composer.selectionChipWithPage", { title, page: selection.page })
 			: t("composer.selectionChip", { title });

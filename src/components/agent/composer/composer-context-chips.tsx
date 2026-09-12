@@ -5,7 +5,9 @@ import type { AgentSkill } from "@/lib/agent";
 import type { SelectionContext } from "@/lib/agent/selection-store";
 import type { PdfVisualDraft } from "@/lib/agent/visual-context-store";
 import { basenameOf } from "@/lib/core/path";
-import { cn } from "@/lib/core/utils";
+import { cn, truncateToChars } from "@/lib/core/utils";
+
+const MAX_CHIP_TITLE_CHARS = 6;
 
 function cleanSkillDisplayName(name: string): string {
 	return name
@@ -138,7 +140,10 @@ export function ComposerContextChips({
 				);
 			})}
 			{selectionChips.map((sel) => {
-				const name = basenameOf(sel.sourcePath) || t("composer.selection");
+				const name = truncateToChars(
+					basenameOf(sel.sourcePath) || t("composer.selection"),
+					MAX_CHIP_TITLE_CHARS,
+				);
 				const shortLabel = sel.page ? `${name} · p.${sel.page}` : name;
 				return (
 					<button
