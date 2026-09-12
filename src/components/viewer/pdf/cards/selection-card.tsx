@@ -193,6 +193,8 @@ type SelectionCardProps = {
 	 */
 	bodyScroll?: boolean;
 	preferRight?: boolean;
+	/** Gap between the anchor and the card edge (default 4). Pass 0 to make the card flush with a gutter pin. */
+	gap?: number;
 	title: string;
 	icon: LucideIcon;
 	/** Header trailing icon buttons (close / hide / delete …). */
@@ -227,6 +229,7 @@ export function SelectionCard({
 	lockHeight = false,
 	bodyScroll = true,
 	preferRight = true,
+	gap = 4,
 	title,
 	icon: Icon,
 	actions,
@@ -248,13 +251,14 @@ export function SelectionCard({
 		placementHeight,
 		trackPin,
 		preferRight,
+		gap,
 	});
 	// The gutter pin sits on the side the card opens toward. Reveal the card
-	// from that corner so it looks like the pin expands into the full card.
-	const isRightSide = left + width / 2 >= screen.x;
-	const originClip = isRightSide
-		? "inset(0 100% 100% 0)"
-		: "inset(0 0 100% 100%)";
+	// from that 24×24 corner so the pin appears to expand right/down (or left/down)
+	// into the full card without a gap.
+	const originClip = preferRight
+		? "inset(0 calc(100% - 24px) calc(100% - 24px) 0)"
+		: "inset(0 0 calc(100% - 24px) calc(100% - 24px))";
 	const transition = reduceMotion
 		? { duration: 0 }
 		: { type: "spring" as const, bounce: 0.15, duration: 0.35 };

@@ -49,6 +49,7 @@ export function VisualTraceCard({
 			height={360}
 			lockHeight
 			preferRight={preferRight}
+			gap={0}
 			title={title}
 			icon={MessagesSquare}
 			ariaLabel={t("pdfExplain.traceCardTitle")}

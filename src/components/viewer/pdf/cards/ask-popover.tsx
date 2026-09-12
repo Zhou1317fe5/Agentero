@@ -191,6 +191,7 @@ export function AskPopover({
 			// jumping the card far from the selection.
 			trackPin
 			preferRight={preferRight}
+			gap={0}
 			title={title}
 			icon={MessageSquareIcon}
 			ariaLabel={t("pdfAsk.dialogLabel")}
