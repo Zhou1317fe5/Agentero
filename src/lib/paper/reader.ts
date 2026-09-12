@@ -29,6 +29,7 @@ import { runLocalActivity } from "@/lib/core/tasks";
 import { isTauri } from "@/lib/core/tauri";
 import { setPaperIsRead } from "@/lib/paper/api";
 import { loadPaperMetadata } from "@/lib/paper/load-meta";
+import { paperTaskLabel } from "@/lib/paper/task-label";
 import { loadSettings } from "@/lib/settings";
 import { joinVaultPath } from "@/lib/vault";
 
@@ -187,7 +188,7 @@ export async function runPaperReaderWorkflow(opts: {
 			{
 				kind: "paperRead",
 				title: i18n.t("app:tasks.paperRead"),
-				detail: paperRel,
+				detail: paperTaskLabel(paperRel),
 			},
 			async ({ id, signal, setDetail }) => {
 				setDetail(i18n.t("app:tasks.paperReadStarting"));

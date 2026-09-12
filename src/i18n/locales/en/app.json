@@ -242,7 +242,7 @@
 		"downloadBytesUnknown": "{{phase}} · {{downloaded}}",
 		"batchProgress": "{{phase}} · {{current}} / {{total}}",
 		"lookupImport": "Add paper",
-		"lookupFetching": "Fetching metadata & assets… · {{id}}",
+		"lookupFetching": "Fetching metadata & assets…",
 		"libraryImport": "Import bibliography",
 		"importPdf": "Import PDF",
 		"recognizeMeta": "Match paper metadata",

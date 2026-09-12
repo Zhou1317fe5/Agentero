@@ -157,7 +157,7 @@ export async function runLookupImportJob(
 	const settings = getSettings();
 	const expectTitleSearch = looksLikeTitleSearchQuery(input);
 
-	await reportTaskPhase(ctx, i18n.t("app:tasks.lookupFetching", { id: input }));
+	await reportTaskPhase(ctx, i18n.t("app:tasks.lookupFetching"));
 	const result = await addPapersByIdentifiers({
 		vaultRoot: vaultPath,
 		parentDir,
@@ -168,6 +168,14 @@ export async function runLookupImportJob(
 	});
 	throwIfTaskCancelled(ctx);
 	stashLookupResult(ctx.jobId, result);
+
+	// Prefer the resolved paper title on the task row (never the identifier).
+	const importedTitle = result.imported
+		.map((paper) => paper.title?.trim())
+		.find(Boolean);
+	if (importedTitle) {
+		await reportTaskPhase(ctx, importedTitle);
+	}
 
 	// Tree / wiki / library refresh runs via the paper:imported handler.
 	if (result.skillCandidates.length > 0) {

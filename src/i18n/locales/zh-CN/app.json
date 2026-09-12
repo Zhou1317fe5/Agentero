@@ -242,7 +242,7 @@
 		"downloadBytesUnknown": "{{phase}} · {{downloaded}}",
 		"batchProgress": "{{phase}} · {{current}} / {{total}}",
 		"lookupImport": "添加论文",
-		"lookupFetching": "正在拉取元数据与资源… · {{id}}",
+		"lookupFetching": "正在拉取元数据与资源…",
 		"libraryImport": "导入文献库",
 		"importPdf": "导入 PDF",
 		"recognizeMeta": "识别论文元数据",
