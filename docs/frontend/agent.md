@@ -5,7 +5,7 @@ BYOA：连接本机（或远程）ACP Agent。Host 协议见 [../backend/agent.m
 ## UI 分层
 
 ```text
-AI Elements (Conversation / Message / PromptInput / Sources / Reasoning)
+AI Elements (Conversation / Message / PromptInput / InlineCitation / Reasoning)
   → AgentPanel 状态机
   → invoke agent_* + 订阅 agent:* 事件
 ```
