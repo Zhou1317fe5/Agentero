@@ -36,6 +36,7 @@ import {
 	swatchColorClass,
 } from "@/lib/pdf/highlight/palette";
 import {
+	PDF_COMMENT_CONNECTOR_HALO_CLASS,
 	PDF_COMMENT_CONNECTOR_STROKE_CLASS,
 	type PdfPaperTone,
 } from "@/lib/pdf/page-theme";
@@ -830,8 +831,17 @@ export const CommentCardsLayer = memo(function CommentCardsLayer({
 					<path
 						d={connectorD}
 						fill="none"
+						className={PDF_COMMENT_CONNECTOR_HALO_CLASS[tone]}
+						strokeWidth={3.5}
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						vectorEffect="non-scaling-stroke"
+					/>
+					<path
+						d={connectorD}
+						fill="none"
 						className={PDF_COMMENT_CONNECTOR_STROKE_CLASS[tone]}
-						strokeWidth={1.5}
+						strokeWidth={2}
 						strokeLinecap="round"
 						strokeLinejoin="round"
 						vectorEffect="non-scaling-stroke"
