@@ -2,6 +2,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+	expandLayoutTranslateBbox,
 	fontSizeForLayoutTranslateBox,
 	LayoutTranslateParagraph,
 } from "@/components/viewer/pdf/layers/layout-translate-overlay";
@@ -10,6 +11,7 @@ import {
 	currentLayoutTranslateCacheKey,
 	type LayoutTranslateItem,
 	type LayoutTranslateSidecar,
+	type PdfLayoutRegion,
 	type PdfLayoutSidecar,
 	readLayoutSidecar,
 	readLayoutTranslateSidecar,
@@ -37,6 +39,7 @@ type PageRenderSpec = {
 	pageIndex: number;
 	pageSize: PageSize;
 	items: readonly LayoutTranslateItem[];
+	regions: readonly PdfLayoutRegion[];
 };
 
 const POINTS_PER_PX = 72 / 96;
@@ -104,7 +107,8 @@ function buildPageSpecs(
 		const pageSize = pageSizes.get(pageIndex);
 		if (!pageSize) continue;
 		const items = itemsByPage.get(pageIndex) ?? [];
-		specs.push({ pageIndex, pageSize, items });
+		const regions = layout.regions.filter((r) => r.pageIndex === pageIndex);
+		specs.push({ pageIndex, pageSize, items, regions });
 	}
 	return specs;
 }
@@ -114,16 +118,19 @@ function TranslatedBlock({
 	pageWidthPx,
 	pageHeightPx,
 	tone,
+	layoutRegions,
 }: {
 	item: LayoutTranslateItem;
 	pageWidthPx: number;
 	pageHeightPx: number;
 	tone: PdfPaperTone;
+	layoutRegions: readonly PdfLayoutRegion[];
 }) {
 	const text = item.translated ?? "";
 	const isHeading = isLayoutTranslateHeadingKind(item.kind);
+	const bbox = expandLayoutTranslateBbox(item, layoutRegions);
 	const fontSize = fontSizeForLayoutTranslateBox(
-		item.bbox,
+		bbox,
 		pageWidthPx,
 		pageHeightPx,
 		item.source,
@@ -138,10 +145,10 @@ function TranslatedBlock({
 				tone === "dark" && PDF_PAGE_RASTER_DARK_CLASS,
 			)}
 			style={{
-				left: `${item.bbox.x * 100}%`,
-				top: `${item.bbox.y * 100}%`,
-				width: `${item.bbox.w * 100}%`,
-				height: `${item.bbox.h * 100}%`,
+				left: `${bbox.x * 100}%`,
+				top: `${bbox.y * 100}%`,
+				width: `${bbox.w * 100}%`,
+				height: `${bbox.h * 100}%`,
 				padding: "1px 2px",
 				fontSize,
 				lineHeight: 1.25,
@@ -154,8 +161,8 @@ function TranslatedBlock({
 			<LayoutTranslateParagraph
 				text={text}
 				initialFontSize={fontSize}
-				boxWidthPx={pageWidthPx * item.bbox.w}
-				boxHeightPx={pageHeightPx * item.bbox.h}
+				boxWidthPx={pageWidthPx * bbox.w}
+				boxHeightPx={pageHeightPx * bbox.h}
 				isHeading={isHeading}
 			/>
 		</div>
@@ -204,6 +211,7 @@ function TranslatedPage({
 						pageWidthPx={renderSize.width}
 						pageHeightPx={renderSize.height}
 						tone={tone}
+						layoutRegions={spec.regions}
 					/>
 				))}
 			</div>
