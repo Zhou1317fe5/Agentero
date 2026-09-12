@@ -355,6 +355,7 @@ export function useAgentPanel({
 		handleComposerDragOver,
 		handleComposerDrop,
 		onComposerTextChangeFromUser,
+		composerInputRef,
 	} = useAgentComposer({
 		refs,
 		composer: composerState,
@@ -568,6 +569,7 @@ export function useAgentPanel({
 		composerText,
 		setComposerText,
 		onComposerTextChangeFromUser,
+		composerInputRef,
 		setComposerMenuDismissed,
 		setMentionActiveIndex,
 		setSkillActiveIndex,

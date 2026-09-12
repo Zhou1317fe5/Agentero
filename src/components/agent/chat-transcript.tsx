@@ -86,6 +86,7 @@ import {
 	SUGGESTION_WORKFLOW,
 	toolPartState,
 } from "@/lib/agent/chat-state";
+import { stripInlineTokens } from "@/lib/agent/composer-inline-tokens";
 import { stripPromptEnvelopeForDisplay } from "@/lib/agent/prompt-display";
 import { normalizeAgentSourcePath } from "@/lib/agent/sources";
 import { cn } from "@/lib/core/utils";
@@ -353,7 +354,9 @@ const ChatTranscriptRow = memo(function ChatTranscriptRow({
 				</Message>
 			);
 		}
-		const userDisplay = stripPromptEnvelopeForDisplay(line.text);
+		const userDisplay = stripPromptEnvelopeForDisplay(
+			stripInlineTokens(line.text),
+		);
 		// Never render Codex env / Host system envelopes as user bubbles.
 		if (!userDisplay && visuals.length === 0 && attachedImages.length === 0)
 			return null;

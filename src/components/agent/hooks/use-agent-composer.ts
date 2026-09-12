@@ -7,12 +7,15 @@ import {
 	type Dispatch,
 	type KeyboardEvent,
 	type DragEvent as ReactDragEvent,
+	type RefObject,
 	type SetStateAction,
 	useCallback,
 	useEffect,
 	useMemo,
+	useRef,
 	useState,
 } from "react";
+import type { ComposerInlineInputHandle } from "@/components/agent/composer/composer-inline-input";
 import type { AgentPanelRefs } from "@/components/agent/hooks/use-agent-panel-context";
 import {
 	useSelectionStore,
@@ -25,6 +28,7 @@ import {
 	appendMissingInlineTokens,
 	encodeCommandToken,
 	encodeMentionToken,
+	encodeSelectionToken,
 	encodeSkillToken,
 	extractMentionPaths,
 	extractSkillIds,
@@ -53,7 +57,10 @@ import {
 	pushRecentMentionPath,
 } from "@/lib/agent/mention";
 import { stripPromptEnvelopeForDisplay } from "@/lib/agent/prompt-display";
-import type { SelectionContext } from "@/lib/agent/selection-store";
+import {
+	removeSelection,
+	type SelectionContext,
+} from "@/lib/agent/selection-store";
 import {
 	type AcpCommand,
 	filterSlashCommands,
@@ -137,6 +144,8 @@ export type AgentComposer = {
 	handleComposerDrop: (e: ReactDragEvent) => void;
 	handleComposerMenuKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
 	onComposerTextChangeFromUser: (text: string) => void;
+	/** Ref to the inline input, used to insert selections at the caret. */
+	composerInputRef: RefObject<ComposerInlineInputHandle | null>;
 };
 
 export function useAgentComposer({
@@ -216,9 +225,35 @@ export function useAgentComposer({
 		[contextPaths, selectedVaultPath],
 	);
 
+	// Ref exposed to AgentComposer so it can be wired to ComposerInlineInput.
+	const composerInputRef = useRef<ComposerInlineInputHandle>(null);
+
 	// Only explicitly pinned selections (Add to chat / ⌘K / ⌘L) become chips.
-	// Live drag-selection stays in the store for pinActiveSelection but is not shown.
-	const selectionChips = useSelectionStore((s) => s.pinned);
+	// Live drag-selection stays in the store so pinActiveSelection can freeze it,
+	// but is never shown or auto-inserted into the composer.
+	const pinnedSelections = useSelectionStore((s) => s.pinned);
+	const selectionChips = pinnedSelections;
+
+	// Inline-ify newly pinned selections at the composer caret, then drop them
+	// from the ephemeral store. Visual drafts still use the round chip row.
+	const prevPinnedRef = useRef<SelectionContext[]>([]);
+	useEffect(() => {
+		const prev = prevPinnedRef.current;
+		const inserted: SelectionContext[] = [];
+		for (const sel of pinnedSelections) {
+			if (!prev.some((p) => p.id === sel.id)) {
+				composerInputRef.current?.insertAtCursor(encodeSelectionToken(sel));
+				inserted.push(sel);
+			}
+		}
+		if (inserted.length > 0) {
+			for (const sel of inserted) {
+				removeSelection(sel.id);
+			}
+		}
+		prevPinnedRef.current = pinnedSelections;
+	}, [pinnedSelections]);
+
 	const visualDrafts = useVisualContextStore((s) => s.drafts);
 
 	// Markers count as atoms so `$` / `@` inside `{{s:…}}` / `{{m:…}}` stay inert.
@@ -792,5 +827,6 @@ export function useAgentComposer({
 		handleComposerDrop,
 		handleComposerMenuKeyDown,
 		onComposerTextChangeFromUser,
+		composerInputRef,
 	};
 }

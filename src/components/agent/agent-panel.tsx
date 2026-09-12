@@ -208,6 +208,7 @@ export const AgentPanel = memo(function AgentPanel({
 		selectAgent,
 		composerText,
 		onComposerTextChangeFromUser,
+		composerInputRef,
 		setComposerMenuDismissed,
 		setMentionActiveIndex,
 		setSkillActiveIndex,
@@ -457,6 +458,7 @@ export const AgentPanel = memo(function AgentPanel({
 								onAttachSlashCommand={attachSlashCommand}
 								onSlashActiveIndexChange={setSlashActiveIndex}
 								activeUsage={activeUsage}
+								composerInputRef={composerInputRef}
 								onCancelRun={() => void cancelCurrentRun()}
 							/>
 						</>
