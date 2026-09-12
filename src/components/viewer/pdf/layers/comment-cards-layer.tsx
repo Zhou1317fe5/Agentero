@@ -191,8 +191,9 @@ export function layoutCommentCards(
 }
 
 /**
- * Word / Feishu-style orthogonal leader from the highlight envelope's right
- * edge to the laid-out card's left midpoint, folding at the page's right edge.
+ * Word / Feishu-style orthogonal leader from the nearest highlight segment to
+ * the laid-out card's left midpoint, folding at the page's right edge.
+ * Multi-line highlights pick the rect closest to the card (not the envelope mid).
  * Returns an SVG path `d` in page-pixel coordinates, or null when undrawable.
  */
 export function commentConnectorPath(
@@ -203,30 +204,38 @@ export function commentConnectorPath(
 ): string | null {
 	if (rects.length === 0 || pageWidthPx <= 0 || pageHeightPx <= 0) return null;
 
-	let minY = Number.POSITIVE_INFINITY;
-	let maxY = Number.NEGATIVE_INFINITY;
-	let maxRight = Number.NEGATIVE_INFINITY;
+	const round = (n: number) => Math.round(n * 100) / 100;
+	const y2 = placement.topPx + placement.heightPx / 2;
+	const y2Norm = y2 / pageHeightPx;
+
+	let best = rects[0];
+	let bestDist = Number.POSITIVE_INFINITY;
 	for (const rect of rects) {
-		minY = Math.min(minY, rect.y);
-		maxY = Math.max(maxY, rect.y + rect.h);
-		maxRight = Math.max(maxRight, rect.x + rect.w);
-	}
-	if (
-		!Number.isFinite(minY) ||
-		!Number.isFinite(maxY) ||
-		!Number.isFinite(maxRight)
-	) {
-		return null;
+		const top = rect.y;
+		const bottom = rect.y + rect.h;
+		// Distance from the card mid to the closest point inside this segment.
+		const clamped = Math.min(Math.max(y2Norm, top), bottom);
+		const dist = Math.abs(clamped - y2Norm);
+		const right = rect.x + rect.w;
+		const bestRight = best.x + best.w;
+		if (
+			dist < bestDist ||
+			(dist === bestDist &&
+				(right > bestRight || (right === bestRight && rect.y < best.y)))
+		) {
+			best = rect;
+			bestDist = dist;
+		}
 	}
 
-	const round = (n: number) => Math.round(n * 100) / 100;
-	const x1 = round(maxRight * pageWidthPx);
-	const y1 = round(((minY + maxY) / 2) * pageHeightPx);
+	const attachYNorm = Math.min(Math.max(y2Norm, best.y), best.y + best.h);
+	const x1 = round((best.x + best.w) * pageWidthPx);
+	const y1 = round(attachYNorm * pageHeightPx);
 	const xMid = round(pageWidthPx);
 	const x2 = round(pageWidthPx + COMMENT_CARD_GAP_PX);
-	const y2 = round(placement.topPx + placement.heightPx / 2);
+	const y2Rounded = round(y2);
 
-	return `M ${x1} ${y1} L ${xMid} ${y1} L ${xMid} ${y2} L ${x2} ${y2}`;
+	return `M ${x1} ${y1} L ${xMid} ${y1} L ${xMid} ${y2Rounded} L ${x2} ${y2Rounded}`;
 }
 
 function autosizeTextarea(el: HTMLTextAreaElement | null) {

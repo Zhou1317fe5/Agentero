@@ -33,6 +33,7 @@ PDFium engine 由窗口共享。默认优先 **worker 引擎**（PDFium WASM 跑
 | 位置 | 记忆阅读位置 |
 | 文中链接 | Link annotation 覆盖层：citation / 图表·公式交叉引用 / 章节 GoTo 点击跳页，URI 开系统浏览器；未带 Link annotation 的纯文本 `http(s)` URL 与 `arXiv:<id>` 也会根据现有 PDFium 文字矩形生成外链命中区，并跳过与原生链接重叠的区域。打开论文后（主线程空闲时）在 Worker 里解析命名目标（`lib/pdf/citation-dest-keys.ts`），字节优先复用 `tab.pdfBytes`，按 `pdfPath:size` 缓存。**Citation hover**：hyperref `cite.<key>` 走 `pageIndex:pdfY → key → sidecar.rawKey`；ACS `mk:refN` 因 `/FitR` 整页冲突改走 **Link rect → mk:refN → sidecar id `ref-N`**。同一上标簇内按间距区分逗号与连字符：`14-18` 展开为 14…18 多条列表，`7,9` 保持两条。**Crossref hover**（`Fig. 3` / `Table 1` / `Eq. (2)`）：同理先 dest 坐标，冲突时 **Link rect → mk:tbl1 / mk:fig3**，再配 layout region 裁剪。索引 / layout / sidecar 未就绪或无法消歧时不弹卡片；章节等非 float 内部链接只保留导航。**浮动卡互斥（#430）**：citation 与 crossref 预览互斥；划词拖选进行中（`onBeginSelection`→菜单就绪）以及 pin 卡（ask·translate·visual）打开时压制链接预览；划词菜单单独存在时仍允许 hover 引用预览；链接命中区在主键按下时不触发 hover，避免拖选扫过引用时闪卡；预览卡与 pin 卡共用 sticky hover（指针在卡上不收起，离开后短延迟关闭；link 命中区用 pointer 事件与卡片对齐） |
 | 视觉批注 | 工具栏或 **⌘.** 进入框选，框定/单击 layout 区域后裁剪直接保存为 `marks/<id>.json`，并在页右缘评论列打开就地编辑。评论卡 hover 显示「加入侧边栏对话」图标，点击后将裁剪图送入 Agent composer 草稿。视觉批注的 Agent 会话继续通过右侧 Agent 面板进行；没有用户备注但已有 Agent 会话的视觉批注，点击页边针会在针旁打开浮动对话卡查看 transcript。面板与 mark 共用 `agentSessionStore` 会话（同一 send 管线、同一 `lines`）。多轮会回写同一 `marks/<id>.json` 的 `messages[]` / `answerSnapshot`。活动 PDF 才轮询 marks；切换 Vault 清空 composer 视觉草稿。裁剪最长边 1600 px |
+| 隐私模式 | **窗口失焦**时淡出批注（高亮）、评论卡、翻译覆盖、Agent 对话卡等浮层（`usePdfPrivacy` 经 `onFocusChanged` 监听），页面正文渲染层保留——切换窗口后再截图不会带出标注内容。系统不提供“正在截图”事件，失焦是无需权限的近似代理；纯浏览器 dev 构建恒可见 |
 
 ## 划词菜单
 
@@ -92,7 +93,7 @@ PDFium engine 由窗口共享。默认优先 **worker 引擎**（PDFium WASM 跑
 | `src/components/viewer/pdf/host-dom.ts` | 宿主 DOM 判定：可编辑目标、原生选区归属、文档关闭竞态错误 |
 | `src/components/viewer/pdf/region-crop.ts` | PDF 区域裁剪与 Agent 图片编码 |
 | `src/components/viewer/pdf/engine-provider.tsx` | PDFium engine 宿主：worker 优先 + 就绪探针 + 主线程回退 + 本机字体回退 |
-| `src/components/viewer/pdf/layers/` | 页内绘制层：`page-layers`（memo 单页栈）/ `citation-links` / `layout-translate-overlay` / `region-select-layer` / `selection-gutter` / `comment-cards-layer`（批注评论列：页右缘常驻卡片 + `layoutCommentCards` 纵向避让；选区竖向评论入口 hover 展开；点击就地编辑；hover 卡片或原文命中区时页内高亮叠半透明强调层，并用 `commentConnectorPath` 画页缘直角连接细线；线色随 PDF 纸面 tone，不跟 app 主题） |
+| `src/components/viewer/pdf/layers/` | 页内绘制层：`page-layers`（memo 单页栈）/ `citation-links` / `layout-translate-overlay` / `region-select-layer` / `selection-gutter` / `comment-cards-layer`（批注评论列：页右缘常驻卡片 + `layoutCommentCards` 纵向避让；选区竖向评论入口 hover 展开；点击就地编辑；hover 卡片或原文命中区时页内高亮叠半透明强调层，并用 `commentConnectorPath` 画页缘直角连接细线（多段高亮锚到离卡片最近的段落，而非整段竖直中点）；线色随 PDF 纸面 tone，不跟 app 主题） |
 | `src/components/viewer/pdf/chrome/` | 纯展示 chrome：`pdf-toolbar` / `pdf-left-toolbar` / `pdf-find-bar` / `pdf-outline-panel`（+`outline-tree`）/ `pdf-references-panel` / `pdf-figures-panel` / `pdf-bottom-bar` / `pdf-card-stack`（portal 卡片栈）。共享材质见 `pdf-chrome-surface.ts`（小芯片轻玻璃、侧栏厚材质、划词菜单玻璃、长文卡片近实色；`data-pdf-chrome` 供 `prefers-reduced-transparency` 实色回退）。顶部两条工具栏自动显隐（`use-pdf-chrome-visibility`）：滚动中或指针靠近顶部区域时显示，静读时以 opacity + 轻微上移/缩放 materialize（`prefers-reduced-motion` 仅淡入淡出）；面板打开 / ⌘F / 框选 / 缩放输入聚焦时保持可见；左侧大纲/引用/图表面板自左滑入；⌘F 查找栏自右上角 zoom-in；底部页码条按页数位数扩展输入宽度，并限制在视口内以适配窄面板。阅读区底色 `bg-muted/40`，与纸面 tone 分层 |
 | `src/components/viewer/pdf/cards/` | 划词与 mark 卡片：`selection-menu` / `highlight-color-stack`（高亮色点叠放与向左展开）/ `selection-card`（共用壳）/ `ask-popover` / `translate-card` / `visual-trace-card` / `visual-annotation-editor` / `formula-annotation-card` / `citation-preview` |
 | `src/components/viewer/pdf/viewport/` | 宿主接线：`dockview-viewport`（resize 门控 + 滚动指标按帧提交；`rightGutter` 为评论列预留页外空间，并向 EmbedPDF 报告缩减后的 width/clientWidth 使 fitWidth 页面让出该空间）/ `wheel-zoom-handler` / `pan-handler`（中键 / 空格拖拽平移的空格归属判定与光标 class）/ `active-card-scroll-sync` |
@@ -120,6 +121,7 @@ PDFium engine 由窗口共享。默认优先 **worker 引擎**（PDFium WASM 跑
 | `src/components/viewer/pdf/hooks/use-pdf-find.ts` | `⌘F` 查找 |
 | `src/components/viewer/pdf/hooks/use-pdf-outline.ts` | 书签大纲加载 |
 | `src/components/viewer/pdf/hooks/use-pdf-viewer-handle.ts` | 注册命令式 handle（跨簇，唯一入口） |
+| `src/components/viewer/pdf/hooks/use-pdf-privacy.ts` | 隐私模式：监听窗口 `onFocusChanged`，失焦时返回 hidden（驱动批注/评论/翻译/Agent 卡淡出） |
 | `src/components/viewer/pdf/hooks/use-pdf-pin-anchors.ts` | ask/translate 钉锚点几何投影（`useStableDerived` 指纹稳定：流式期间引用不变，`pinsByPage` 不失效） |
 | `src/components/viewer/pdf/hooks/use-pdf-active-anchors.ts` | 活动卡记录查找（thread/translate/visualTrace）与 ask/translate 页内源锚点投影（仅几何，流式期间保持引用稳定） |
 | `src/components/viewer/pdf/hooks/use-pdf-sidebar-panels.ts` | 左栏 References/Figures 面板开关（与大纲互斥）与评论卡 hover id |

@@ -167,23 +167,38 @@ describe("commentConnectorPath", () => {
 
 	it("folds at the page edge toward the card left midpoint", () => {
 		const rects = [{ x: 0.2, y: 0.1, w: 0.3, h: 0.04 }];
+		// Card below the segment → attach at the segment bottom (clamped).
 		const placement = { id: "a", topPx: 200, heightPx: 40 };
 		const d = commentConnectorPath(rects, placement, pageW, pageH);
 		expect(d).toBe(
-			`M 300 96 L 600 96 L 600 220 L ${pageW + COMMENT_CARD_GAP_PX} 220`,
+			`M 300 112 L 600 112 L 600 220 L ${pageW + COMMENT_CARD_GAP_PX} 220`,
 		);
 	});
 
-	it("uses the envelope of multi-segment rects", () => {
+	it("anchors to the segment nearest the card, not the envelope mid", () => {
 		const rects = [
 			{ x: 0.1, y: 0.2, w: 0.2, h: 0.02 },
 			{ x: 0.15, y: 0.24, w: 0.4, h: 0.02 },
 		];
+		// Card sits above both lines → nearest is the first segment (y=0.2).
 		const placement = { id: "a", topPx: 100, heightPx: 50 };
 		const d = commentConnectorPath(rects, placement, pageW, pageH);
-		// right = 0.55; midY = 0.23 → 184; card mid = 125
+		// attach at top of first rect (clamped): y=0.2 → 160; right=0.3 → 180
 		expect(d).toBe(
-			`M 330 184 L 600 184 L 600 125 L ${pageW + COMMENT_CARD_GAP_PX} 125`,
+			`M 180 160 L 600 160 L 600 125 L ${pageW + COMMENT_CARD_GAP_PX} 125`,
+		);
+	});
+
+	it("picks the lower segment when the card is nudged downward", () => {
+		const rects = [
+			{ x: 0.1, y: 0.2, w: 0.5, h: 0.02 },
+			{ x: 0.1, y: 0.35, w: 0.4, h: 0.02 },
+		];
+		// Card mid at 300px → yNorm 0.375, closest to second segment.
+		const placement = { id: "a", topPx: 280, heightPx: 40 };
+		const d = commentConnectorPath(rects, placement, pageW, pageH);
+		expect(d).toBe(
+			`M 300 296 L 600 296 L 600 300 L ${pageW + COMMENT_CARD_GAP_PX} 300`,
 		);
 	});
 
