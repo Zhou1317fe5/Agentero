@@ -223,6 +223,7 @@
 	},
 	"selection": {
 		"menuLabel": "选区操作",
+		"colorGroupLabel": "高亮颜色",
 		"color": {
 			"yellow": "黄色",
 			"green": "绿色",

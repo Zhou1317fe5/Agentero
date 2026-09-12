@@ -1,0 +1,131 @@
+import { motion, useReducedMotion } from "motion/react";
+import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/core/utils";
+import {
+	HIGHLIGHT_COLORS,
+	type HighlightColor,
+	swatchColorClass,
+} from "@/lib/pdf/highlight/palette";
+
+/** Visual size of each color card (px). */
+const CARD = 16;
+/** Collapsed center-to-center step — ~50% overlap. */
+const COLLAPSED_STEP = 8;
+/** Expanded center-to-center step — card + gap. */
+const EXPANDED_STEP = 20;
+/** Hit padding around the card so the target stays ≥ 24px (WCAG 2.5.8). */
+const HIT_PAD = 4;
+
+const COUNT = HIGHLIGHT_COLORS.length;
+/**
+ * Always reserve the expanded width so sibling toolbar actions do not shift,
+ * and so hover hit-testing covers every card (overflowing absolute children
+ * would otherwise fire mouseleave on the collapsed border box).
+ */
+const SLOT_W = CARD + (COUNT - 1) * EXPANDED_STEP + HIT_PAD * 2;
+const SLOT_H = CARD + HIT_PAD * 2;
+
+const SPRING = { type: "spring" as const, bounce: 0.2, duration: 0.32 };
+const SNAP = { type: "tween" as const, duration: 0 };
+
+type HighlightColorStackProps = {
+	onSelect: (color: HighlightColor) => void;
+	/** Currently active color (annotation recolor menu). */
+	activeColor?: HighlightColor;
+	/** Tooltip / expand direction relative to the toolbar. */
+	tooltipSide?: "top" | "bottom";
+	className?: string;
+};
+
+/**
+ * Semi-overlapping highlight color cards. Hover / focus-within fans them out
+ * to the left (right edge stays anchored near the toolbar divider) with a
+ * compact spring.
+ */
+export function HighlightColorStack({
+	onSelect,
+	activeColor,
+	tooltipSide = "top",
+	className,
+}: HighlightColorStackProps) {
+	const { t } = useTranslation("viewer");
+	const reduceMotion = useReducedMotion();
+	const [expanded, setExpanded] = useState(false);
+
+	const open = useCallback(() => setExpanded(true), []);
+	const close = useCallback(() => setExpanded(false), []);
+
+	const step = expanded ? EXPANDED_STEP : COLLAPSED_STEP;
+	const transition = reduceMotion ? SNAP : SPRING;
+
+	const colorLabel = (c: HighlightColor): string => t(`selection.color.${c}`);
+
+	return (
+		<fieldset
+			className={cn("relative m-0 min-w-0 shrink-0 border-0 p-0", className)}
+			style={{ width: SLOT_W, height: SLOT_H }}
+			onMouseEnter={open}
+			onMouseLeave={close}
+			onFocusCapture={open}
+			onBlurCapture={(e) => {
+				if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+					close();
+				}
+			}}
+			aria-label={t("selection.colorGroupLabel")}
+		>
+			{HIGHLIGHT_COLORS.map((color, i) => {
+				// Purple (last) anchors at the right; yellow fans furthest left.
+				const fromRight = (COUNT - 1 - i) * step;
+				const isActive = activeColor === color;
+				return (
+					<Tooltip key={color}>
+						<TooltipTrigger asChild>
+							<motion.button
+								type="button"
+								aria-label={colorLabel(color)}
+								aria-pressed={activeColor ? isActive : undefined}
+								className={cn(
+									"absolute top-0 inline-flex items-center justify-center rounded-md outline-none",
+									"focus-visible:ring-2 focus-visible:ring-ring/50",
+									"active:scale-[0.94] motion-reduce:active:scale-100",
+								)}
+								style={{
+									width: CARD + HIT_PAD * 2,
+									height: CARD + HIT_PAD * 2,
+									// Default yellow stays on top when collapsed; active
+									// recolor target rises above the deck.
+									zIndex: isActive ? COUNT + 1 : COUNT - i,
+								}}
+								initial={false}
+								animate={{ right: fromRight }}
+								transition={transition}
+								onClick={() => onSelect(color)}
+							>
+								<span
+									className={cn(
+										"block size-4 rounded-[5px] shadow-sm ring-1 ring-black/15 transition-[box-shadow] dark:ring-white/25",
+										swatchColorClass(color),
+										isActive &&
+											"ring-2 ring-foreground/70 ring-offset-1 ring-offset-background",
+										expanded && "shadow-md",
+									)}
+									aria-hidden
+								/>
+							</motion.button>
+						</TooltipTrigger>
+						<TooltipContent side={tooltipSide}>
+							{colorLabel(color)}
+						</TooltipContent>
+					</Tooltip>
+				);
+			})}
+		</fieldset>
+	);
+}

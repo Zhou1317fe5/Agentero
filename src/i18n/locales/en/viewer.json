@@ -223,6 +223,7 @@
 	},
 	"selection": {
 		"menuLabel": "Selection actions",
+		"colorGroupLabel": "Highlight colors",
 		"color": {
 			"yellow": "Yellow",
 			"green": "Green",
