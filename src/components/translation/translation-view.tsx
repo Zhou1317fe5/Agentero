@@ -22,7 +22,7 @@ import {
 	PDF_PAPER_BLOCK_CLASS,
 	type PdfPaperTone,
 } from "@/lib/pdf/page-theme";
-import { registerExternalScrollSyncViewport } from "@/lib/pdf/scroll-sync";
+import { registerScrollSyncPeer } from "@/lib/pdf/scroll-sync";
 
 type TranslationViewProps = {
 	/** Absolute path to the paper folder (papers/<id>/). */
@@ -233,6 +233,9 @@ export function TranslationView({
 		useState<LayoutTranslateSidecar | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
 	const [zoom, setZoom] = useState(1);
+	const zoomRef = useRef(zoom);
+	zoomRef.current = zoom;
+	const zoomListenersRef = useRef(new Set<(next: number) => void>());
 	const scrollRef = useRef<HTMLDivElement>(null);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional reload trigger.
@@ -279,7 +282,7 @@ export function TranslationView({
 	useEffect(() => {
 		const element = scrollRef.current;
 		if (!element) return;
-		return registerExternalScrollSyncViewport(docId, {
+		return registerScrollSyncPeer(docId, {
 			getMetrics: () => ({
 				scrollTop: element.scrollTop,
 				scrollLeft: element.scrollLeft,
@@ -296,7 +299,17 @@ export function TranslationView({
 				element.addEventListener("scroll", listener, { passive: true });
 				return () => element.removeEventListener("scroll", listener);
 			},
-			setZoom: (nextZoom) => setZoom(Math.max(0.2, nextZoom)),
+			getZoom: () => zoomRef.current,
+			setZoom: (nextZoom) => {
+				const clamped = Math.max(0.2, nextZoom);
+				setZoom(clamped);
+				zoomRef.current = clamped;
+				for (const listener of zoomListenersRef.current) listener(clamped);
+			},
+			onZoomChange: (listener) => {
+				zoomListenersRef.current.add(listener);
+				return () => zoomListenersRef.current.delete(listener);
+			},
 		});
 	}, [docId, pages.length]);
 

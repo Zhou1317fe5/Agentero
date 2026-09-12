@@ -1423,10 +1423,7 @@ function PdfViewerInner({
 	return (
 		<div
 			ref={hostRef}
-			className={cn(
-				"relative flex h-full min-h-0 w-full select-none flex-col",
-				translationOnly && "pointer-events-none",
-			)}
+			className="relative flex h-full min-h-0 w-full select-none flex-col"
 		>
 			{!translationOnly && (
 				<PdfLeftToolbar
@@ -1500,14 +1497,12 @@ function PdfViewerInner({
 				rightGutter={COMMENT_RAIL_WIDTH_PX}
 				className="agentero-scroll-both min-h-0 min-w-0 flex-1"
 			>
-				{!translationOnly && <WheelZoomHandler docId={docId} />}
-				{!translationOnly && (
-					<PanDragHandler
-						active={isActive}
-						hostRef={hostRef}
-						allowLeftDrag={!regionSelecting}
-					/>
-				)}
+				<WheelZoomHandler docId={docId} />
+				<PanDragHandler
+					active={isActive}
+					hostRef={hostRef}
+					allowLeftDrag={!translationOnly && !regionSelecting}
+				/>
 				<ActiveCardScrollSync
 					active={Boolean(activeCard) || Boolean(selectionMenu)}
 					onScroll={rePlaceFloatingOnScroll}

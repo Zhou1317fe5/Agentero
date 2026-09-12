@@ -1,219 +1,198 @@
-import { useDocumentManagerCapability } from "@embedpdf/plugin-document-manager/react";
 import { useScrollCapability } from "@embedpdf/plugin-scroll/react";
 import { useViewportCapability } from "@embedpdf/plugin-viewport/react";
 import { useZoomCapability } from "@embedpdf/plugin-zoom/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-	getExternalScrollSyncViewport,
 	getScrollSyncPartner,
+	getScrollSyncPeer,
+	getScrollSyncRole,
 	isScrollSyncApplying,
 	isZoomSyncApplying,
+	mapScrollPosition,
+	registerScrollSyncPair,
+	registerScrollSyncPeer,
 	runSyncedScroll,
 	runSyncedZoom,
-	subscribeExternalScrollSyncViewports,
+	subscribeScrollSyncPairs,
+	subscribeScrollSyncPeers,
 } from "@/lib/pdf/scroll-sync";
+
+const TRANSLATION_DOC_SUFFIX = "::translation";
 
 export type PdfScrollPosition = {
 	x: number;
 	y: number;
 };
 
-type SyncScrollMetrics = {
-	scrollTop: number;
-	scrollLeft: number;
-	scrollHeight: number;
-	scrollWidth: number;
-	clientHeight: number;
-	clientWidth: number;
-};
-
 /**
- * Bidirectionally sync scroll position between this PDF viewer and its paired
- * partner (e.g. the right-hand translation pane). Synchronization uses relative
- * ratios so small differences in panel size do not drift the two views apart.
+ * Bidirectionally sync scroll position and zoom between this PDF viewer and
+ * its paired partner (e.g. the right-hand translation pane).
+ *
+ * Each dual-pane viewer mounts its own EmbedPDF provider, so peers publish
+ * themselves into the module-level registry. Only the pair's source wires
+ * listeners; the target merely registers so the source can drive it and so
+ * target-originated scroll / zoom still reach the source via peer callbacks.
  */
 export function usePdfScrollSync(docId: string): void {
 	const viewportCap = useViewportCapability().provides;
 	const scrollCap = useScrollCapability().provides;
-	const docCap = useDocumentManagerCapability().provides;
 	const zoomCap = useZoomCapability().provides;
-	const partnerId = useMemo(() => getScrollSyncPartner(docId), [docId]);
-	const initialSyncDoneRef = useRef(false);
-	const [, setExternalViewportRevision] = useState(0);
+	const [pairRevision, setPairRevision] = useState(0);
+	const [peerRevision, setPeerRevision] = useState(0);
+	const [scopeRetry, setScopeRetry] = useState(0);
+	const initialSyncDoneRef = useRef<string | null>(null);
 
 	useEffect(
-		() =>
-			subscribeExternalScrollSyncViewports(() =>
-				setExternalViewportRevision((n) => n + 1),
-			),
+		() => subscribeScrollSyncPairs(() => setPairRevision((n) => n + 1)),
+		[],
+	);
+	useEffect(
+		() => subscribeScrollSyncPeers(() => setPeerRevision((n) => n + 1)),
 		[],
 	);
 
+	// Restored translation tabs skip openTranslationTab; re-bind the pair from
+	// the conventional `::translation` document id so sync survives reload.
 	useEffect(() => {
-		if (!partnerId || !viewportCap || !scrollCap || !docCap || !zoomCap) return;
-		if (!docCap.isDocumentOpen(docId)) return;
+		if (!docId.endsWith(TRANSLATION_DOC_SUFFIX)) return;
+		const sourceId = docId.slice(0, -TRANSLATION_DOC_SUFFIX.length);
+		if (!sourceId) return;
+		registerScrollSyncPair(sourceId, docId);
+	}, [docId]);
 
+	// pairRevision is an external-store tick: re-read after registerScrollSyncPair.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: pairRevision is a refresh signal
+	const partnerId = useMemo(
+		() => getScrollSyncPartner(docId),
+		[docId, pairRevision],
+	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: pairRevision is a refresh signal
+	const role = useMemo(() => getScrollSyncRole(docId), [docId, pairRevision]);
+
+	// Publish this viewer's viewport / zoom into the cross-instance registry so
+	// the paired pane (another EmbedPDF tree) can drive and observe us.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: scopeRetry retriggers while document scopes initialize
+	useEffect(() => {
+		if (!viewportCap || !scrollCap || !zoomCap) return;
 		const myScope = viewportCap.forDocument(docId);
 		const myScrollScope = scrollCap.forDocument(docId);
 		const myZoomScope = zoomCap.forDocument(docId);
-		if (!myScope || !myScrollScope || !myZoomScope) return;
-
-		const externalPartner = getExternalScrollSyncViewport(partnerId);
-		if (externalPartner) {
-			const applyExternalScroll = () => {
-				if (isScrollSyncApplying(docId)) return;
-				const from = myScope.getMetrics();
-				const to = externalPartner.getMetrics();
-				const fromMaxY = Math.max(0, from.scrollHeight - from.clientHeight);
-				const fromMaxX = Math.max(0, from.scrollWidth - from.clientWidth);
-				const toMaxY = Math.max(0, to.scrollHeight - to.clientHeight);
-				const toMaxX = Math.max(0, to.scrollWidth - to.clientWidth);
-				runSyncedScroll(partnerId, () =>
-					externalPartner.scrollTo({
-						x: fromMaxX > 0 ? (from.scrollLeft / fromMaxX) * toMaxX : 0,
-						y: fromMaxY > 0 ? (from.scrollTop / fromMaxY) * toMaxY : 0,
-					}),
-				);
-			};
-			const applySourceScroll = () => {
-				if (isScrollSyncApplying(partnerId)) return;
-				const from = externalPartner.getMetrics();
-				const to = myScope.getMetrics();
-				const fromMaxY = Math.max(0, from.scrollHeight - from.clientHeight);
-				const fromMaxX = Math.max(0, from.scrollWidth - from.clientWidth);
-				const toMaxY = Math.max(0, to.scrollHeight - to.clientHeight);
-				const toMaxX = Math.max(0, to.scrollWidth - to.clientWidth);
-				runSyncedScroll(docId, () =>
-					myScope.scrollTo({
-						x: fromMaxX > 0 ? (from.scrollLeft / fromMaxX) * toMaxX : 0,
-						y: fromMaxY > 0 ? (from.scrollTop / fromMaxY) * toMaxY : 0,
-						behavior: "instant",
-					}),
-				);
-			};
-			const unsubscribeSource = myScrollScope.onScroll(applyExternalScroll);
-			const unsubscribeExternal =
-				externalPartner.onScrollChange(applySourceScroll);
-			const unsubscribeZoom = myZoomScope.onZoomChange(() => {
-				externalPartner.setZoom(myZoomScope.getState().currentZoomLevel);
-			});
-			applyExternalScroll();
-			externalPartner.setZoom(myZoomScope.getState().currentZoomLevel);
-			return () => {
-				unsubscribeSource();
-				unsubscribeExternal();
-				unsubscribeZoom();
-			};
-		}
-
-		if (!docCap.isDocumentOpen(partnerId)) {
-			// The source viewer commonly mounts before the companion panel's PDF
-			// document finishes opening. Retry so the first readiness check cannot
-			// permanently miss the sync pair.
-			const retry = window.setTimeout(
-				() => setExternalViewportRevision((n) => n + 1),
-				100,
-			);
+		if (!myScope || !myScrollScope || !myZoomScope) {
+			// Document scopes can lag capability readiness by a frame; retry so
+			// the peer is not permanently missing from the registry.
+			const retry = window.setTimeout(() => setScopeRetry((n) => n + 1), 50);
 			return () => window.clearTimeout(retry);
 		}
-		const partnerScope = viewportCap.forDocument(partnerId);
-		const partnerScrollScope = scrollCap.forDocument(partnerId);
-		const partnerZoomScope = zoomCap.forDocument(partnerId);
-		if (!partnerScope || !partnerScrollScope || !partnerZoomScope) return;
+
+		return registerScrollSyncPeer(docId, {
+			getMetrics: () => myScope.getMetrics(),
+			scrollTo: ({ x, y }) => {
+				try {
+					myScope.scrollTo({ x, y, behavior: "instant" });
+				} catch {
+					// Ignore transient scroll failures while the viewport initializes.
+				}
+			},
+			onScrollChange: (listener) => myScrollScope.onScroll(() => listener()),
+			getZoom: () => myZoomScope.getState().currentZoomLevel,
+			setZoom: (nextZoom) => {
+				if (!Number.isFinite(nextZoom) || nextZoom <= 0) return;
+				try {
+					myZoomScope.requestZoom(nextZoom);
+				} catch {
+					// Ignore transient zoom failures while the target initializes.
+				}
+			},
+			onZoomChange: (listener) =>
+				myZoomScope.onZoomChange((event) => listener(event.newZoom)),
+		});
+	}, [docId, viewportCap, scrollCap, zoomCap, scopeRetry]);
+
+	// Source owns the bidirectional wiring. Target only registers (above) so
+	// user gestures on the translation pane still reach the source through the
+	// peer's onScrollChange / onZoomChange callbacks.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: peerRevision retriggers when the partner peer registers
+	useEffect(() => {
+		if (!partnerId || role !== "source") return;
+		const me = getScrollSyncPeer(docId);
+		const partner = getScrollSyncPeer(partnerId);
+		if (!me || !partner) return;
 
 		const applyScroll = (
-			fromScope: typeof myScope,
-			toScope: typeof partnerScope,
+			from: typeof me,
+			to: typeof partner,
 			targetDocId: string,
-			fromMetrics: SyncScrollMetrics = fromScope.getMetrics(),
 		) => {
 			if (isScrollSyncApplying(targetDocId)) return;
-			if (fromMetrics.scrollHeight <= 0 || fromMetrics.scrollWidth <= 0) return;
-			const toMetrics = toScope.getMetrics();
-			if (toMetrics.scrollHeight <= 0 || toMetrics.scrollWidth <= 0) return;
-			const fromMaxY = Math.max(
-				0,
-				fromMetrics.scrollHeight - fromMetrics.clientHeight,
-			);
-			const fromMaxX = Math.max(
-				0,
-				fromMetrics.scrollWidth - fromMetrics.clientWidth,
-			);
-			const toMaxY = Math.max(
-				0,
-				toMetrics.scrollHeight - toMetrics.clientHeight,
-			);
-			const toMaxX = Math.max(0, toMetrics.scrollWidth - toMetrics.clientWidth);
-			const ratioY = fromMaxY > 0 ? fromMetrics.scrollTop / fromMaxY : 0;
-			const ratioX = fromMaxX > 0 ? fromMetrics.scrollLeft / fromMaxX : 0;
-			runSyncedScroll(targetDocId, () => {
-				try {
-					toScope.scrollTo({
-						x: ratioX * toMaxX,
-						y: ratioY * toMaxY,
-						behavior: "instant",
-					});
-				} catch {
-					// Ignore transient scroll failures while the target viewport is
-					// still initializing.
-				}
-			});
+			const mapped = mapScrollPosition(from.getMetrics(), to.getMetrics());
+			if (!mapped) return;
+			runSyncedScroll(targetDocId, () => to.scrollTo(mapped));
 		};
 
+		let cancelled = false;
 		const applyZoom = (
-			toScope: typeof partnerZoomScope,
+			from: typeof me,
+			to: typeof partner,
 			targetDocId: string,
 			nextZoom: number,
 		) => {
-			if (isZoomSyncApplying(targetDocId)) return;
+			if (cancelled || isZoomSyncApplying(targetDocId)) return;
 			if (!Number.isFinite(nextZoom) || nextZoom <= 0) return;
+			if (Math.abs(to.getZoom() - nextZoom) < 0.0001) return;
 			runSyncedZoom(targetDocId, () => {
-				try {
-					toScope.requestZoom(nextZoom);
-				} catch {
-					// Ignore transient zoom failures while the target is initializing.
-				}
+				to.setZoom(nextZoom);
+				// Zoom changes content size; realign scroll on the next frame once
+				// the target viewport has updated its metrics.
+				requestAnimationFrame(() => {
+					if (cancelled) return;
+					applyScroll(from, to, targetDocId);
+				});
 			});
 		};
 
-		const unsubscribeMy = myScrollScope.onScroll((metrics) => {
-			applyScroll(myScope, partnerScope, partnerId, {
-				...myScope.getMetrics(),
-				...metrics,
-			});
+		const unsubscribeMyScroll = me.onScrollChange(() => {
+			if (cancelled || isScrollSyncApplying(docId)) return;
+			applyScroll(me, partner, partnerId);
+		});
+		const unsubscribePartnerScroll = partner.onScrollChange(() => {
+			if (cancelled || isScrollSyncApplying(partnerId)) return;
+			applyScroll(partner, me, docId);
+		});
+		const unsubscribeMyZoom = me.onZoomChange((nextZoom) => {
+			if (cancelled || isZoomSyncApplying(docId)) return;
+			applyZoom(me, partner, partnerId, nextZoom);
+		});
+		const unsubscribePartnerZoom = partner.onZoomChange((nextZoom) => {
+			if (cancelled || isZoomSyncApplying(partnerId)) return;
+			applyZoom(partner, me, docId, nextZoom);
 		});
 
-		const unsubscribePartner = partnerScrollScope.onScroll((metrics) => {
-			applyScroll(partnerScope, myScope, docId, {
-				...partnerScope.getMetrics(),
-				...metrics,
-			});
-		});
-		const unsubscribeMyZoom = myZoomScope.onZoomChange((event) => {
-			applyZoom(partnerZoomScope, partnerId, event.newZoom);
-		});
-		const unsubscribePartnerZoom = partnerZoomScope.onZoomChange((event) => {
-			applyZoom(myZoomScope, docId, event.newZoom);
-		});
-
-		// One-time initial alignment: when the translation pane first loads,
-		// snap it to the source pane's current scroll ratio so both panels show
-		// the same page instead of the right pane staying at the top.
-		if (!initialSyncDoneRef.current) {
-			initialSyncDoneRef.current = true;
-			applyScroll(myScope, partnerScope, partnerId);
-			applyZoom(
-				partnerZoomScope,
-				partnerId,
-				myZoomScope.getState().currentZoomLevel,
-			);
-		}
+		const pairKey = `${docId}::${partnerId}`;
+		let retryTimer: ReturnType<typeof setTimeout> | null = null;
+		const tryInitialSync = () => {
+			if (cancelled || initialSyncDoneRef.current === pairKey) return;
+			const mapped = mapScrollPosition(me.getMetrics(), partner.getMetrics());
+			if (!mapped) {
+				retryTimer = setTimeout(tryInitialSync, 100);
+				return;
+			}
+			initialSyncDoneRef.current = pairKey;
+			const nextZoom = me.getZoom();
+			if (Math.abs(partner.getZoom() - nextZoom) >= 0.0001) {
+				applyZoom(me, partner, partnerId, nextZoom);
+			} else {
+				applyScroll(me, partner, partnerId);
+			}
+		};
+		tryInitialSync();
 
 		return () => {
-			unsubscribeMy();
-			unsubscribePartner();
+			cancelled = true;
+			if (retryTimer) clearTimeout(retryTimer);
+			unsubscribeMyScroll();
+			unsubscribePartnerScroll();
 			unsubscribeMyZoom();
 			unsubscribePartnerZoom();
 		};
-	}, [docId, partnerId, viewportCap, scrollCap, docCap, zoomCap]);
+	}, [docId, partnerId, role, peerRevision]);
 }
