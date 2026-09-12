@@ -1,13 +1,15 @@
 import { useDocumentManagerCapability } from "@embedpdf/plugin-document-manager/react";
 import { useViewportCapability } from "@embedpdf/plugin-viewport/react";
 import { useZoomCapability } from "@embedpdf/plugin-zoom/react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+	getExternalScrollSyncViewport,
 	getScrollSyncPartner,
 	isScrollSyncApplying,
 	isZoomSyncApplying,
 	runSyncedScroll,
 	runSyncedZoom,
+	subscribeExternalScrollSyncViewports,
 } from "@/lib/pdf/scroll-sync";
 
 export type PdfScrollPosition = {
@@ -26,17 +28,76 @@ export function usePdfScrollSync(docId: string): void {
 	const zoomCap = useZoomCapability().provides;
 	const partnerId = useMemo(() => getScrollSyncPartner(docId), [docId]);
 	const initialSyncDoneRef = useRef(false);
+	const [, setExternalViewportRevision] = useState(0);
+
+	useEffect(
+		() =>
+			subscribeExternalScrollSyncViewports(() =>
+				setExternalViewportRevision((n) => n + 1),
+			),
+		[],
+	);
 
 	useEffect(() => {
 		if (!partnerId || !viewportCap || !docCap || !zoomCap) return;
-		if (!docCap.isDocumentOpen(docId) || !docCap.isDocumentOpen(partnerId))
-			return;
+		if (!docCap.isDocumentOpen(docId)) return;
 
 		const myScope = viewportCap.forDocument(docId);
-		const partnerScope = viewportCap.forDocument(partnerId);
 		const myZoomScope = zoomCap.forDocument(docId);
+		if (!myScope || !myZoomScope) return;
+
+		const externalPartner = getExternalScrollSyncViewport(partnerId);
+		if (externalPartner) {
+			const applyExternalScroll = () => {
+				if (isScrollSyncApplying(docId)) return;
+				const from = myScope.getMetrics();
+				const to = externalPartner.getMetrics();
+				const fromMaxY = Math.max(0, from.scrollHeight - from.clientHeight);
+				const fromMaxX = Math.max(0, from.scrollWidth - from.clientWidth);
+				const toMaxY = Math.max(0, to.scrollHeight - to.clientHeight);
+				const toMaxX = Math.max(0, to.scrollWidth - to.clientWidth);
+				runSyncedScroll(partnerId, () =>
+					externalPartner.scrollTo({
+						x: fromMaxX > 0 ? (from.scrollLeft / fromMaxX) * toMaxX : 0,
+						y: fromMaxY > 0 ? (from.scrollTop / fromMaxY) * toMaxY : 0,
+					}),
+				);
+			};
+			const applySourceScroll = () => {
+				if (isScrollSyncApplying(partnerId)) return;
+				const from = externalPartner.getMetrics();
+				const to = myScope.getMetrics();
+				const fromMaxY = Math.max(0, from.scrollHeight - from.clientHeight);
+				const fromMaxX = Math.max(0, from.scrollWidth - from.clientWidth);
+				const toMaxY = Math.max(0, to.scrollHeight - to.clientHeight);
+				const toMaxX = Math.max(0, to.scrollWidth - to.clientWidth);
+				runSyncedScroll(docId, () =>
+					myScope.scrollTo({
+						x: fromMaxX > 0 ? (from.scrollLeft / fromMaxX) * toMaxX : 0,
+						y: fromMaxY > 0 ? (from.scrollTop / fromMaxY) * toMaxY : 0,
+						behavior: "instant",
+					}),
+				);
+			};
+			const unsubscribeSource = myScope.onScrollChange(applyExternalScroll);
+			const unsubscribeExternal =
+				externalPartner.onScrollChange(applySourceScroll);
+			const unsubscribeZoom = myZoomScope.onZoomChange(() => {
+				externalPartner.setZoom(myZoomScope.getState().currentZoomLevel);
+			});
+			applyExternalScroll();
+			externalPartner.setZoom(myZoomScope.getState().currentZoomLevel);
+			return () => {
+				unsubscribeSource();
+				unsubscribeExternal();
+				unsubscribeZoom();
+			};
+		}
+
+		if (!docCap.isDocumentOpen(partnerId)) return;
+		const partnerScope = viewportCap.forDocument(partnerId);
 		const partnerZoomScope = zoomCap.forDocument(partnerId);
-		if (!myScope || !partnerScope || !myZoomScope || !partnerZoomScope) return;
+		if (!partnerScope || !partnerZoomScope) return;
 
 		const applyScroll = (
 			fromScope: typeof myScope,

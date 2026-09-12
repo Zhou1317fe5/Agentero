@@ -600,10 +600,21 @@ export function openTranslationTab(
 		})();
 	}
 	setTabs((prev) => [...prev, translationPane]);
-	dockHandle()?.splitPanelRight(
-		translationPane,
-		translationSplitPlacement(paperTabId, tabs).referencePanelId,
-	);
+	const notesPath = paperTab.notesPath;
+	const notesPane = notesPath
+		? tabs.find((tab) => tab.id === tabIdForPath(notesPath))
+		: null;
+	if (notesPane) {
+		dockHandle()?.openPanel(translationPane, {
+			direction: "within",
+			referencePanelId: notesPane.id,
+		});
+	} else {
+		dockHandle()?.splitPanelRight(
+			translationPane,
+			translationSplitPlacement(paperTabId, tabs).referencePanelId,
+		);
+	}
 }
 
 export function closeWindow(): void {

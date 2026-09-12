@@ -6,8 +6,50 @@
 
 type ScrollSyncPair = { source: string; target: string };
 
+export type ExternalScrollSyncViewport = {
+	getMetrics: () => {
+		scrollTop: number;
+		scrollLeft: number;
+		scrollHeight: number;
+		scrollWidth: number;
+		clientHeight: number;
+		clientWidth: number;
+	};
+	scrollTo: (position: { x: number; y: number }) => void;
+	onScrollChange: (listener: () => void) => () => void;
+	setZoom: (zoom: number) => void;
+};
+
 const pairs = new Map<string, ScrollSyncPair>();
 let groupSequence = 1;
+const externalViewports = new Map<string, ExternalScrollSyncViewport>();
+const externalViewportListeners = new Set<() => void>();
+
+export function registerExternalScrollSyncViewport(
+	docId: string,
+	viewport: ExternalScrollSyncViewport,
+): () => void {
+	externalViewports.set(docId, viewport);
+	for (const listener of externalViewportListeners) listener();
+	return () => {
+		if (externalViewports.get(docId) !== viewport) return;
+		externalViewports.delete(docId);
+		for (const listener of externalViewportListeners) listener();
+	};
+}
+
+export function getExternalScrollSyncViewport(
+	docId: string,
+): ExternalScrollSyncViewport | null {
+	return externalViewports.get(docId) ?? null;
+}
+
+export function subscribeExternalScrollSyncViewports(
+	listener: () => void,
+): () => void {
+	externalViewportListeners.add(listener);
+	return () => externalViewportListeners.delete(listener);
+}
 
 export function registerScrollSyncPair(
 	sourceDocId: string,

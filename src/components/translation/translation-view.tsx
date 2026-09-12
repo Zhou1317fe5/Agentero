@@ -20,10 +20,13 @@ import {
 	PDF_PAPER_BLOCK_CLASS,
 	type PdfPaperTone,
 } from "@/lib/pdf/page-theme";
+import { registerExternalScrollSyncViewport } from "@/lib/pdf/scroll-sync";
 
 type TranslationViewProps = {
 	/** Absolute path to the paper folder (papers/<id>/). */
 	paperAbsPath: string | null;
+	/** Stable workspace document id used by the source/translation sync pair. */
+	docId: string;
 	/** Whether this tab is the active dockview panel. */
 	active?: boolean;
 };
@@ -162,34 +165,17 @@ function TranslatedBlock({
 function TranslatedPage({
 	spec,
 	tone,
+	zoom,
 }: {
 	spec: PageRenderSpec;
 	tone: PdfPaperTone;
+	zoom: number;
 }) {
 	const containerRef = useRef<HTMLDivElement>(null);
-	const [renderSize, setRenderSize] = useState<{
-		width: number;
-		height: number;
-	}>({ width: 0, height: 0 });
-
-	useEffect(() => {
-		const update = () => {
-			const containerWidth = containerRef.current?.clientWidth ?? 0;
-			const naturalWidth = spec.pageSize.width / POINTS_PER_PX;
-			const naturalHeight = spec.pageSize.height / POINTS_PER_PX;
-			const maxWidth = Math.max(320, containerWidth - 32);
-			const scale =
-				containerWidth > 0 ? Math.min(1, maxWidth / naturalWidth) : 1;
-			setRenderSize({
-				width: naturalWidth * scale,
-				height: naturalHeight * scale,
-			});
-		};
-		update();
-		const ro = new ResizeObserver(update);
-		if (containerRef.current) ro.observe(containerRef.current);
-		return () => ro.disconnect();
-	}, [spec.pageSize.width, spec.pageSize.height]);
+	const renderSize = {
+		width: (spec.pageSize.width / POINTS_PER_PX) * zoom,
+		height: (spec.pageSize.height / POINTS_PER_PX) * zoom,
+	};
 
 	const doneItems = spec.items.filter(
 		(it) => it.status === "done" && it.translated?.trim(),
@@ -227,6 +213,7 @@ function TranslatedPage({
 
 export function TranslationView({
 	paperAbsPath,
+	docId,
 	active = true,
 }: TranslationViewProps) {
 	const { t } = useTranslation("viewer");
@@ -237,6 +224,8 @@ export function TranslationView({
 	const [translateSidecar, setTranslateSidecar] =
 		useState<LayoutTranslateSidecar | null>(null);
 	const [refreshKey, setRefreshKey] = useState(0);
+	const [zoom, setZoom] = useState(1);
+	const scrollRef = useRef<HTMLDivElement>(null);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey is an intentional reload trigger.
 	useEffect(() => {
@@ -276,6 +265,33 @@ export function TranslationView({
 		[layoutSidecar, translateSidecar],
 	);
 
+	// The scroll container does not exist while sidecars are loading; re-bind
+	// when the page list first becomes renderable.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: pages.length tracks the DOM container lifecycle.
+	useEffect(() => {
+		const element = scrollRef.current;
+		if (!element) return;
+		return registerExternalScrollSyncViewport(docId, {
+			getMetrics: () => ({
+				scrollTop: element.scrollTop,
+				scrollLeft: element.scrollLeft,
+				scrollHeight: element.scrollHeight,
+				scrollWidth: element.scrollWidth,
+				clientHeight: element.clientHeight,
+				clientWidth: element.clientWidth,
+			}),
+			scrollTo: ({ x, y }) => {
+				element.scrollLeft = x;
+				element.scrollTop = y;
+			},
+			onScrollChange: (listener) => {
+				element.addEventListener("scroll", listener, { passive: true });
+				return () => element.removeEventListener("scroll", listener);
+			},
+			setZoom: (nextZoom) => setZoom(Math.max(0.2, nextZoom)),
+		});
+	}, [docId, pages.length]);
+
 	const tone: PdfPaperTone = resolvedTheme === "dark" ? "dark" : "white";
 
 	if (!paperAbsPath) {
@@ -295,9 +311,17 @@ export function TranslationView({
 	}
 
 	return (
-		<div className="agentero-scroll flex h-full flex-col overflow-auto bg-muted/20">
+		<div
+			ref={scrollRef}
+			className="agentero-scroll flex h-full flex-col items-center overflow-auto bg-muted/20"
+		>
 			{pages.map((spec) => (
-				<TranslatedPage key={spec.pageIndex} spec={spec} tone={tone} />
+				<TranslatedPage
+					key={spec.pageIndex}
+					spec={spec}
+					tone={tone}
+					zoom={zoom}
+				/>
 			))}
 		</div>
 	);
