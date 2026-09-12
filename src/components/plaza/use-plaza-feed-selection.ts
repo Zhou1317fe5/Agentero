@@ -13,7 +13,6 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import type { PlazaSelectionScreen } from "@/components/plaza/plaza-selection-menu";
-import type { SelectionPulseRect } from "@/components/ui/selection-copy-pulse";
 import {
 	attachAgentRun,
 	cancelAgentRun,
@@ -39,18 +38,7 @@ import { resolveTranslateAgent } from "@/lib/translate";
 import { getVaultPath } from "@/lib/vault/store";
 
 const MAX_SELECTION_CHARS = 4000;
-const COPY_PULSE_DURATION_MS = 900;
-
-function selectionCopyPulseRects(sel: Selection): SelectionPulseRect[] {
-	if (sel.rangeCount === 0) return [];
-	const rects = sel.getRangeAt(0).getClientRects();
-	return Array.from(rects).map((r) => ({
-		x: r.left,
-		y: r.top,
-		width: r.width,
-		height: r.height,
-	}));
-}
+const COPIED_LABEL_DURATION_MS = 1000;
 
 export type PlazaFeedSelectionMenu = {
 	text: string;
@@ -89,17 +77,19 @@ export function usePlazaFeedSelection({
 	const [ask, setAsk] = useState<PlazaFeedAskState | null>(null);
 	const [streaming, setStreaming] = useState(false);
 	const [askError, setAskError] = useState<string | null>(null);
-	const [copyPulseRects, setCopyPulseRects] = useState<
-		SelectionPulseRect[] | null
-	>(null);
-	const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const [copiedLabelPos, setCopiedLabelPos] = useState<{
+		x: number;
+		y: number;
+	} | null>(null);
+	const labelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const mouseUpPosRef = useRef<{ x: number; y: number } | null>(null);
 
-	const clearCopyPulse = useCallback(() => {
-		if (pulseTimerRef.current) {
-			clearTimeout(pulseTimerRef.current);
-			pulseTimerRef.current = null;
+	const clearCopiedLabel = useCallback(() => {
+		if (labelTimerRef.current) {
+			clearTimeout(labelTimerRef.current);
+			labelTimerRef.current = null;
 		}
-		setCopyPulseRects(null);
+		setCopiedLabelPos(null);
 	}, []);
 
 	const askRef = useRef<PlazaFeedAskState | null>(null);
@@ -129,8 +119,8 @@ export function usePlazaFeedSelection({
 		setAsk(null);
 		setAskError(null);
 		setStreaming(false);
-		clearCopyPulse();
-	}, [item.id, clearCopyPulse]);
+		clearCopiedLabel();
+	}, [item.id, clearCopiedLabel]);
 
 	const clearNativeSelection = useCallback(() => {
 		const sel = window.getSelection();
@@ -139,8 +129,8 @@ export function usePlazaFeedSelection({
 
 	const closeMenu = useCallback(() => {
 		setMenu(null);
-		clearCopyPulse();
-	}, [clearCopyPulse]);
+		clearCopiedLabel();
+	}, [clearCopiedLabel]);
 
 	const captureSelection = useCallback(() => {
 		const root = bodyRef.current;
@@ -166,22 +156,23 @@ export function usePlazaFeedSelection({
 		}
 		setMenu({ text, screen });
 		void copyTextToClipboard(text);
-		clearCopyPulse();
-		const rects = selectionCopyPulseRects(sel);
-		if (rects.length) {
-			setCopyPulseRects(rects);
-			pulseTimerRef.current = setTimeout(() => {
-				pulseTimerRef.current = null;
-				setCopyPulseRects(null);
-			}, COPY_PULSE_DURATION_MS);
+		clearCopiedLabel();
+		const pos = mouseUpPosRef.current;
+		if (pos) {
+			setCopiedLabelPos(pos);
+			labelTimerRef.current = setTimeout(() => {
+				labelTimerRef.current = null;
+				setCopiedLabelPos(null);
+			}, COPIED_LABEL_DURATION_MS);
 		}
-	}, [bodyRef, clearCopyPulse]);
+	}, [bodyRef, clearCopiedLabel]);
 
 	useEffect(() => {
 		const root = bodyRef.current;
 		if (!root) return;
 
-		const onMouseUp = () => {
+		const onMouseUp = (event: MouseEvent) => {
+			mouseUpPosRef.current = { x: event.clientX, y: event.clientY };
 			// Defer so the browser finishes updating the selection.
 			requestAnimationFrame(() => captureSelection());
 		};
@@ -491,7 +482,7 @@ export function usePlazaFeedSelection({
 		hideAsk,
 		deleteAsk,
 		stopAskStreaming,
-		copyPulseRects,
+		copiedLabelPos,
 		itemTitle: item.title,
 		itemLink: item.url ?? item.paperUrl ?? undefined,
 	};

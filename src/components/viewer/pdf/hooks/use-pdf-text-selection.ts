@@ -29,13 +29,11 @@ import {
 	useRef,
 	useState,
 } from "react";
-import type { SelectionPulseRect } from "@/components/ui/selection-copy-pulse";
 import {
 	anchorFromEmbedSelection,
 	pageElByIndex,
 	rectBottomRightScreen,
 	rectTopCenterScreen,
-	rectToScreen,
 } from "@/components/viewer/pdf/coords";
 import {
 	hasNativeSelectionOutsideHost,
@@ -87,21 +85,6 @@ function menuScreenPoints(
 	return { screen, bottomRight };
 }
 
-/** Build screen rects for the auto-copy pulse overlay from the selected pages. */
-function selectionCopyPulseRects(
-	host: HTMLElement | null,
-	pages: FormattedSelection[],
-	zoom: number,
-): SelectionPulseRect[] {
-	const rects: SelectionPulseRect[] = [];
-	for (const page of pages) {
-		const pageEl = pageElByIndex(host, page.pageIndex);
-		if (!pageEl) continue;
-		rects.push(rectToScreen(pageEl, page.rect, zoom));
-	}
-	return rects;
-}
-
 export type UsePdfTextSelectionOptions = {
 	/** EmbedPDF capabilities; owned by `PdfViewerInner` (plugin context). */
 	selectionCap: SelectionCapabilityProvides;
@@ -133,11 +116,11 @@ export type PdfTextSelection = {
 	 * Call on viewport scroll and zoom so the menu stays glued to the selection.
 	 */
 	rePlaceSelectionMenu: () => void;
-	/** Transient screen rects for the auto-copy visual pulse overlay. */
-	copyPulseRects: SelectionPulseRect[] | null;
+	/** Transient screen position for the auto-copy confirmation label. */
+	copiedLabelPos: { x: number; y: number } | null;
 };
 
-const COPY_PULSE_DURATION_MS = 900;
+const COPIED_LABEL_DURATION_MS = 1000;
 
 export function usePdfTextSelection({
 	selectionCap,
@@ -153,24 +136,26 @@ export function usePdfTextSelection({
 		null,
 	);
 	const [isSelecting, setIsSelecting] = useState(false);
-	const [copyPulseRects, setCopyPulseRects] = useState<
-		SelectionPulseRect[] | null
-	>(null);
-	const pulseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const [copiedLabelPos, setCopiedLabelPos] = useState<{
+		x: number;
+		y: number;
+	} | null>(null);
+	const labelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const mouseUpPosRef = useRef<{ x: number; y: number } | null>(null);
 
-	const clearCopyPulse = useCallback(() => {
-		if (pulseTimerRef.current) {
-			clearTimeout(pulseTimerRef.current);
-			pulseTimerRef.current = null;
+	const clearCopiedLabel = useCallback(() => {
+		if (labelTimerRef.current) {
+			clearTimeout(labelTimerRef.current);
+			labelTimerRef.current = null;
 		}
-		setCopyPulseRects(null);
+		setCopiedLabelPos(null);
 	}, []);
 
 	const closeSelectionMenu = useCallback(() => {
 		setSelectionMenu(null);
-		clearCopyPulse();
+		clearCopiedLabel();
 		selectionCap?.clear(docId);
-	}, [selectionCap, docId, clearCopyPulse]);
+	}, [selectionCap, docId, clearCopiedLabel]);
 
 	const rePlaceSelectionMenu = useCallback(() => {
 		setSelectionMenu((prev) => {
@@ -198,6 +183,12 @@ export function usePdfTextSelection({
 	// Show the selection action menu when a drag-selection ends.
 	useEffect(() => {
 		if (!selectionCap || !docCap) return;
+
+		const onMouseUp = (event: MouseEvent) => {
+			mouseUpPosRef.current = { x: event.clientX, y: event.clientY };
+		};
+		document.addEventListener("mouseup", onMouseUp);
+
 		const scope = selectionCap.forDocument(docId);
 		const offBegin = scope.onBeginSelection(() => {
 			setIsSelecting(true);
@@ -261,18 +252,14 @@ export function usePdfTextSelection({
 				if (quote) {
 					try {
 						selectionCap.copyToClipboard(docId);
-						clearCopyPulse();
-						const rects = selectionCopyPulseRects(
-							hostRef.current,
-							pages,
-							zoomRef.current,
-						);
-						if (rects.length) {
-							setCopyPulseRects(rects);
-							pulseTimerRef.current = setTimeout(() => {
-								pulseTimerRef.current = null;
-								setCopyPulseRects(null);
-							}, COPY_PULSE_DURATION_MS);
+						clearCopiedLabel();
+						const pos = mouseUpPosRef.current;
+						if (pos) {
+							setCopiedLabelPos(pos);
+							labelTimerRef.current = setTimeout(() => {
+								labelTimerRef.current = null;
+								setCopiedLabelPos(null);
+							}, COPIED_LABEL_DURATION_MS);
 						}
 					} catch {
 						// auto-copy is best-effort
@@ -292,16 +279,17 @@ export function usePdfTextSelection({
 			if (!sel) {
 				setIsSelecting(false);
 				setSelectionMenu(null);
-				clearCopyPulse();
+				clearCopiedLabel();
 				clearActiveSelection("pdf");
 			}
 		});
 		return () => {
+			document.removeEventListener("mouseup", onMouseUp);
 			offBegin();
 			offEnd();
 			offChange();
 			setIsSelecting(false);
-			clearCopyPulse();
+			clearCopiedLabel();
 			clearActiveSelection("pdf");
 		};
 	}, [
@@ -312,7 +300,7 @@ export function usePdfTextSelection({
 		paperAbsPath,
 		hostRef,
 		zoomRef,
-		clearCopyPulse,
+		clearCopiedLabel,
 	]);
 
 	// PDFium selections are invisible to the browser: intercept copy so ⌘/Ctrl+C
@@ -358,6 +346,6 @@ export function usePdfTextSelection({
 		isSelecting,
 		closeSelectionMenu,
 		rePlaceSelectionMenu,
-		copyPulseRects,
+		copiedLabelPos,
 	};
 }

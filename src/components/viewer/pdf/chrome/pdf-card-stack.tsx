@@ -1,6 +1,5 @@
 import { createPortal } from "react-dom";
-import type { SelectionPulseRect } from "@/components/ui/selection-copy-pulse";
-import { SelectionCopyPulse } from "@/components/ui/selection-copy-pulse";
+import { SelectionCopiedLabel } from "@/components/ui/selection-copied-label";
 import { AskPopover } from "@/components/viewer/pdf/cards/ask-popover";
 import {
 	type CitationPreviewImportMenu,
@@ -31,8 +30,8 @@ type PdfCardStackProps = {
 		/** Hide highlight / translate; keep Ask. */
 		readOnly?: boolean;
 	};
-	/** Transient screen rects for the auto-copy visual pulse overlay. */
-	copyPulseRects: SelectionPulseRect[] | null;
+	/** Transient screen position for the auto-copy confirmation label. */
+	copiedLabelPos: { x: number; y: number } | null;
 	citationPreview: {
 		state: CitationPreviewState | null;
 		importMenu?: CitationPreviewImportMenu;
@@ -84,7 +83,7 @@ type PdfCardStackProps = {
  */
 export function PdfCardStack({
 	selectionMenu,
-	copyPulseRects,
+	copiedLabelPos,
 	citationPreview,
 	crossrefPreview,
 	cardScreen,
@@ -110,7 +109,9 @@ export function PdfCardStack({
 				/>
 			) : null}
 
-			{copyPulseRects ? <SelectionCopyPulse rects={copyPulseRects} /> : null}
+			{copiedLabelPos ? (
+				<SelectionCopiedLabel x={copiedLabelPos.x} y={copiedLabelPos.y} />
+			) : null}
 
 			{citationPreview.state ? (
 				<PdfCitationPreview
