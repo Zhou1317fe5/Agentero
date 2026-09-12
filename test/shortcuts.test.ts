@@ -48,7 +48,12 @@ describe("shell shortcuts", () => {
 		).toBe("openInTerminal");
 	});
 
-	it("claims ⇧⌘A but leaves ⌘A to native select-all", () => {
+	it("claims ⌘K for add-to-chat and keeps ⇧⌘A as an alias", () => {
+		expect(
+			resolveShortcutId(keyEvent({ key: "k", metaKey: true }), {
+				settingsOpen: false,
+			}),
+		).toBe("addSelectionToChat");
 		expect(
 			resolveShortcutId(keyEvent({ key: "a", metaKey: true, shiftKey: true }), {
 				settingsOpen: false,
@@ -59,5 +64,21 @@ describe("shell shortcuts", () => {
 				settingsOpen: false,
 			}),
 		).toBeNull();
+	});
+
+	it("leaves ⌘P as quick open after ⌘K moved to add-to-chat", () => {
+		expect(
+			resolveShortcutId(keyEvent({ key: "p", metaKey: true }), {
+				settingsOpen: false,
+			}),
+		).toBe("quickOpen");
+	});
+
+	it("pins selection via ⌘L (toggleChat)", () => {
+		expect(
+			resolveShortcutId(keyEvent({ key: "l", metaKey: true }), {
+				settingsOpen: false,
+			}),
+		).toBe("toggleChat");
 	});
 });

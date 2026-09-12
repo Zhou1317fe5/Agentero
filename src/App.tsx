@@ -334,14 +334,14 @@ export default function App() {
 		quickOpen: () => openPalette("go"),
 		commandPalette: () => openPalette("commands"),
 		toggleSidebar,
-		// ⌘L (Cursor-style): pin the live selection into the Agent context and
-		// focus the chat; with no selection it just toggles the sidebar.
+		// ⌘L: with a live selection, pin it and open the Agent sidebar; otherwise
+		// toggle the right rail (Cursor-style).
 		toggleChat: () => {
 			if (pinActiveSelection()) {
 				openRightTab("agent");
 			} else toggleChat();
 		},
-		// ⇧⌘A — add the selection (when any) to the Agent context and type there.
+		// ⌘K (⇧⌘A alias): pin the selection, open Agent, and focus the composer.
 		addSelectionToChat: () => {
 			pinActiveSelection();
 			openRightTab("agent");

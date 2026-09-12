@@ -64,7 +64,7 @@
 | `⇧⌘T` | 重新打开最近关闭的 panel（内存历史，最多 10 条；关论文正文记正文，恢复时连带 NOTES；切 Vault 清空） |
 | `⌥⌘←/→` | 循环 Dockview panel |
 | `⌘\` | 向右 Split pane：当前论文未打开 NOTES 时右侧打开 NOTES；否则复制当前 pane，并将横向 pane 等宽 |
-| `⌘P` / `⌘K` | 快速打开 |
+| `⌘P` | 快速打开 |
 | `⇧⌘P` | 命令面板 |
 | `⇧⌘I` | 魔棒 |
 | `⌘R` | 刷新文件树 |
@@ -80,8 +80,8 @@
 | `⌘←` | 折叠当前选中文件夹 |
 | `⇧⌘←` | 折叠树到默认状态 |
 | `⌥⌘S` | 开关左侧边栏（`⌘B` 别名） |
-| `⌘L` | 开关右侧 Agent/Graph 等面板 |
-| `⇧⌘A` | 固定当前选区为 Agent 上下文，打开 Agent 面板并聚焦输入框（无选区时只打开并聚焦） |
+| `⌘L` | 有选区时固定选区并打开右侧 Agent；无选区时开关右侧栏 |
+| `⌘K` | 固定当前选区为 Agent 上下文，打开 Agent 面板并聚焦输入框（无选区时只打开并聚焦；`⇧⌘A` 仍为别名） |
 
 完整快捷键绑定：`src/lib/shell/shortcuts.ts`。文案 i18n 见 [settings.md](settings.md)。
 
@@ -91,7 +91,7 @@
 - **按压反馈**：`Button` 为 `active:scale-[0.97]`；文件树行 / Dock 页签 / 任务圆环共享同档微反馈（色阶或轻 scale/opacity）。Layout 菜单触发器保留 ghost hover fill。
 - 工具栏优先图标 + `aria-label` + Tooltip；避免常驻解释文案。
 - 操作型 Chrome（按钮、导航、标题栏、工具栏、Dock 标签、可点击卡片、Agent 空状态）默认禁用浏览器文字选择；正文、可复制 metadata、编辑器、PDF 译文层（`.select-text`）和输入控件必须保持可选。不要在应用根节点统一设置 `user-select: none`，避免误伤第三方内容层和移动端长按选择。
-- **⌘A / Ctrl+A**：仅在输入框、`contenteditable`、`[role=textbox]` 或带 `.select-text` / `.select-all` 的区域内走浏览器原生全选；点在页面空白或 chrome 上时由 `useNativeSelectAllGuard`（主窗经 `useAppShortcuts`，文档/功能弹窗各自挂载）吞掉，避免整页扫到侧栏/标签/空状态文案。⇧⌘A 仍是「固定选区并聚焦 Agent」。判定见 `src/lib/shell/native-select-all.ts`。
+- **⌘A / Ctrl+A**：仅在输入框、`contenteditable`、`[role=textbox]` 或带 `.select-text` / `.select-all` 的区域内走浏览器原生全选；点在页面空白或 chrome 上时由 `useNativeSelectAllGuard`（主窗经 `useAppShortcuts`，文档/功能弹窗各自挂载）吞掉，避免整页扫到侧栏/标签/空状态文案。⌘K / ⇧⌘A 仍是「固定选区并聚焦 Agent」。判定见 `src/lib/shell/native-select-all.ts`。
 - 基础组件 shadcn/ui；Chat/树 AI UI 用 AI Elements（[components.md](components.md)）。
 - **启动种子放 `boot()`**（`src/main.tsx`），不要在 render 期做副作用。`initSettingsStore` / `initVaultStore` / `initWorkspaceStore` 在 `createRoot` 前调用：既保证首帧前完成，又不依赖 `useState` 初始化器（StrictMode 下可能跑两次）。
 - **订阅 Host 事件一律用类型化事件绑定（`src/lib/core/bindings.ts` 的 `events.*`）：组件内 `useTauriEvent(events.x, cb)`，非 UI 模块 `listenEventSafe(events.x, cb)`（`src/lib/core/tauri-events.ts`）**；字符串事件名仅限前端窗口间广播（`workspace:*`、`agent:attach-context` 等）与 iOS bridge client 事件，非 Tauri wire 的 promise 式订阅（bridge、workspace-broadcast）用 `toSafeDisposer()`。手写 `let off; void (async () => { off = await listen(...) })(); return () => off?.()` 会在 `listen` resolve 前 dispose 时泄漏监听器 —— StrictMode 每次开发挂载都会命中。

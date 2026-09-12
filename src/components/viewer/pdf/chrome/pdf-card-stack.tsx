@@ -100,7 +100,6 @@ export function PdfCardStack({
 			{selectionMenu.state ? (
 				<SelectionMenu
 					screen={selectionMenu.state.screen}
-					bottomRight={selectionMenu.state.bottomRight}
 					onHighlight={selectionMenu.onHighlight}
 					onAsk={selectionMenu.onAsk}
 					onAddToChat={selectionMenu.onAddToChat}

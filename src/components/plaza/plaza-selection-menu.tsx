@@ -1,19 +1,12 @@
 /**
  * Lightweight selection toolbar for Plaza text surfaces (RSS detail).
- * Ask / Add-to-chat — no highlight / note / translate (nothing to persist).
+ * Add to chat / Quick chat — no highlight / note / translate (nothing to persist).
  * Selected text is copied to the clipboard automatically.
  */
 
-import { MessageSquare, MessageSquarePlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@/components/ui/button";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/core/utils";
+import { formatModShortcut } from "@/lib/shell/shortcuts";
 
 export type PlazaSelectionScreen = { x: number; y: number };
 
@@ -23,8 +16,7 @@ type PlazaSelectionMenuProps = {
 	onAddToChat: () => void;
 };
 
-const BAR_W = 88;
-const BAR_H = 40;
+const BAR_H = 32;
 
 export function PlazaSelectionMenu({
 	screen,
@@ -32,11 +24,14 @@ export function PlazaSelectionMenu({
 	onAddToChat,
 }: PlazaSelectionMenuProps) {
 	const { t } = useTranslation("viewer");
+	const addToChatShortcut = formatModShortcut("k");
+	const openChatShortcut = formatModShortcut("l");
 
 	const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
 	const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-	let left = screen.x - BAR_W / 2;
-	left = Math.min(Math.max(12, left), vw - BAR_W - 12);
+	const barW = 220;
+	let left = screen.x - barW / 2;
+	left = Math.min(Math.max(12, left), vw - barW - 12);
 	let top = screen.y - BAR_H - 10;
 	let overContent = false;
 	if (top < 12) {
@@ -48,7 +43,7 @@ export function PlazaSelectionMenu({
 		<div
 			data-plaza-selection-menu
 			className={cn(
-				"fixed z-50 flex h-10 items-center gap-0.5 rounded-xl border border-border/80 bg-background px-1 shadow-2xl ring-1 ring-black/5 dark:ring-white/10",
+				"fixed z-50 flex h-8 items-center gap-0.5 rounded-lg border border-border/80 bg-background px-1 shadow-2xl ring-1 ring-black/5 dark:ring-white/10",
 				overContent &&
 					"bg-background/80 backdrop-blur-sm transition-[background-color] duration-150 hover:bg-background",
 			)}
@@ -57,36 +52,28 @@ export function PlazaSelectionMenu({
 			aria-label={t("selection.menuLabel")}
 			onMouseDown={(e) => e.stopPropagation()}
 		>
-			<TooltipProvider delayDuration={200}>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon-sm"
-							aria-label={t("selection.ask")}
-							onClick={onAsk}
-						>
-							<MessageSquare className="size-4" />
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent side="top">{t("selection.ask")}</TooltipContent>
-				</Tooltip>
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
-							type="button"
-							variant="ghost"
-							size="icon-sm"
-							aria-label={t("selection.addToChat")}
-							onClick={onAddToChat}
-						>
-							<MessageSquarePlus className="size-4" />
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent side="top">{t("selection.addToChat")}</TooltipContent>
-				</Tooltip>
-			</TooltipProvider>
+			<button
+				type="button"
+				className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-caption font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-[0.97] motion-reduce:active:scale-100"
+				aria-label={`${t("selection.addToChat")} ${addToChatShortcut}`}
+				onClick={onAddToChat}
+			>
+				<span>{t("selection.addToChat")}</span>
+				<kbd className="translate-y-px scale-90 text-caption font-normal text-muted-foreground/80 tabular-nums">
+					{addToChatShortcut}
+				</kbd>
+			</button>
+			<button
+				type="button"
+				className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-caption font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-[0.97] motion-reduce:active:scale-100"
+				aria-label={`${t("selection.quickChat")} ${openChatShortcut}`}
+				onClick={onAsk}
+			>
+				<span>{t("selection.quickChat")}</span>
+				<kbd className="translate-y-px scale-90 text-caption font-normal text-muted-foreground/80 tabular-nums">
+					{openChatShortcut}
+				</kbd>
+			</button>
 		</div>
 	);
 }

@@ -14,7 +14,6 @@
  * selection outside the viewer host so it cannot steal a normal copy.
  */
 
-import type { Rect } from "@embedpdf/models";
 import type { useDocumentManagerCapability } from "@embedpdf/plugin-document-manager/react";
 import type {
 	FormattedSelection,
@@ -32,7 +31,6 @@ import {
 import {
 	anchorFromEmbedSelection,
 	pageElByIndex,
-	rectBottomRightScreen,
 	rectTopCenterScreen,
 } from "@/components/viewer/pdf/coords";
 import {
@@ -69,20 +67,15 @@ function menuAnchorPage(
 	return pages[pages.length - 1] ?? pages[0] ?? null;
 }
 
-/** Map a formatted selection page to toolbar + add-to-chat screen anchors. */
-function menuScreenPoints(
+/** Map a formatted selection page to the floating toolbar screen anchor. */
+function menuScreenPoint(
 	host: HTMLElement | null,
 	anchorPage: FormattedSelection,
 	zoom: number,
-): { screen: ScreenPoint; bottomRight: ScreenPoint } | null {
+): ScreenPoint | null {
 	const pageEl = pageElByIndex(host, anchorPage.pageIndex);
 	if (!pageEl) return null;
-	const screen = rectTopCenterScreen(pageEl, anchorPage.rect, zoom);
-	const lastSeg: Rect =
-		anchorPage.segmentRects[anchorPage.segmentRects.length - 1] ??
-		anchorPage.rect;
-	const bottomRight = rectBottomRightScreen(pageEl, lastSeg, zoom);
-	return { screen, bottomRight };
+	return rectTopCenterScreen(pageEl, anchorPage.rect, zoom);
 }
 
 export type UsePdfTextSelectionOptions = {
@@ -112,7 +105,7 @@ export type PdfTextSelection = {
 	/** Dismiss the menu and drop the underlying PDFium selection. */
 	closeSelectionMenu: () => void;
 	/**
-	 * Recompute toolbar / add-to-chat screen anchors from the live page DOM.
+	 * Recompute the toolbar screen anchor from the live page DOM.
 	 * Call on viewport scroll and zoom so the menu stays glued to the selection.
 	 */
 	rePlaceSelectionMenu: () => void;
@@ -162,21 +155,16 @@ export function usePdfTextSelection({
 			if (!prev) return prev;
 			const anchorPage = menuAnchorPage(prev.pages, prev.anchor.page - 1);
 			if (!anchorPage) return prev;
-			const next = menuScreenPoints(
+			const screen = menuScreenPoint(
 				hostRef.current,
 				anchorPage,
 				zoomRef.current,
 			);
-			if (!next) return prev;
-			if (
-				next.screen.x === prev.screen.x &&
-				next.screen.y === prev.screen.y &&
-				next.bottomRight.x === prev.bottomRight.x &&
-				next.bottomRight.y === prev.bottomRight.y
-			) {
+			if (!screen) return prev;
+			if (screen.x === prev.screen.x && screen.y === prev.screen.y) {
 				return prev;
 			}
-			return { ...prev, ...next };
+			return { ...prev, screen };
 		});
 	}, [hostRef, zoomRef]);
 
@@ -215,16 +203,15 @@ export function usePdfTextSelection({
 				return;
 			}
 
-			const placed = menuScreenPoints(
+			const screen = menuScreenPoint(
 				hostRef.current,
 				anchorPage,
 				zoomRef.current,
 			);
-			if (!placed) {
+			if (!screen) {
 				setIsSelecting(false);
 				return;
 			}
-			const { screen, bottomRight } = placed;
 			// Keep isSelecting true across the async quote extract so link
 			// previews cannot flash between mouseup and the selection menu.
 			void (async () => {
@@ -247,7 +234,7 @@ export function usePdfTextSelection({
 					setIsSelecting(false);
 					return;
 				}
-				setSelectionMenu({ screen, bottomRight, anchor, pages });
+				setSelectionMenu({ screen, anchor, pages });
 				setIsSelecting(false);
 				if (quote) {
 					try {

@@ -19,13 +19,13 @@ export type ShortcutId =
 	/** ⇧⌘← — reset tree to only papers/ expanded (children listed, not open) */
 	| "collapseTreeDefault"
 	| "magicWand"
-	/** ⌘P / ⌘K — quick open papers & contents */
+	/** ⌘P — quick open papers & contents */
 	| "quickOpen"
 	/** ⇧⌘P — run app commands */
 	| "commandPalette"
 	| "toggleSidebar"
 	| "toggleChat"
-	/** ⇧⌘A — pin the live selection into the Agent context and focus the composer */
+	/** ⌘K — pin the live selection into the Agent context and focus the composer */
 	| "addSelectionToChat"
 	| "closeSheet"
 	| "focusSidebar"
@@ -237,10 +237,9 @@ export const SHORTCUTS: ShortcutDef[] = [
 	{
 		id: "addSelectionToChat",
 		group: "Navigation",
-		// ⇧⌘A — pin the live selection as Agent context and focus the composer.
-		key: "a",
+		// ⌘K — pin the live selection as Agent context and focus the composer.
+		key: "k",
 		meta: true,
-		shift: true,
 		whenSettingsClosed: true,
 	},
 	{
@@ -319,13 +318,15 @@ export const SHORTCUTS: ShortcutDef[] = [
 
 /** Secondary aliases that still work (documented lightly). */
 const ALIASES: Partial<Record<ShortcutId, ShortcutDef[]>> = {
-	quickOpen: [
+	addSelectionToChat: [
 		{
-			id: "quickOpen",
+			id: "addSelectionToChat",
 			group: "Navigation",
-			// ⌘K — alias for quick open (Agentero habit)
-			key: "k",
+			// ⇧⌘A — prior binding; still focuses the composer with the selection.
+			key: "a",
 			meta: true,
+			shift: true,
+			whenSettingsClosed: true,
 		},
 	],
 	toggleSidebar: [
