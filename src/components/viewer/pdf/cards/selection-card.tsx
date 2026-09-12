@@ -258,7 +258,11 @@ export function SelectionCard({
 	});
 	const transition = reduceMotion
 		? { duration: 0 }
-		: { type: "spring" as const, bounce: 0.15, duration: 0.35 };
+		: {
+				type: "spring" as const,
+				bounce: 0.1,
+				duration: 0.35,
+			};
 
 	// If the card mounts / remounts under an existing pointer (mode switch,
 	// open under cursor), browsers do not re-fire pointerenter — re-arm the
@@ -284,6 +288,9 @@ export function SelectionCard({
 				// Content-sized cards (no body scroll) should not clip children.
 				bodyScroll || lockHeight ? "overflow-hidden" : "overflow-visible",
 				PDF_FLOAT_CARD,
+				// Match the gutter pin radius so the shared-layout morph looks like
+				// the same surface expanding instead of a radius swap.
+				"rounded-md",
 				className,
 			)}
 			layoutId={layoutId}
@@ -312,9 +319,17 @@ export function SelectionCard({
 			onPointerEnter={onPointerEnter}
 			onPointerLeave={handlePointerLeave}
 		>
-			<header className="flex shrink-0 items-center gap-2 border-border/60 border-b px-3 py-2">
-				<Icon className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-				<span className="min-w-0 flex-1 truncate font-medium text-foreground text-sm">
+			<header className="relative flex h-6 shrink-0 items-center border-border/60 border-b">
+				<motion.span
+					layout="position"
+					className="absolute left-1.5 top-1.5 inline-flex"
+				>
+					<Icon
+						className="size-3.5 shrink-0 text-muted-foreground"
+						aria-hidden
+					/>
+				</motion.span>
+				<span className="min-w-0 flex-1 truncate pl-7 pr-1 font-medium text-foreground text-sm">
 					{title}
 				</span>
 				{actions && actions.length > 0 ? (

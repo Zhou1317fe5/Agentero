@@ -156,7 +156,7 @@ export const SelectionGutter = memo(function SelectionGutter({
 							type="button"
 							layoutId={`pdf-pin-${item.id}`}
 							className={cn(
-								"flex size-6 items-center justify-center rounded-md border shadow-sm transition-[opacity,background-color] duration-150 hover:scale-110",
+								"relative flex size-6 rounded-md border shadow-sm transition-[opacity,background-color] duration-150 hover:scale-110",
 								item.kind === "ask" && item.ended
 									? "border-amber-600/35 bg-background text-amber-600 dark:text-amber-400"
 									: item.kind === "translate"
@@ -186,7 +186,10 @@ export const SelectionGutter = memo(function SelectionGutter({
 								onOpen(item);
 							}}
 						>
-							<Icon className="size-3.5" strokeWidth={2} />
+							<Icon
+								className="absolute left-1.5 top-1.5 size-3.5"
+								strokeWidth={2}
+							/>
 						</motion.button>
 					</div>
 				);
