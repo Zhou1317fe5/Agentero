@@ -84,11 +84,14 @@ export function HighlightAnnotationMenu({
 					role="toolbar"
 					aria-label={t("selection.highlightMenuLabel")}
 					className={cn(
-						"pointer-events-auto absolute left-1/2 z-10 flex h-10 items-center gap-0.5 px-1",
+						"pointer-events-auto absolute z-10 flex h-10 items-center gap-0.5 px-1",
 						PDF_SELECTION_MENU,
 						placement.suggestTop ? "top-full mt-1.5" : "bottom-full mb-1.5",
 					)}
-					style={{ transform: "translateX(-50%)" }}
+					// Pin the toolbar by its right edge so the color stack fans left on
+					// hover while the divider / edit / delete actions stay put — same
+					// behavior as the text-selection highlight toolbar.
+					style={{ right: "calc(50% - 68px)" }}
 				>
 					<HighlightColorStack
 						activeColor={activeColor}
