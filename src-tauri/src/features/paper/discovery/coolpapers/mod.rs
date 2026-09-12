@@ -393,8 +393,9 @@ fn skip_following_faq_answer(after_q: &str) -> &str {
 /// are Markdown wrapped in `<div class="faq-a">`. The `$…$` math is left exactly
 /// as-is; the site escapes it only to feed MathJax.
 ///
-/// The trailing "想要进一步了解论文" FAQ (Kimi web CTA with external-link markup)
-/// is dropped — it is not paper analysis.
+/// Heading levels: FAQ questions become `## Qn: …`; answer bodies already use
+/// `###` subsections, so they nest under each Q. The trailing
+/// "想要进一步了解论文" FAQ (Kimi web CTA) is dropped.
 fn kimi_html_to_markdown(raw: &str) -> String {
     const Q_OPEN: &str = "<p class=\"faq-q\">";
     let mut staged = String::with_capacity(raw.len());
@@ -410,7 +411,8 @@ fn kimi_html_to_markdown(raw: &str) -> String {
                     rest = skip_following_faq_answer(after_q);
                     continue;
                 }
-                staged.push_str("### ");
+                // `##` so answer-body `###` subsections nest under each Q.
+                staged.push_str("## ");
                 staged.push_str(question.trim());
                 rest = after_q;
             }
@@ -483,8 +485,10 @@ pub async fn fetch_notes(req: FetchNotesRequest<'_>) -> Result<CoolPapersNotes, 
     }
 
     let page_url = format!("{ORIGIN}/{branch}/{encoded}");
+    // Bold label (not a heading) so `## Qn` / answer `###` nest cleanly under
+    // the paper's existing `#` title without a competing section heading.
     let block =
-        format!("## Cool Papers · Kimi 解析\n\n> 来源：[{page_url}]({page_url})\n\n{markdown}");
+        format!("**Cool Papers · Kimi 解析**\n\n> 来源：[{page_url}]({page_url})\n\n{markdown}");
     let appended =
         crate::features::paper::zotero::db::append_markdown_blocks(&notes_path, &[block]);
 
@@ -566,10 +570,12 @@ mod tests {
 
     #[test]
     fn converts_faq_hybrid_to_markdown() {
-        let raw = "<p class=\"faq-q\"><strong>Q1</strong>: 试图解决什么问题？</p>\n\n<div class=\"faq-a\">\n\n答案正文 $x^2$ 保留。\n\n</div>\n";
+        let raw = "<p class=\"faq-q\"><strong>Q1</strong>: 试图解决什么问题？</p>\n\n<div class=\"faq-a\">\n\n答案正文 $x^2$ 保留。\n\n### 小节标题\n\n</div>\n";
         let md = kimi_html_to_markdown(raw);
-        assert!(md.starts_with("### Q1: 试图解决什么问题？"));
+        assert!(md.starts_with("## Q1: 试图解决什么问题？"));
         assert!(md.contains("答案正文 $x^2$ 保留。"));
+        // Answer subsections stay ### so they nest under ## Q.
+        assert!(md.contains("### 小节标题"));
         assert!(!md.contains("faq-a"));
         assert!(!md.contains("</div>"));
     }
@@ -592,7 +598,7 @@ mod tests {
 </div>
 "#;
         let md = kimi_html_to_markdown(raw);
-        assert!(md.contains("### Q6: 总结一下论文的主要内容"));
+        assert!(md.contains("## Q6: 总结一下论文的主要内容"));
         assert!(md.contains("正文摘要。"));
         assert!(!md.contains("Q7"));
         assert!(!md.contains("想要进一步了解"));

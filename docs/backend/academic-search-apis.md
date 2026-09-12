@@ -135,7 +135,7 @@ UI 刷新（`paper_resolve_identifier`）对 DOI/arXiv/URL **先走标识符解�
 - 解析论文 URL：`https://papers.cool/{arxiv|venue}/{id}`。
 - 按标题搜索：`GET https://papers.cool/{branch}/search?query=...`。
 - 获取 Kimi 解析：`GET https://papers.cool/{branch}/kimi?paper={id}`。
-- 这是一个人工整理的学术站点，不是开放 API；解析结果写入 NOTES.md。转换时丢弃末尾「想要进一步了解论文」FAQ（跳转 Kimi 网页版的推广段）。
+- 这是一个人工整理的学术站点，不是开放 API；解析结果写入 NOTES.md。FAQ 问题写成 `## Qn`，保留答案内 `###` 小节；丢弃末尾「想要进一步了解论文」FAQ（跳转 Kimi 网页版的推广段）。
 
 ### 2.10 PDF / TeX 资产下载
 
