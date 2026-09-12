@@ -109,8 +109,8 @@ the id still exists.
 ## Default agent protocol
 
 ```bash
-# 1) Confirm vault root
-agentero vault which --json
+# 1) List known vaults
+agentero vault list --json
 
 # 2) L1 index — slim rows (optional filters: --unread, --query, --tag)
 agentero paper list --json

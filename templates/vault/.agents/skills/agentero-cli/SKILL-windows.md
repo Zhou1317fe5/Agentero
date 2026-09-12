@@ -111,8 +111,8 @@ the id still exists.
 ## Default agent protocol
 
 ```powershell
-# 1) Confirm vault root
-agentero-cli vault which --json
+# 1) List known vaults
+agentero-cli vault list --json
 
 # 2) L1 index — slim rows (optional filters: --unread, --query, --tag)
 agentero-cli paper list --json

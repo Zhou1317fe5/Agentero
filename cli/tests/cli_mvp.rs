@@ -76,7 +76,7 @@ fn tiny_pdf_pages(texts: &[&str]) -> Vec<u8> {
 }
 
 #[test]
-fn vault_create_which_info_check() {
+fn vault_create_and_list() {
     let tmp = tempdir().unwrap();
     let vault = tmp.path().join("v");
     let home = create_vault(&vault);
@@ -93,40 +93,6 @@ fn vault_create_which_info_check() {
         .join(".agents/skills/deep-research/SKILL.md")
         .is_file());
     assert!(vault.join(".agents/skills/README.md").is_file());
-
-    let which = agentero()
-        .args([
-            "--vault",
-            vault.to_str().unwrap(),
-            "vault",
-            "which",
-            "--json",
-        ])
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-    let v: Value = serde_json::from_slice(&which).unwrap();
-    assert_eq!(v["ok"], true);
-    assert!(v["data"]["path"].as_str().unwrap().contains("v"));
-
-    let info = agentero()
-        .args([
-            "--vault",
-            vault.to_str().unwrap(),
-            "vault",
-            "info",
-            "--json",
-        ])
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-    let v: Value = serde_json::from_slice(&info).unwrap();
-    assert_eq!(v["ok"], true);
-    assert_eq!(v["data"]["counts"]["papers"], 0);
 
     let list = agentero()
         .env("HOME", &home)
@@ -746,7 +712,7 @@ fn tree_and_vault_resolve_from_cwd() {
 
     agentero()
         .current_dir(&vault)
-        .args(["vault", "which", "--json"])
+        .args(["vault", "list", "--json"])
         .assert()
         .success()
         .stdout(predicate::str::contains("\"ok\":true"));
