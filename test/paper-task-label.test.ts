@@ -1,10 +1,27 @@
 import { afterEach, describe, expect, it } from "vitest";
+import {
+	clearPaperTitleLookup,
+	joinTaskDetail,
+	paperTaskLabel,
+	registerPaperTitleLookup,
+} from "@/lib/core/task-label";
 import { libraryStore } from "@/lib/paper/library-store";
-import { joinTaskDetail, paperTaskLabel } from "@/lib/paper/task-label";
+// Ensure the catalog lookup is wired the same way as the app.
+import "@/lib/paper/task-label";
 
 describe("paperTaskLabel", () => {
 	afterEach(() => {
 		libraryStore.setState({ paperMetaByRelPath: new Map() });
+		registerPaperTitleLookup(
+			(normalizedPaperRel) =>
+				libraryStore.getState().paperMetaByRelPath.get(normalizedPaperRel)
+					?.title,
+		);
+	});
+
+	it("falls back to folder basename when no title lookup is registered", () => {
+		clearPaperTitleLookup();
+		expect(paperTaskLabel("papers/1706.03762")).toBe("1706.03762");
 	});
 
 	it("prefers catalog title over folder id", () => {

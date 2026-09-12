@@ -40,9 +40,9 @@ import {
 import { errorText } from "@/lib/core/error";
 import { callApiResult } from "@/lib/core/ipc";
 import { logger } from "@/lib/core/logger";
+import { joinTaskDetail, paperTaskLabel } from "@/lib/core/task-label";
 import { isTauri } from "@/lib/core/tauri";
 import { toSafeDisposer } from "@/lib/core/tauri-events";
-import { joinTaskDetail, paperTaskLabel } from "@/lib/paper/task-label";
 
 export type { JobKind, JobOfferPayload, JobState };
 
