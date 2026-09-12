@@ -37,6 +37,7 @@ type ScrollCapability = ReturnType<typeof useScroll>["provides"];
 
 export type UsePdfLayoutClusterOptions = {
 	docId: string;
+	translationPane?: boolean;
 	totalPages: number;
 	/** Workspace active tab; only the active viewer auto-runs the analysis. */
 	isActive: boolean;
@@ -80,6 +81,7 @@ export type PdfLayoutCluster = Omit<PdfLayoutRegions, "layoutDocRegions"> &
 
 export function usePdfLayoutCluster({
 	docId,
+	translationPane = false,
 	totalPages,
 	isActive,
 	paperAbsPath,
@@ -177,6 +179,7 @@ export function usePdfLayoutCluster({
 	} = usePdfLayoutTranslate({
 		docId,
 		layoutRawRegions,
+		translationPane,
 		paperAbsPath,
 		paperKey,
 		vaultPath,

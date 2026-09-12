@@ -94,7 +94,16 @@ export function usePdfScrollSync(docId: string): void {
 			};
 		}
 
-		if (!docCap.isDocumentOpen(partnerId)) return;
+		if (!docCap.isDocumentOpen(partnerId)) {
+			// The source viewer commonly mounts before the companion panel's PDF
+			// document finishes opening. Retry so the first readiness check cannot
+			// permanently miss the sync pair.
+			const retry = window.setTimeout(
+				() => setExternalViewportRevision((n) => n + 1),
+				100,
+			);
+			return () => window.clearTimeout(retry);
+		}
 		const partnerScope = viewportCap.forDocument(partnerId);
 		const partnerZoomScope = zoomCap.forDocument(partnerId);
 		if (!partnerScope || !partnerZoomScope) return;

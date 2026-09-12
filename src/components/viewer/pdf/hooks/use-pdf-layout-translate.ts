@@ -28,6 +28,8 @@ import { displayTranslateError } from "@/lib/translate";
 
 export type UsePdfLayoutTranslateOptions = {
 	docId: string;
+	/** Translation-only panes hydrate completed overlays from the shared cache. */
+	translationPane?: boolean;
 	/** Pre-merge regions from {@link usePdfLayoutRegions}; the translate source. */
 	layoutRawRegions: PdfLayoutRegion[] | null;
 	/** Paper folder path; when present, full-document translations cache under source/. */
@@ -113,6 +115,7 @@ function resetRunningTranslateItems(
 export function usePdfLayoutTranslate({
 	docId,
 	layoutRawRegions,
+	translationPane = false,
 	paperAbsPath,
 	paperKey,
 	vaultPath,
@@ -430,6 +433,32 @@ export function usePdfLayoutTranslate({
 			layoutTranslateAbortRef.current?.abort();
 		};
 	}, [docId]);
+
+	// A translation pane must show the source pane's completed cache immediately;
+	// it should not depend on starting a second translation job or on the source
+	// pane's local React state.
+	useEffect(() => {
+		if (!translationPane || !paperAbsPath) return;
+		let cancelled = false;
+		void readLayoutTranslateSidecar(
+			paperAbsPath,
+			currentLayoutTranslateCacheKey(),
+		).then((sidecar) => {
+			if (cancelled || !sidecar?.items.length) return;
+			const items = layoutRawRegions?.length
+				? applyLayoutTranslateSidecar(
+						toLayoutTranslateItems(
+							listTranslatableLayoutRegions(layoutRawRegions),
+						),
+						sidecar,
+					)
+				: sidecar.items.map((item) => ({ ...item, status: "done" as const }));
+			setLayoutTranslateJob({ status: "done", items });
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [translationPane, paperAbsPath, layoutRawRegions]);
 
 	// Bucket once per job update (not per page); unchanged buckets keep their
 	// previous array identity so memoized page overlays bail out while another

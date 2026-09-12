@@ -819,6 +819,7 @@ function PdfViewerInner({
 		togglePageLayoutTranslate,
 	} = usePdfLayoutCluster({
 		docId,
+		translationPane,
 		totalPages,
 		isActive,
 		paperAbsPath,
