@@ -62,9 +62,9 @@ export const PDF_PAPER_SWATCH_CLASS: Record<PdfPaperTone, string> = {
  */
 export const PDF_COMMENT_CONNECTOR_STROKE_CLASS: Record<PdfPaperTone, string> =
 	{
-		white: "stroke-black/80",
-		sepia: "stroke-black/75",
-		green: "stroke-black/75",
+		white: "stroke-zinc-500/90",
+		sepia: "stroke-zinc-600/85",
+		green: "stroke-zinc-600/85",
 		dark: "stroke-white/80",
 	};
 
