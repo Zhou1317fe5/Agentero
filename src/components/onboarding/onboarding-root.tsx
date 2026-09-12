@@ -212,7 +212,7 @@ function OnboardingDialog() {
 			case "translate":
 				return { title: t("translate.title"), desc: t("translate.desc") };
 			case "layout":
-				return { title: t("layout.title"), desc: t("layout.desc") };
+				return { title: t("layout.title"), desc: undefined };
 			case "vault":
 				return { title: t("vault.title"), desc: t("vault.desc") };
 			default:

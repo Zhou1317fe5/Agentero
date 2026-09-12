@@ -204,15 +204,14 @@ export function LayoutStep({
 				<Button
 					type="button"
 					variant="ghost"
-					size="icon-xs"
+					size="xs"
 					className="shrink-0"
-					aria-label={t("layout.openDocs")}
-					title={t("layout.openDocs")}
 					onClick={() =>
 						openExternalUrl(LAYOUT_PROVIDER_DOCS_URLS[provider.id])
 					}
 				>
-					<ExternalLink className="size-4" />
+					<ExternalLink data-icon="inline-start" className="size-4" />
+					{t("layout.openDocsLabel")}
 				</Button>
 				<div className="ml-auto flex items-center gap-2">
 					<span
