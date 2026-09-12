@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "motion/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
 	Tooltip,
@@ -44,22 +44,19 @@ type HighlightColorStackProps = {
 	activeColor?: HighlightColor;
 	/** Tooltip / expand direction relative to the toolbar. */
 	tooltipSide?: "top" | "bottom";
-	/** Fires when hover/focus expands or collapses the stack. */
-	onExpandedChange?: (expanded: boolean) => void;
 	className?: string;
 };
 
 /**
  * Semi-overlapping highlight color dots. Hover / focus-within fans them out
  * to the left (right edge stays anchored near the toolbar divider) with a
- * compact spring. Slot width animates with the dots so the toolbar's left
- * edge can track the growth.
+ * compact spring. Only this slot's width animates — parents should pin the
+ * toolbar by its right edge so sibling actions do not move.
  */
 export function HighlightColorStack({
 	onSelect,
 	activeColor,
 	tooltipSide = "top",
-	onExpandedChange,
 	className,
 }: HighlightColorStackProps) {
 	const { t } = useTranslation("viewer");
@@ -68,10 +65,6 @@ export function HighlightColorStack({
 
 	const open = useCallback(() => setExpanded(true), []);
 	const close = useCallback(() => setExpanded(false), []);
-
-	useEffect(() => {
-		onExpandedChange?.(expanded);
-	}, [expanded, onExpandedChange]);
 
 	const step = expanded ? EXPANDED_STEP : COLLAPSED_STEP;
 	const width = expanded
