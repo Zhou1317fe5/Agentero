@@ -393,14 +393,7 @@ function PdfViewerInner({
 	const zoomLevel = zoomState.currentZoomLevel || 1;
 
 	const { pdfTone, setPdfTone } = usePdfPaperTone();
-	const {
-		zoomField,
-		setZoomField,
-		zoomFieldFocusedRef,
-		zoomFieldCancelRef,
-		zoomRef,
-		commitZoomField,
-	} = usePdfZoomControls(zoom, zoomLevel);
+	const { zoomRef } = usePdfZoomControls(zoomLevel);
 
 	const paperKey = paperRelPath || paperAbsPath || null;
 
@@ -1405,18 +1398,12 @@ function PdfViewerInner({
 	);
 
 	// ---- Top toolbar auto show/hide (#400) ----
-	const topChromeVisible = usePdfChromeVisibility({
+	// ---- Left toolbar auto show/hide (#400); right toolbar stays pinned ----
+	const leftChromeVisible = usePdfChromeVisibility({
 		hostRef,
 		scrollRef,
 		scrollReady,
-		sticky:
-			showOutline ||
-			showReferences ||
-			showFigures ||
-			findOpen ||
-			regionSelecting ||
-			visualCropPending,
-		held: () => zoomFieldFocusedRef.current,
+		sticky: showOutline || showReferences || showFigures || findOpen,
 	});
 
 	return (
@@ -1433,7 +1420,7 @@ function PdfViewerInner({
 				onToggleReferences={handleToggleReferences}
 				showFigures={showFigures}
 				onToggleFigures={handleToggleFigures}
-				visible={topChromeVisible}
+				visible={leftChromeVisible}
 				isRemotePaper={isRemotePaper}
 			/>
 			<PdfOutlinePanel
@@ -1465,14 +1452,6 @@ function PdfViewerInner({
 				onClose={closeFind}
 			/>
 			<PdfToolbar
-				zoomLevel={zoomLevel}
-				onZoomIn={() => zoom?.zoomIn()}
-				onZoomOut={() => zoom?.zoomOut()}
-				zoomField={zoomField}
-				onZoomFieldChange={setZoomField}
-				zoomFieldFocusedRef={zoomFieldFocusedRef}
-				zoomFieldCancelRef={zoomFieldCancelRef}
-				onCommitZoomField={commitZoomField}
 				regionSelecting={regionSelecting}
 				visualCropPending={visualCropPending}
 				engine={engine}
@@ -1505,7 +1484,7 @@ function PdfViewerInner({
 				/>
 				{/* Ctrl+wheel and trackpad pinch are handled by WheelZoomHandler (WebKit
 				    pinch arrives as GestureEvents, not ctrl+wheel); EmbedPDF's built-in
-				    wheel zoom is disabled so steps match the toolbar +/- buttons, and
+				    wheel zoom is disabled so steps stay discrete and coalesced, and
 				    its enablePinch only covers touch devices. */}
 				<ZoomGestureWrapper documentId={docId} enableWheel={false}>
 					<GlobalPointerProvider documentId={docId}>
@@ -1585,8 +1564,8 @@ function PdfViewerInner({
 				onCommitPageField={commitPageField}
 				pdfTone={pdfTone}
 				onSetPdfTone={setPdfTone}
-				onFitWidth={() => zoom?.requestZoom(ZoomMode.FitWidth)}
-				onFitPage={() => zoom?.requestZoom(ZoomMode.FitPage)}
+				zoomLevel={zoomLevel}
+				onZoomChange={(next) => zoom?.requestZoom(next)}
 				isRemotePaper={isRemotePaper}
 			/>
 		</div>

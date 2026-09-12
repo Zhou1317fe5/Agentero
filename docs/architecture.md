@@ -73,7 +73,7 @@ BYOA，连接本机 ACP Agent。详见 [frontend/agent.md](frontend/agent.md) / 
 
 ### PDF 阅读
 
-Vault 任意路径 `.pdf` → `blob:` 预览。页码导航/适应宽·整页/大纲/⌘F 查找。真实 scale 渲染 + 平滑划词覆盖层。划词菜单：高亮/提问/翻译；批注走页右缘竖向入口。支持视觉区域批注（框选插图/表/算法/公式，可写备注或向 Agent 提问）、版面分析（Figures 侧栏列出检测到的图/表/算法/公式）、有编号公式 hover 符号解析卡。详见 [frontend/pdf.md](frontend/pdf.md) / [frontend/pdf-layout-analysis.md](frontend/pdf-layout-analysis.md)。
+Vault 任意路径 `.pdf` → `blob:` 预览。页码导航/底部缩放滑动条/大纲/⌘F 查找。真实 scale 渲染 + 平滑划词覆盖层。划词菜单：高亮/提问/翻译；批注走页右缘竖向入口。支持视觉区域批注（框选插图/表/算法/公式，可写备注或向 Agent 提问）、版面分析（Figures 侧栏列出检测到的图/表/算法/公式）、有编号公式 hover 符号解析卡。详见 [frontend/pdf.md](frontend/pdf.md) / [frontend/pdf-layout-analysis.md](frontend/pdf-layout-analysis.md)。
 
 ### Markdown 编辑
 
