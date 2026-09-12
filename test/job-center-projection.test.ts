@@ -17,6 +17,8 @@ import {
 	type TaskExecutorContext,
 } from "@/lib/core/tasks";
 import { libraryStore } from "@/lib/paper/library-store";
+// Side-effect: register catalog title lookup used by JobCenter subjects.
+import "@/lib/paper/task-label";
 
 const globalWithWindow = globalThis as typeof globalThis & {
 	window?: { setTimeout: typeof setTimeout };
