@@ -887,9 +887,10 @@ function PdfViewerInner({
 
 	// Drag-select and pin cards suppress ephemeral link previews so the pointer
 	// cannot stack cards while sweeping across citation / crossref hit targets
-	// (#430). The selection action menu alone does not suppress — after the
-	// drag ends, hovering a citation should still open its preview.
-	const suppressLinkPreviews = Boolean(activeCard) || isSelecting;
+	// (#430). Keep previews suppressed while the selection action menu remains
+	// open so reference cards cannot stack on top of the selection controls.
+	const suppressLinkPreviews =
+		Boolean(activeCard) || Boolean(selectionMenu) || isSelecting;
 
 	useEffect(() => {
 		if (!suppressLinkPreviews) return;
