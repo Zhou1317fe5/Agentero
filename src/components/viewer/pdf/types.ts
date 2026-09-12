@@ -73,6 +73,8 @@ export type PdfViewerProps = {
 	 * behind the dual-pane setting.
 	 */
 	translationPane?: boolean;
+	/** Render the PDF page and translation overlay without reader chrome. */
+	translationOnly?: boolean;
 	/**
 	 * True for remote papers (e.g. arXiv Daily preview) that have no local
 	 * sidecar. Hides mark-persisting UI (highlight / note / translate); Ask /

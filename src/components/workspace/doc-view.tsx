@@ -1,6 +1,5 @@
 import { lazy, memo, Suspense, useCallback } from "react";
 import { PapersLibrary } from "@/components/library/papers-library";
-import { TranslationView } from "@/components/translation/translation-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { PdfViewerHandle } from "@/components/viewer";
 import { HtmlViewer, ImageViewer } from "@/components/viewer";
@@ -328,20 +327,37 @@ export const DocView = memo(function DocView({
 		);
 	}
 	if (tab.mode === "translation") {
-		// Translation-only pane: keep the rendered layout overlay, without mounting
-		// EmbedPDF controls, selection, annotations, search, or link behavior.
+		// Render the same PDF page stack as the source, but keep this pane read-only
+		// and chrome-free so it only shows the translation overlay.
 		if (!active && !keepMounted) return null;
 		return (
 			<div className="relative min-h-0 min-w-0 flex-1 overflow-hidden">
 				<Suspense fallback={<TabLoadingSkeleton />}>
-					<TranslationView
+					<PdfViewer
+						source={tab.pdfUrl}
+						sourceBytes={tab.pdfBytes}
 						docId={tab.id}
 						paperAbsPath={
 							tab.notesPath
 								? tab.notesPath.replace(/[\\/]NOTES\.md$/i, "")
 								: null
 						}
-						active={active}
+						paperRelPath={
+							tab.paperMeta?.path ?? paperRelFromNotes(tab.notesPath, vaultPath)
+						}
+						vaultPath={vaultPath}
+						paperMeta={tab.paperMeta}
+						isActive={active}
+						isRemotePaper={isRemoteArxivPath(tab.path)}
+						importIdentifier={tab.paperMeta?.source_url ?? undefined}
+						onOpenSettings={pdf.onOpenSettings}
+						className="h-full w-full"
+						onHandle={handlePdfHandle}
+						onHighlightsChange={handlePdfHighlightsChange}
+						onAsksChange={handlePdfAsksChange}
+						onVisualTracesChange={handlePdfVisualTracesChange}
+						translationPane
+						translationOnly
 					/>
 				</Suspense>
 			</div>

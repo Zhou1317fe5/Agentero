@@ -329,6 +329,7 @@ function PdfViewerInner({
 	isActive = true,
 	isRemotePaper = false,
 	translationPane = false,
+	translationOnly = false,
 	importIdentifier,
 	onOpenSettings,
 	onHandle,
@@ -1421,61 +1422,76 @@ function PdfViewerInner({
 	return (
 		<div
 			ref={hostRef}
-			className="relative flex h-full min-h-0 w-full select-none flex-col"
+			className={cn(
+				"relative flex h-full min-h-0 w-full select-none flex-col",
+				translationOnly && "pointer-events-none",
+			)}
 		>
-			<PdfLeftToolbar
-				outline={outline}
-				showOutline={showOutline}
-				onToggleOutline={handleToggleOutline}
-				paperPath={paperRelPath}
-				showReferences={showReferences}
-				onToggleReferences={handleToggleReferences}
-				showFigures={showFigures}
-				onToggleFigures={handleToggleFigures}
-				visible={leftChromeVisible}
-				isRemotePaper={isRemotePaper}
-			/>
-			<PdfOutlinePanel
-				outline={outline}
-				showOutline={showOutline}
-				onGoToPage={goToPage}
-			/>
-			<PdfReferencesPanel
-				vaultPath={vaultPath}
-				paperPath={paperRelPath}
-				showReferences={showReferences}
-			/>
-			<PdfFiguresPanel
-				documentId={docId}
-				showFigures={showFigures}
-				onAnalyze={handleAnalyzeLayout}
-				onJump={handleJumpToLayoutRegion}
-				onRenderThumb={handleRenderLayoutThumb}
-			/>
-			<PdfFindBar
-				open={findOpen}
-				inputRef={findInputRef}
-				query={findQuery}
-				onQueryChange={setFindQuery}
-				total={findTotal}
-				activeResultIndex={findActiveIndex}
-				onFindNext={findNext}
-				onFindPrev={findPrev}
-				onClose={closeFind}
-			/>
-			<PdfToolbar
-				regionSelecting={regionSelecting}
-				visualCropPending={visualCropPending}
-				engine={engine}
-				onToggleRegionSelect={toggleRegionSelect}
-				layoutTranslateRunning={layoutTranslateRunning}
-				layoutTranslateActive={layoutTranslateActive}
-				layoutTranslateLabel={layoutTranslateLabel}
-				onToggleLayoutTranslate={handleToggleLayoutTranslateWithDualPane}
-				isRemotePaper={isRemotePaper}
-				onImportToLibrary={handleImportToLibrary}
-				importBusy={importBusy}
-			/>
+			{!translationOnly && (
+				<PdfLeftToolbar
+					outline={outline}
+					showOutline={showOutline}
+					onToggleOutline={handleToggleOutline}
+					paperPath={paperRelPath}
+					showReferences={showReferences}
+					onToggleReferences={handleToggleReferences}
+					showFigures={showFigures}
+					onToggleFigures={handleToggleFigures}
+					visible={leftChromeVisible}
+					isRemotePaper={isRemotePaper}
+				/>
+			)}
+			{!translationOnly && (
+				<PdfOutlinePanel
+					outline={outline}
+					showOutline={showOutline}
+					onGoToPage={goToPage}
+				/>
+			)}
+			{!translationOnly && (
+				<PdfReferencesPanel
+					vaultPath={vaultPath}
+					paperPath={paperRelPath}
+					showReferences={showReferences}
+				/>
+			)}
+			{!translationOnly && (
+				<PdfFiguresPanel
+					documentId={docId}
+					showFigures={showFigures}
+					onAnalyze={handleAnalyzeLayout}
+					onJump={handleJumpToLayoutRegion}
+					onRenderThumb={handleRenderLayoutThumb}
+				/>
+			)}
+			{!translationOnly && (
+				<PdfFindBar
+					open={findOpen}
+					inputRef={findInputRef}
+					query={findQuery}
+					onQueryChange={setFindQuery}
+					total={findTotal}
+					activeResultIndex={findActiveIndex}
+					onFindNext={findNext}
+					onFindPrev={findPrev}
+					onClose={closeFind}
+				/>
+			)}
+			{!translationOnly && (
+				<PdfToolbar
+					regionSelecting={regionSelecting}
+					visualCropPending={visualCropPending}
+					engine={engine}
+					onToggleRegionSelect={toggleRegionSelect}
+					layoutTranslateRunning={layoutTranslateRunning}
+					layoutTranslateActive={layoutTranslateActive}
+					layoutTranslateLabel={layoutTranslateLabel}
+					onToggleLayoutTranslate={handleToggleLayoutTranslateWithDualPane}
+					isRemotePaper={isRemotePaper}
+					onImportToLibrary={handleImportToLibrary}
+					importBusy={importBusy}
+				/>
+			)}
 
 			<DockviewViewport
 				documentId={docId}
@@ -1483,12 +1499,14 @@ function PdfViewerInner({
 				rightGutter={COMMENT_RAIL_WIDTH_PX}
 				className="agentero-scroll-both min-h-0 min-w-0 flex-1"
 			>
-				<WheelZoomHandler docId={docId} />
-				<PanDragHandler
-					active={isActive}
-					hostRef={hostRef}
-					allowLeftDrag={!regionSelecting}
-				/>
+				{!translationOnly && <WheelZoomHandler docId={docId} />}
+				{!translationOnly && (
+					<PanDragHandler
+						active={isActive}
+						hostRef={hostRef}
+						allowLeftDrag={!regionSelecting}
+					/>
+				)}
 				<ActiveCardScrollSync
 					active={Boolean(activeCard) || Boolean(selectionMenu)}
 					onScroll={rePlaceFloatingOnScroll}
@@ -1504,82 +1522,87 @@ function PdfViewerInner({
 				</ZoomGestureWrapper>
 			</DockviewViewport>
 
-			<PdfCardStack
-				hidden={privacyHidden}
-				selectionMenu={{
-					state: selectionMenu,
-					onHighlight: handleHighlight,
-					onAsk: handleMenuAsk,
-					onAddToChat: handleMenuAddToChat,
-					onTranslate: handleMenuTranslate,
-					readOnly: isRemotePaper,
-				}}
-				copiedLabelPos={copiedLabelPos}
-				citationPreview={{
-					state: citationPreview,
-					importMenu: citationImport
-						? {
-								folders: citationImport.folders,
-								lastImportParentDir: citationImport.lastImportParentDir,
-								importingId: citationImport.importingId,
-								onImport: citationImport.importCitation,
-								onOpenChange: (open) =>
-									open ? markCitationHoverEnter() : scheduleCitationHide(),
-								remotePaper: isRemotePaper,
-							}
-						: undefined,
-					onHoverEnter: markCitationHoverEnter,
-					onHoverLeave: scheduleCitationHide,
-				}}
-				crossrefPreview={{
-					state: crossrefPreview,
-					onHoverEnter: markCrossrefHoverEnter,
-					onHoverLeave: scheduleCrossrefHide,
-				}}
-				cardScreen={cardScreen}
-				onCardHoverEnter={markCardHoverEnter}
-				onCardHoverLeave={scheduleHoverHide}
-				ask={{
-					thread: activeThread,
-					paperTitle,
-					paperLink,
-					streaming,
-					error: askError,
-					onSend: sendAskQuestion,
-					onResend: resendAskQuestion,
-					onHide: hideAskThread,
-					onDelete: deleteAskThread,
-					onStop: stopAskStreaming,
-				}}
-				translate={{
-					record: activeTranslate,
-					streaming: translateStreaming,
-					error: translateError,
-					onOpenSettings: openTranslateSettings,
-					onHide: hideActiveCard,
-					onDelete: deleteTranslateCard,
-				}}
-				visual={{
-					trace: activeVisualTrace,
-					onHide: hideActiveCard,
-					onDelete: () => {
-						if (activeVisualTrace) deleteVisualTraceById(activeVisualTrace.id);
-					},
-				}}
-			/>
+			{!translationOnly && (
+				<PdfCardStack
+					hidden={privacyHidden}
+					selectionMenu={{
+						state: selectionMenu,
+						onHighlight: handleHighlight,
+						onAsk: handleMenuAsk,
+						onAddToChat: handleMenuAddToChat,
+						onTranslate: handleMenuTranslate,
+						readOnly: isRemotePaper,
+					}}
+					copiedLabelPos={copiedLabelPos}
+					citationPreview={{
+						state: citationPreview,
+						importMenu: citationImport
+							? {
+									folders: citationImport.folders,
+									lastImportParentDir: citationImport.lastImportParentDir,
+									importingId: citationImport.importingId,
+									onImport: citationImport.importCitation,
+									onOpenChange: (open) =>
+										open ? markCitationHoverEnter() : scheduleCitationHide(),
+									remotePaper: isRemotePaper,
+								}
+							: undefined,
+						onHoverEnter: markCitationHoverEnter,
+						onHoverLeave: scheduleCitationHide,
+					}}
+					crossrefPreview={{
+						state: crossrefPreview,
+						onHoverEnter: markCrossrefHoverEnter,
+						onHoverLeave: scheduleCrossrefHide,
+					}}
+					cardScreen={cardScreen}
+					onCardHoverEnter={markCardHoverEnter}
+					onCardHoverLeave={scheduleHoverHide}
+					ask={{
+						thread: activeThread,
+						paperTitle,
+						paperLink,
+						streaming,
+						error: askError,
+						onSend: sendAskQuestion,
+						onResend: resendAskQuestion,
+						onHide: hideAskThread,
+						onDelete: deleteAskThread,
+						onStop: stopAskStreaming,
+					}}
+					translate={{
+						record: activeTranslate,
+						streaming: translateStreaming,
+						error: translateError,
+						onOpenSettings: openTranslateSettings,
+						onHide: hideActiveCard,
+						onDelete: deleteTranslateCard,
+					}}
+					visual={{
+						trace: activeVisualTrace,
+						onHide: hideActiveCard,
+						onDelete: () => {
+							if (activeVisualTrace)
+								deleteVisualTraceById(activeVisualTrace.id);
+						},
+					}}
+				/>
+			)}
 
-			<PdfBottomBar
-				totalPages={totalPages}
-				pageField={pageField}
-				onPageFieldChange={setPageField}
-				pageFocusedRef={pageFocusedRef}
-				onCommitPageField={commitPageField}
-				pdfTone={pdfTone}
-				onSetPdfTone={setPdfTone}
-				zoomLevel={zoomLevel}
-				onZoomChange={(next) => zoom?.requestZoom(next)}
-				isRemotePaper={isRemotePaper}
-			/>
+			{!translationOnly && (
+				<PdfBottomBar
+					totalPages={totalPages}
+					pageField={pageField}
+					onPageFieldChange={setPageField}
+					pageFocusedRef={pageFocusedRef}
+					onCommitPageField={commitPageField}
+					pdfTone={pdfTone}
+					onSetPdfTone={setPdfTone}
+					zoomLevel={zoomLevel}
+					onZoomChange={(next) => zoom?.requestZoom(next)}
+					isRemotePaper={isRemotePaper}
+				/>
+			)}
 		</div>
 	);
 }
