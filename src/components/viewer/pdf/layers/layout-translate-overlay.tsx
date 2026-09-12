@@ -34,6 +34,13 @@ const FS_MAX = 20;
 const FIT_SAFETY = 0.97;
 const DOM_FIT_ABSOLUTE_MIN = 1;
 const DOM_FIT_EPSILON_PX = 0.5;
+/**
+ * Keep the source paragraph's leading whenever possible. If translation
+ * expands, BabelDOC's typesetter reduces leading before it reduces glyph
+ * scale; doing the same here preserves a much more paper-like hierarchy than
+ * immediately making a dense CJK paragraph tiny.
+ */
+const DOM_FIT_LINE_HEIGHTS = [LINE_HEIGHT, 1.2, 1.15, 1.1] as const;
 
 /** Wider glyphs for CJK; narrower for Latin (academic body). */
 function avgGlyphEm(text: string): number {
@@ -220,6 +227,15 @@ function elementFitsBox(element: HTMLParagraphElement): boolean {
 	);
 }
 
+function applyParagraphMetrics(
+	element: HTMLParagraphElement,
+	fontSize: number,
+	lineHeight: number,
+): void {
+	element.style.fontSize = `${fontSize}px`;
+	element.style.lineHeight = String(lineHeight);
+}
+
 type ExactFitParagraphProps = {
 	text: string;
 	initialFontSize: number;
@@ -249,26 +265,38 @@ export const LayoutTranslateParagraph = memo(function LayoutTranslateParagraph({
 		// Wait until React has committed the text this fit pass is measuring.
 		if (element.textContent !== text) return;
 
-		const applySize = (size: number) => {
-			element.style.fontSize = `${size}px`;
-		};
-
-		applySize(initialFontSize);
-		if (elementFitsBox(element)) return;
+		// Preserve source-like leading first. Reducing line-height is markedly
+		// less harmful to the page's visual hierarchy than shrinking every glyph.
+		let lineHeight = LINE_HEIGHT;
+		for (const candidate of DOM_FIT_LINE_HEIGHTS) {
+			applyParagraphMetrics(element, initialFontSize, candidate);
+			if (elementFitsBox(element)) return;
+			lineHeight = candidate;
+		}
 
 		let lo = DOM_FIT_ABSOLUTE_MIN;
 		let hi = initialFontSize;
 		let best = DOM_FIT_ABSOLUTE_MIN;
-		applySize(lo);
+		applyParagraphMetrics(element, lo, lineHeight);
 
-		// The 1px emergency floor makes clipping practically impossible even for
-		// malformed tiny boxes. If it still cannot fit, keep the smallest readable
-		// browser size rather than pretending the larger heuristic fit succeeded.
-		if (!elementFitsBox(element)) return;
+		// An unbreakable URL / identifier can exceed the box at every readable
+		// size. Only then relax normal word boundaries, mirroring BabelDOC's final
+		// fallback after its language-aware line-break pass.
+		if (!elementFitsBox(element)) {
+			element.style.overflowWrap = "anywhere";
+			for (const candidate of DOM_FIT_LINE_HEIGHTS) {
+				applyParagraphMetrics(element, lo, candidate);
+				if (elementFitsBox(element)) {
+					lineHeight = candidate;
+					break;
+				}
+			}
+			if (!elementFitsBox(element)) return;
+		}
 
 		for (let i = 0; i < 10; i++) {
 			const mid = (lo + hi) / 2;
-			applySize(mid);
+			applyParagraphMetrics(element, mid, lineHeight);
 			if (elementFitsBox(element)) {
 				best = mid;
 				lo = mid;
@@ -276,17 +304,29 @@ export const LayoutTranslateParagraph = memo(function LayoutTranslateParagraph({
 				hi = mid;
 			}
 		}
-		applySize(Math.max(DOM_FIT_ABSOLUTE_MIN, best * FIT_SAFETY));
+		applyParagraphMetrics(
+			element,
+			Math.max(DOM_FIT_ABSOLUTE_MIN, best * FIT_SAFETY),
+			lineHeight,
+		);
 	}, [boxHeightPx, boxWidthPx, initialFontSize, text]);
 
 	return (
 		<p
 			ref={ref}
 			className={cn(
-				"m-0 h-full w-full select-text overflow-hidden break-words whitespace-pre-wrap",
+				"m-0 h-full w-full select-text overflow-hidden whitespace-pre-wrap",
 				isHeading && "font-bold",
 			)}
-			style={{ fontSize: initialFontSize }}
+			style={{
+				fontSize: initialFontSize,
+				lineHeight: LINE_HEIGHT,
+				// Browser-native UAX #14 breaking avoids a CJK opening bracket at a
+				// line end and keeps Latin words intact until the measured fallback.
+				lineBreak: "strict",
+				wordBreak: "normal",
+				overflowWrap: "normal",
+			}}
 		>
 			{text}
 		</p>
