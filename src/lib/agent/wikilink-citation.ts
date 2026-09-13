@@ -82,7 +82,6 @@ export function linkifyWikilinks(text: string): string {
 			(text.startsWith("```", i) || text.startsWith("~~~", i)) &&
 			(i === 0 || text[i - 1] === "\n")
 		) {
-			const fence = text.startsWith("```", i) ? "```" : "~~~";
 			const lineEnd = text.indexOf("\n", i);
 			const end = lineEnd >= 0 ? lineEnd + 1 : text.length;
 			out += text.slice(i, end);
