@@ -1,12 +1,14 @@
 "use client";
 
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
-import { useCallback, useMemo } from "react";
+import { isValidElement, useCallback, useMemo } from "react";
 import { rewriteCitationHrefToPdf } from "@/lib/agent/citation-href";
 import { cn } from "@/lib/core/utils";
 
 type AgentCitationLinkProps = ComponentPropsWithoutRef<"a"> & {
-	node?: unknown;
+	node?: {
+		properties?: Record<string, unknown>;
+	};
 	children?: ReactNode;
 	onOpenSource?: (source: string) => void;
 };
@@ -15,51 +17,50 @@ function isHttpUrl(href: string): boolean {
 	return /^https?:\/\//i.test(href);
 }
 
-function looksLikeVaultPath(href: string): boolean {
-	const t = href.trim();
-	if (!t || t.startsWith("#")) return false;
-	if (isHttpUrl(t)) return false;
-	// Vault-relative paths contain a slash or have a known file extension.
-	const lower = t.toLowerCase();
-	if (
-		lower.endsWith(".md") ||
-		lower.endsWith(".tex") ||
-		lower.endsWith(".ltx") ||
-		lower.endsWith(".pdf") ||
-		lower.endsWith(".png") ||
-		lower.endsWith(".jpg") ||
-		lower.endsWith(".jpeg") ||
-		lower.endsWith(".webp") ||
-		lower.endsWith(".gif") ||
-		lower.endsWith(".svg") ||
-		lower.endsWith(".json") ||
-		lower.endsWith(".bib") ||
-		lower.endsWith(".csv")
-	) {
-		return t.includes("/") || !/\s/.test(t);
+function hrefFromProps(
+	href: string | undefined,
+	node: AgentCitationLinkProps["node"],
+): string {
+	if (href && href.trim()) return href.trim();
+	const fromNode = node?.properties?.href;
+	return typeof fromNode === "string" ? fromNode.trim() : "";
+}
+
+/** Flatten simple React children to a label string when possible. */
+function labelFromChildren(children: ReactNode): string {
+	if (typeof children === "string" || typeof children === "number") {
+		return String(children).trim();
 	}
-	return t.includes("/");
+	if (Array.isArray(children)) {
+		return children.map(labelFromChildren).filter(Boolean).join("").trim();
+	}
+	if (isValidElement<{ children?: ReactNode }>(children)) {
+		return labelFromChildren(children.props.children);
+	}
+	return "";
 }
 
 export function AgentCitationLink({
 	href,
 	children,
 	onOpenSource,
-	className,
-	node: _node,
+	className: _streamdownClassName,
+	node,
 	target: _target,
 	rel: _rel,
 	...props
 }: AgentCitationLinkProps) {
-	const resolvedHref = useMemo(
-		() => (href ? rewriteCitationHrefToPdf(href) : href),
-		[href],
-	);
+	const rawHref = hrefFromProps(href, node);
+	const incomplete = rawHref === "streamdown:incomplete-link";
+	const resolvedHref = useMemo(() => {
+		if (!rawHref || incomplete) return rawHref;
+		return rewriteCitationHrefToPdf(rawHref);
+	}, [rawHref, incomplete]);
 
 	const handleClick = useCallback(
 		(event: React.MouseEvent<HTMLAnchorElement>) => {
 			event.preventDefault();
-			if (!resolvedHref) return;
+			if (!resolvedHref || incomplete) return;
 			if (isHttpUrl(resolvedHref)) {
 				void import("@tauri-apps/plugin-opener")
 					.then(({ openUrl }) => openUrl(resolvedHref))
@@ -70,51 +71,29 @@ export function AgentCitationLink({
 			}
 			onOpenSource?.(resolvedHref);
 		},
-		[resolvedHref, onOpenSource],
+		[resolvedHref, incomplete, onOpenSource],
 	);
 
-	const label =
-		typeof children === "string" || typeof children === "number"
-			? String(children).trim()
-			: "";
+	const label = labelFromChildren(children) || resolvedHref || "link";
 
-	// Only render the pill style for vault paths or http(s) URLs.
-	// Other Streamdown links (e.g. incomplete-link) fall back to a subtle inline anchor.
-	const isPill =
-		resolvedHref &&
-		(isHttpUrl(resolvedHref) || looksLikeVaultPath(resolvedHref));
-
-	if (!isPill) {
-		return (
-			<a
-				href={resolvedHref}
-				className={cn(
-					"wrap-anywhere font-medium text-primary underline",
-					className,
-				)}
-				{...props}
-				onClick={handleClick}
-			>
-				{children}
-			</a>
-		);
-	}
-
+	// Every resolved agent link is a pill. Ignore Streamdown's default
+	// `underline text-primary` className so chips stay chip-shaped.
 	return (
 		<a
-			href={resolvedHref}
+			href={incomplete ? undefined : resolvedHref || undefined}
 			className={cn(
 				"inline-flex max-w-[12rem] shrink-0 cursor-pointer items-center gap-1 rounded-full",
-				"border border-border/60 bg-muted/60 px-2 py-0.5 text-xs font-medium text-muted-foreground",
+				"border border-border/60 bg-muted/60 px-2 py-0.5 align-baseline text-xs font-medium text-muted-foreground",
 				"transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground",
 				"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-				className,
+				incomplete && "cursor-default opacity-70",
 			)}
-			title={resolvedHref}
+			title={incomplete ? undefined : resolvedHref || undefined}
+			data-incomplete={incomplete || undefined}
 			{...props}
 			onClick={handleClick}
 		>
-			<span className="block min-w-0 truncate">{label || children}</span>
+			<span className="block min-w-0 truncate">{label}</span>
 		</a>
 	);
 }
