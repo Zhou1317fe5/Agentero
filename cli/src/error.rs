@@ -65,7 +65,13 @@ impl CliError {
     pub fn paper_ambiguous(ref_: &str, candidates: &[String]) -> Self {
         Self::with_details(
             "paper_ambiguous",
-            format!("Multiple papers match id '{ref_}'"),
+            format!(
+                "Multiple papers match id '{ref_}'. Retry with a vault-relative path from candidates (e.g. {})",
+                candidates
+                    .first()
+                    .map(|s| s.as_str())
+                    .unwrap_or("papers/<shelf>/<id>")
+            ),
             json!({ "candidates": candidates }),
             ExitCode::Business,
         )
