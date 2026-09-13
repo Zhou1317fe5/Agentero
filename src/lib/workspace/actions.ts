@@ -9,7 +9,11 @@ import i18n from "@/i18n";
 import { notePaperFocus, track } from "@/lib/activity";
 import type { CitationTarget } from "@/lib/agent/api";
 import { resolvePdfCitation } from "@/lib/agent/api";
-import { rewriteCitationHrefToPdf } from "@/lib/agent/citation-href";
+import {
+	citationHrefFromWikiParts,
+	isAgentCitationHref,
+	rewriteCitationHrefToPdf,
+} from "@/lib/agent/citation-href";
 import { errorText } from "@/lib/core/error";
 import { notifyError, notifyUndo, notifyWarning } from "@/lib/core/notify";
 import { closeTopOverlay } from "@/lib/core/overlay-stack";
@@ -788,8 +792,24 @@ export function openPath(absoluteOrDemoPath: string): void {
 	});
 }
 
+/**
+ * If `href` carries a PDF citation fragment (`#page=` / `#section=` / …),
+ * open via the shared citation jumper. Returns true when handled.
+ */
+export function tryOpenCitationHref(href: string): boolean {
+	const trimmed = href.trim().replace(/^<|>$/g, "");
+	if (!trimmed) return false;
+	const rewritten = rewriteCitationHrefToPdf(trimmed);
+	if (!isAgentCitationHref(trimmed) && !isAgentCitationHref(rewritten)) {
+		return false;
+	}
+	openCitation(trimmed);
+	return true;
+}
+
 /** Open a vault-relative path from backlinks (e.g. `notes/idea.md`). */
 export function openVaultRel(rel: string): void {
+	if (tryOpenCitationHref(rel)) return;
 	const vaultPath = getVaultPath();
 	if (!vaultPath) {
 		notifyError(i18n.t("app:errors.openVaultForLinks"));
@@ -801,6 +821,7 @@ export function openVaultRel(rel: string): void {
 
 /** Graph: paper NOTES / paper folder → open paper (PDF + Notes). */
 export function openGraphPath(rel: string): void {
+	if (tryOpenCitationHref(rel)) return;
 	const vaultPath = getVaultPath();
 	if (!vaultPath) {
 		notifyError(i18n.t("app:errors.openVaultForGraph"));
@@ -1000,6 +1021,15 @@ export async function navigateWiki(nav: WikiNavTarget): Promise<void> {
 	if (destination) {
 		if (!vaultPath) {
 			notifyError(i18n.t("app:errors.openVaultForLinks"));
+			return;
+		}
+		// PDF / layout citation fragments (page=/section=/figure=/…) share the
+		// agent citation jumper so editor wikilinks and markdown links behave alike.
+		const citationHref = citationHrefFromWikiParts(
+			destination.path,
+			destination.fragment,
+		);
+		if (citationHref && tryOpenCitationHref(citationHref)) {
 			return;
 		}
 		const full = joinVaultPath(vaultPath, normalizeVaultRel(destination.path));

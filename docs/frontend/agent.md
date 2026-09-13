@@ -12,7 +12,7 @@ AI Elements (Conversation / Message / PromptInput / InlineCitation / Reasoning)
 
 流式：`agent:stream`（message | thought）→ 完成 / 失败事件。写 NOTES 后统一 Diff（Keep / Revert）。
 
-**行内 citation pill**：Agent 按格式输出 `[label](papers/…/<id>.pdf#section|figure|page=…)` 或 `[[papers/…/NOTES]]`；前端 `MessageResponse` 把**所有**可解析 `<a>` 渲成 pill（`AgentCitationLink`，忽略 Streamdown 默认 underline 样式）、`linkifyWikilinks` 提升双链、`rewriteCitationHrefToPdf` 把残留 `.tex` href 回退到同论文 PDF 并跳转。约定不加外层 `([…])`，不用文末 `## Sources`。
+**行内 citation pill / 统一跳转**：Agent 按格式输出 `[label](papers/…/<id>.pdf#section|figure|page=…)` 或 `[[papers/…/NOTES]]`。前端 `MessageResponse` 把可解析 `<a>` 渲成 pill；Markdown 编辑器普通链接、wikilink、图谱/`openVaultRel` 等入口对 `#page=` / `#section=` / `#figure=` 等 fragment 一律走 `openCitation`（与 Agent pill 相同：开论文 PDF 并 `scrollToLayoutRegion`）。`.tex` href 会回退到同论文 `{id}.pdf`。约定不加外层 `([…])`，不用文末 `## Sources`。
 
 ## 面板行为
 

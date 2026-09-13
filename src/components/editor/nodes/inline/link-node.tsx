@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { useMarkdownDoc } from "@/components/editor/context/markdown-doc-context";
 import { ExternalLinkElement } from "@/components/editor/nodes/inline/external-link-popover";
 import { linkClassName } from "@/components/editor/nodes/inline/link-styles";
+import { isAgentCitationHref } from "@/lib/agent/citation-href";
 import { cn } from "@/lib/core/utils";
 import {
 	isVaultLocalMarkdownLink,
@@ -17,6 +18,7 @@ import {
 	wikiFragmentSuffix,
 } from "@/lib/wiki";
 import { useWikiNav } from "@/lib/wiki/nav-context";
+import { openCitation } from "@/lib/workspace/actions";
 
 type LinkEl = TElement & {
 	url?: string;
@@ -31,7 +33,30 @@ export function LinkElement(props: PlateElementProps) {
 	const wiki = url.startsWith(WIKI_HREF_PREFIX) ? parseWikiHref(url) : null;
 	const wikiNav = useWikiNav();
 	const markdownDoc = useMarkdownDoc();
-	const localMarkdown = !wiki && isVaultLocalMarkdownLink(url);
+	const citationJump = !wiki && isAgentCitationHref(url);
+	const localMarkdown = !wiki && !citationJump && isVaultLocalMarkdownLink(url);
+
+	if (citationJump) {
+		return (
+			<PlateElement
+				{...props}
+				as="a"
+				className={linkClassName}
+				attributes={{
+					...props.attributes,
+					href: url,
+					title: url,
+					onClick: (event: MouseEvent) => {
+						event.preventDefault();
+						event.stopPropagation();
+						openCitation(url);
+					},
+				}}
+			>
+				{children}
+			</PlateElement>
+		);
+	}
 
 	if (wiki) {
 		return (

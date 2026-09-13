@@ -1,9 +1,20 @@
 /**
- * Normalize agent citation hrefs so pills open the paper PDF (with optional
- * #page= / #section= / #figure= fragments) instead of TeX source paths.
+ * Normalize agent / editor citation hrefs so clicks open the paper PDF (with
+ * optional #page= / #section= / #figure= fragments) instead of TeX source paths.
  */
 
 const TEX_EXT = /\.(tex|ltx)$/i;
+
+/** Fragment keys understood by Host `resolve_citation`. */
+export const CITATION_FRAGMENT_KEYS = new Set([
+	"page",
+	"section",
+	"figure",
+	"table",
+	"algorithm",
+	"formula",
+	"region",
+]);
 
 /** Split `path#fragment` (fragment may be empty). */
 export function splitCitationHref(href: string): {
@@ -14,6 +25,38 @@ export function splitCitationHref(href: string): {
 	const idx = trimmed.indexOf("#");
 	if (idx < 0) return { path: trimmed, fragment: "" };
 	return { path: trimmed.slice(0, idx), fragment: trimmed.slice(idx + 1) };
+}
+
+/**
+ * True when `href` is a vault-relative citation that should jump via
+ * `openCitation` (e.g. `papers/a/a.pdf#page=1`).
+ */
+export function isAgentCitationHref(href: string): boolean {
+	const { path, fragment } = splitCitationHref(
+		href.trim().replace(/^<|>$/g, ""),
+	);
+	if (!path || !fragment) return false;
+	if (/^https?:\/\//i.test(path)) return false;
+	const key = fragment.split("=", 1)[0]?.trim().toLowerCase();
+	if (!key || !CITATION_FRAGMENT_KEYS.has(key)) return false;
+	return path.includes("/") || /\.(pdf|tex|ltx|md)$/i.test(path);
+}
+
+/**
+ * Build a citation href from a wiki nav path + heading fragment when the
+ * heading is actually a citation key=value (e.g. path=`…/a.pdf`, heading=`page=1`).
+ */
+export function citationHrefFromWikiParts(
+	path: string | null | undefined,
+	fragment?: { kind: string; path?: string[] } | null,
+): string | null {
+	if (!path?.trim()) return null;
+	if (fragment?.kind !== "heading" || !fragment.path?.length) return null;
+	const frag = fragment.path.join("#");
+	const key = frag.split("=", 1)[0]?.trim().toLowerCase();
+	if (!key || !CITATION_FRAGMENT_KEYS.has(key)) return null;
+	const clean = path.replace(/\\/g, "/").replace(/^\/+/, "");
+	return `${clean}#${frag}`;
 }
 
 /**

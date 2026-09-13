@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+	citationHrefFromWikiParts,
+	isAgentCitationHref,
 	paperDirFromCitationPath,
 	rewriteCitationHrefToPdf,
 } from "@/lib/agent/citation-href";
@@ -39,5 +41,46 @@ describe("rewriteCitationHrefToPdf", () => {
 		expect(rewriteCitationHrefToPdf("papers/2303.17760/NOTES.md")).toBe(
 			"papers/2303.17760/NOTES.md",
 		);
+	});
+});
+
+describe("isAgentCitationHref", () => {
+	it("accepts pdf fragment citations", () => {
+		expect(
+			isAgentCitationHref("papers/vla/2504.16054/2504.16054.pdf#page=1"),
+		).toBe(true);
+		expect(
+			isAgentCitationHref("papers/vla/2504.16054/2504.16054.pdf#section=4"),
+		).toBe(true);
+		expect(
+			isAgentCitationHref("papers/vla/2504.16054/2504.16054.pdf#figure=3"),
+		).toBe(true);
+	});
+
+	it("rejects plain paths and http urls", () => {
+		expect(isAgentCitationHref("papers/vla/2504.16054/2504.16054.pdf")).toBe(
+			false,
+		);
+		expect(isAgentCitationHref("https://example.com/a.pdf#page=1")).toBe(false);
+		expect(isAgentCitationHref("papers/vla/2504.16054/NOTES.md#Intro")).toBe(
+			false,
+		);
+	});
+});
+
+describe("citationHrefFromWikiParts", () => {
+	it("maps wiki heading page=/section= onto a citation href", () => {
+		expect(
+			citationHrefFromWikiParts("papers/a/a.pdf", {
+				kind: "heading",
+				path: ["page=1"],
+			}),
+		).toBe("papers/a/a.pdf#page=1");
+		expect(
+			citationHrefFromWikiParts("papers/a/a.pdf", {
+				kind: "heading",
+				path: ["Intro"],
+			}),
+		).toBeNull();
 	});
 });
