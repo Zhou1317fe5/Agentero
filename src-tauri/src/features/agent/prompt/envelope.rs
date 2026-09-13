@@ -28,12 +28,14 @@ pub fn build_prompt(
 
     let skill_hint = skill_follow_hint(skill_style, skill_ids);
 
-    let citation_directive = "Cite sources inline with Markdown links, e.g. \
-        `([Section 2.3](papers/<id>/PAPER.md#section=2.3))` or \
-        `([Figure 1](papers/<id>/<id>.pdf#figure=1))`. Prefer vault-relative paths; \
-        for web pages use `([domain](https://...))`. Do not end answers with a separate `## Sources` block. \
-        If a source or page cannot be read, omit the citation and explain in prose; \
-        never append `[blocked]`, `[read]`, `[failed]`, or similar status tags to links or paths.";
+    let citation_directive = "Cite sources inline (no wrapping parentheses) as Markdown \
+        links or vault wikilinks, e.g. `[Section 2.3](papers/<id>/PAPER.md#section=2.3)`, \
+        `[Figure 1](papers/<id>/<id>.pdf#figure=1)`, or `[[papers/<id>/NOTES]]`. \
+        Prefer vault-relative paths; for web pages use `[domain](https://...)`. \
+        Do not write `([…])` around citations, and do not end answers with a separate \
+        `## Sources` block. If a source or page cannot be read, omit the citation and \
+        explain in prose; never append `[blocked]`, `[read]`, `[failed]`, or similar \
+        status tags to links or paths.";
 
     let system = match workflow {
         "summary" => {
@@ -549,6 +551,24 @@ mod tests {
         assert!(p.contains("papers/"));
         assert!(p.contains("skill `agentero-cli`"));
         assert!(!p.contains("agentero import id <arxiv|doi|url> --json"));
+    }
+
+    #[test]
+    fn citation_directive_allows_wikilinks_without_wrapping_parens() {
+        let p = build_prompt(
+            Some("qa"),
+            "What is the claim?",
+            Some("papers/x"),
+            SkillMentionStyle::InjectedOnly,
+            &[],
+            None,
+            None,
+        );
+        assert!(p.contains("[[papers/<id>/NOTES]]"));
+        assert!(p.contains("[Section 2.3](papers/<id>/PAPER.md#section=2.3)"));
+        assert!(p.contains("no wrapping parentheses") || p.contains("Do not write `([…])`"));
+        assert!(!p.contains("([Section 2.3]"));
+        assert!(!p.contains("([Figure 1]"));
     }
 
     #[test]

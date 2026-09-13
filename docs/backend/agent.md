@@ -188,7 +188,7 @@ ACP **没有**统一的 ask-user tool 规范：各 harness 的字段名、挂载
 - `translate`：**不套 envelope**（无 `## Sources`、无 CLI 政策、不注入回答语言与个人偏好）。翻译 prompt 自己已指定目标语言并要求「只返回译文」，envelope 会与之冲突。
 - Skill：Claude 倾向 `/id`；其它注入 `SKILL.md` 文本（`SkillMentionStyle`）。激活语法**只由 Host 判定**（`skill_mention_style` + `paper_reader_skill_line`）；前端不得重复推断，否则同一条 prompt 的两半会互相矛盾。
 - paper-reader：写 NOTES + `paper_set_is_read`；前端任务条编排。
-- 输出约定：工作流要求行内 Markdown 引用链接（如 `([Section 2.3](papers/<id>/PAPER.md#section=2.3))` 或 `([Figure 1](papers/<id>/<id>.pdf#figure=1))`），不再使用独立的 `## Sources` 块；双链保留 `[[...]]`。
+- 输出约定：工作流要求行内引用（**不加外层括号**），形态为 Markdown 链接或 vault 双链，例如 `[Section 2.3](papers/<id>/PAPER.md#section=2.3)`、`[Figure 1](papers/<id>/<id>.pdf#figure=1)`、`[[papers/<id>/NOTES]]`；前端会把可解析的链接/`[[papers/…]]` 渲成 citation pill。不再使用独立的 `## Sources` 块；正文里的 `[[...]]` 双链保留（笔记编辑器）或在 Agent 气泡里提升为 pill。
 - `AGENTS.md` 已作为 progressive disclosure 系统上下文注入所有工作流 prompt（优先级：Vault 根 `AGENTS.md` → 当前 paper `NOTES.md` → marks）。
 - 自由模型选择：`preferred_model_id` 可指向 ACP catalog 外的任意模型 id；Warm / Run 时始终尝试 `session/set_config_option`，失败不阻断会话。
 

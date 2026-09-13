@@ -1,6 +1,6 @@
 ---
 name: paper-reader
-version: 3
+version: 4
 description: >-
   Read and explain a research paper clearly (prefer TeX, else PAPER.md/PDF).
   Use for core contribution, method deep-dive, experiments, limitations, and
@@ -178,7 +178,10 @@ term.
      changed by this run, then check again.
    - If this CLI command is unavailable, report that semantic link validation
      was not completed. Do not claim that every link resolves.
-8. End with `## Sources` listing **Vault-relative** paths you actually read.
+8. Cite paths you actually read **inline** in the lecture body (no wrapping
+   parentheses, no trailing `## Sources` block), e.g.
+   `[Section 2.3](papers/<id>/PAPER.md#section=2.3)` or
+   `[[papers/<id>/NOTES]]` / `[[papers/<id>/source/main.tex|TeX]]`.
 9. Mark as read in catalog: run `agentero paper set-read {paper} --json`.
 
 ## Rules
@@ -188,4 +191,6 @@ term.
 - Never invent experimental numbers; if something is unclear, say so.
 - Math must use `$...$` / `$$...$$` so Agentero can render it (see vault `AGENTS.md`).
 - Final deliverable path: `{paper}/NOTES.md` only for the lecture notes body.
+- Cite with inline Markdown links or vault wikilinks (pill-friendly); never
+  wrap citations as `([…])` and never append `[blocked]` / `[read]` tags.
 - Mark as read on completion: always run `agentero paper set-read {paper} --json` after notes and links are done.
