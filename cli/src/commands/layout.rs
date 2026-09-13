@@ -20,7 +20,7 @@ pub enum LayoutCmd {
         #[arg(
             long = "kind",
             value_name = "KIND",
-            value_parser = ["figure", "image", "chart", "table", "algorithm", "formula"]
+            value_parser = ["figure", "image", "chart", "table", "algorithm", "formula", "section"]
         )]
         kinds: Vec<String>,
         /// Minimum score (0–1). Default: index minScore or 0.3.

@@ -1545,6 +1545,101 @@ fn layout_list_and_mark_add_region() {
     assert!(after.as_array().unwrap().is_empty());
 }
 
+#[test]
+fn layout_list_section_from_raw_layout() {
+    let tmp = tempdir().unwrap();
+    let vault = tmp.path().join("v");
+    create_vault(&vault);
+
+    let paper = vault.join("papers").join("demo");
+    fs::create_dir_all(paper.join("source")).unwrap();
+    fs::write(paper.join("NOTES.md"), "# Demo\n").unwrap();
+    fs::write(
+        paper.join("demo.pdf"),
+        tiny_pdf_pages(&["Page one", "Page two"]),
+    )
+    .unwrap();
+    seed_paper(&vault, "papers/demo", "demo", "Demo Paper");
+
+    let index = serde_json::json!({
+        "schemaVersion": 1,
+        "source": {"mode": "sidebar", "from": "layout.json", "generatedAt": "2026-01-01T00:00:00.000Z", "minScore": 0.3},
+        "items": [
+            {"id":"figure-1","stableKey":"a","kind":"image","section":"figure","page":2,"pageIndex":1,"bbox":{"x":0.1,"y":0.2,"w":0.5,"h":0.3},"score":0.9,"title":"Figure 1","layoutRegionId":"raw-fig-1"}
+        ]
+    });
+    fs::write(
+        paper.join("source").join("layout-index.json"),
+        format!("{}\n", serde_json::to_string_pretty(&index).unwrap()),
+    )
+    .unwrap();
+
+    let raw = serde_json::json!({
+        "schemaVersion": 3,
+        "source": {"mode": "embedpdf-layout", "generatedAt": "2026-01-01T00:00:00.000Z"},
+        "regions": [
+            {"id":"h1","pageIndex":0,"kind":"header","score":0.95,"bbox":{"x":0.1,"y":0.1,"w":0.8,"h":0.05},"title":"1 Introduction"},
+            {"id":"h2","pageIndex":1,"kind":"header","score":0.92,"bbox":{"x":0.1,"y":0.1,"w":0.8,"h":0.05},"title":"2 Method"}
+        ]
+    });
+    fs::write(
+        paper.join("source").join("layout.json"),
+        format!("{}\n", serde_json::to_string_pretty(&raw).unwrap()),
+    )
+    .unwrap();
+
+    let sections = agentero()
+        .args([
+            "--vault",
+            vault.to_str().unwrap(),
+            "layout",
+            "list",
+            "demo",
+            "--kind",
+            "section",
+            "--json",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let sections: Value = serde_json::from_slice(&sections).unwrap();
+    assert_eq!(sections["ok"], true);
+    let items = sections["data"]["items"].as_array().unwrap();
+    assert_eq!(items.len(), 2);
+    assert_eq!(items[0]["id"], "h1");
+    assert_eq!(items[0]["title"], "1 Introduction");
+    assert_eq!(items[0]["page"], 1);
+    assert_eq!(items[1]["id"], "h2");
+    assert_eq!(sections["data"]["counts"]["section"], 2);
+
+    let mixed = agentero()
+        .args([
+            "--vault",
+            vault.to_str().unwrap(),
+            "layout",
+            "list",
+            "demo",
+            "--kind",
+            "figure",
+            "--kind",
+            "section",
+            "--json",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let mixed: Value = serde_json::from_slice(&mixed).unwrap();
+    let mixed_items = mixed["data"]["items"].as_array().unwrap();
+    assert_eq!(mixed_items.len(), 3);
+    assert_eq!(mixed_items[0]["id"], "h1");
+    assert_eq!(mixed_items[1]["id"], "h2");
+    assert_eq!(mixed_items[2]["id"], "figure-1");
+}
+
 /// The Agent path: a plain sentence becomes a highlight with engine-resolved
 /// geometry, and a comment rides along as the 批注 body.
 #[test]

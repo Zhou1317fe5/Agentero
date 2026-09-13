@@ -44,6 +44,7 @@ pub struct LayoutCounts {
     pub table: usize,
     pub algorithm: usize,
     pub formula: usize,
+    pub section: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -216,12 +217,14 @@ pub fn normalize_kind_filters(kinds: &[String]) -> Result<Vec<String>, AppError>
             continue;
         }
         match t.as_str() {
-            "figure" | "image" | "chart" | "table" | "algorithm" | "formula" => out.push(t),
+            "figure" | "image" | "chart" | "table" | "algorithm" | "formula" | "section" => {
+                out.push(t)
+            }
             other => {
                 return Err(AppError::domain(
                     "usage",
                     format!(
-                        "unknown kind '{other}' (use figure|image|chart|table|algorithm|formula)"
+                        "unknown kind '{other}' (use figure|image|chart|table|algorithm|formula|section)"
                     ),
                 ));
             }
@@ -234,6 +237,7 @@ fn item_matches_filters(item: &LayoutIndexItem, filters: &[String]) -> bool {
     filters.iter().any(|f| match f.as_str() {
         "figure" => item.section == "figure",
         "image" | "chart" | "table" | "algorithm" | "formula" => item.kind == *f,
+        "section" => item.section == "section",
         _ => false,
     })
 }
@@ -249,10 +253,76 @@ fn count_items(items: &[LayoutIndexItem]) -> LayoutCounts {
             "table" => c.table += 1,
             "algorithm" => c.algorithm += 1,
             "formula" => c.formula += 1,
+            "section" => c.section += 1,
             _ => {}
         }
     }
     c
+}
+
+/// Load paragraph/section title regions from the raw `layout.json`.
+///
+/// These are not stored in `layout-index.json` (which only keeps figures /
+/// tables / algorithms / formulas), but they are useful for citations and
+/// navigation, so we merge them on demand when `--kind section` is requested.
+fn load_section_headers(vault: &Path, paper_path: &str) -> Result<Vec<LayoutIndexItem>, AppError> {
+    let dir = paper_abs(vault, paper_path)?;
+    let raw_path = dir.join("source").join(LAYOUT_RAW_FILE);
+    if !raw_path.is_file() {
+        return Ok(Vec::new());
+    }
+    let text = fs::read_to_string(&raw_path)
+        .map_err(|e| AppError::message(format!("failed to read raw layout: {e}")))?;
+    let value: Value = serde_json::from_str(&text)
+        .map_err(|e| AppError::message(format!("invalid raw layout json: {e}")))?;
+    let arr = value
+        .get("regions")
+        .and_then(|v| v.as_array())
+        .ok_or_else(|| {
+            AppError::domain("layout_raw_invalid", "layout.json missing regions array")
+        })?;
+
+    let mut items = Vec::new();
+    for entry in arr.iter() {
+        let kind = entry.get("kind").and_then(|v| v.as_str()).unwrap_or("");
+        if kind != "header" {
+            continue;
+        }
+        let id = entry.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        if id.is_empty() {
+            continue;
+        }
+        let page_index = entry.get("pageIndex").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+        let score = entry.get("score").and_then(|v| v.as_f64()).unwrap_or(1.0);
+        let title = entry
+            .get("title")
+            .or_else(|| entry.get("text"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .filter(|s| !s.is_empty());
+        let Some(bbox_v) = entry.get("bbox") else {
+            continue;
+        };
+        let bbox = Bbox {
+            x: bbox_v.get("x").and_then(|v| v.as_f64()).unwrap_or(0.0),
+            y: bbox_v.get("y").and_then(|v| v.as_f64()).unwrap_or(0.0),
+            w: bbox_v.get("w").and_then(|v| v.as_f64()).unwrap_or(0.0),
+            h: bbox_v.get("h").and_then(|v| v.as_f64()).unwrap_or(0.0),
+        };
+        items.push(LayoutIndexItem {
+            id: id.to_string(),
+            stable_key: id.to_string(),
+            kind: "section".to_string(),
+            section: "section".to_string(),
+            page: page_index + 1,
+            page_index,
+            bbox,
+            score,
+            title,
+            layout_region_id: id.to_string(),
+        });
+    }
+    Ok(items)
 }
 
 /// List regions with optional kind filters and min score.
@@ -270,6 +340,22 @@ pub fn list_regions(
     if !filters.is_empty() {
         items.retain(|i| item_matches_filters(i, &filters));
     }
+
+    // Merge section headers from layout.json when explicitly requested.
+    if filters.iter().any(|f| f == "section") {
+        let mut headers = load_section_headers(vault, paper_path)?;
+        headers.retain(|i| i.score + f64::EPSILON >= threshold);
+        items.append(&mut headers);
+        items.sort_by(|a, b| {
+            a.page_index.cmp(&b.page_index).then_with(|| {
+                a.bbox
+                    .y
+                    .partial_cmp(&b.bbox.y)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+        });
+    }
+
     let counts = count_items(&items);
     Ok(LayoutListResult {
         paper_path: paper_path.to_string(),
@@ -327,6 +413,12 @@ mod tests {
         fs::write(source.join(LAYOUT_INDEX_FILE), body).unwrap();
     }
 
+    fn write_raw_layout(paper: &Path, body: &str) {
+        let source = paper.join("source");
+        fs::create_dir_all(&source).unwrap();
+        fs::write(source.join(LAYOUT_RAW_FILE), body).unwrap();
+    }
+
     #[test]
     fn missing_index_errors() {
         let dir = tempdir().unwrap();
@@ -358,5 +450,97 @@ mod tests {
         assert_eq!(listed.items[0].id, "figure-1");
         let got = get_region(vault, "papers/p1", "table-1").unwrap();
         assert_eq!(got.item.kind, "table");
+    }
+
+    #[test]
+    fn section_kind_is_accepted() {
+        assert_eq!(
+            normalize_kind_filters(&["section".into()]).unwrap(),
+            vec!["section"]
+        );
+    }
+
+    #[test]
+    fn list_merges_section_headers_from_raw_layout() {
+        let dir = tempdir().unwrap();
+        let vault = dir.path();
+        let paper = vault.join("papers").join("p1");
+        write_index(
+            &paper,
+            r#"{
+              "schemaVersion": 1,
+              "source": {"mode": "sidebar", "generatedAt": "t", "minScore": 0.3},
+              "items": [
+                {"id":"figure-1","stableKey":"a","kind":"image","section":"figure","page":2,"pageIndex":1,"bbox":{"x":0,"y":0,"w":1,"h":1},"score":0.9,"title":"Figure 1","layoutRegionId":"r1"}
+              ]
+            }"#,
+        );
+        write_raw_layout(
+            &paper,
+            r#"{
+              "schemaVersion": 3,
+              "source": {"mode": "embedpdf-layout", "generatedAt": "t"},
+              "regions": [
+                {"id":"h1","pageIndex":0,"kind":"header","score":0.95,"bbox":{"x":0.1,"y":0.1,"w":0.8,"h":0.05},"title":"1 Introduction"},
+                {"id":"h2","pageIndex":1,"kind":"header","score":0.92,"bbox":{"x":0.1,"y":0.2,"w":0.8,"h":0.05},"title":"2 Method"},
+                {"id":"p1","pageIndex":0,"kind":"paragraph","score":0.8,"bbox":{"x":0.1,"y":0.2,"w":0.8,"h":0.1},"text":"body text"}
+              ]
+            }"#,
+        );
+
+        // Default list does not include headers.
+        let default = list_regions(vault, "papers/p1", &[], None).unwrap();
+        assert_eq!(default.items.len(), 1);
+        assert_eq!(default.counts.section, 0);
+
+        // Explicit --kind section merges headers from layout.json.
+        let sections = list_regions(vault, "papers/p1", &["section".into()], None).unwrap();
+        assert_eq!(sections.items.len(), 2);
+        assert_eq!(sections.counts.section, 2);
+        assert_eq!(sections.items[0].id, "h1");
+        assert_eq!(sections.items[0].page_index, 0);
+        assert_eq!(sections.items[0].title.as_deref(), Some("1 Introduction"));
+        assert_eq!(sections.items[1].id, "h2");
+        assert_eq!(sections.items[1].page_index, 1);
+
+        // Mixed filters keep sidebar items and merged headers, sorted by page.
+        let mixed = list_regions(
+            vault,
+            "papers/p1",
+            &["figure".into(), "section".into()],
+            None,
+        )
+        .unwrap();
+        assert_eq!(mixed.items.len(), 3);
+        assert_eq!(mixed.items[0].id, "h1");
+        assert_eq!(mixed.items[1].id, "figure-1");
+        assert_eq!(mixed.items[2].id, "h2");
+    }
+
+    #[test]
+    fn section_headers_honor_min_score() {
+        let dir = tempdir().unwrap();
+        let vault = dir.path();
+        let paper = vault.join("papers").join("p1");
+        write_index(
+            &paper,
+            r#"{
+              "schemaVersion": 1,
+              "source": {"mode": "sidebar", "generatedAt": "t", "minScore": 0.3},
+              "items": []
+            }"#,
+        );
+        write_raw_layout(
+            &paper,
+            r#"{
+              "regions": [
+                {"id":"h1","pageIndex":0,"kind":"header","score":0.95,"bbox":{"x":0,"y":0,"w":1,"h":1},"title":"High"},
+                {"id":"h2","pageIndex":0,"kind":"header","score":0.2,"bbox":{"x":0,"y":0,"w":1,"h":1},"title":"Low"}
+              ]
+            }"#,
+        );
+        let listed = list_regions(vault, "papers/p1", &["section".into()], Some(0.5)).unwrap();
+        assert_eq!(listed.items.len(), 1);
+        assert_eq!(listed.items[0].id, "h1");
     }
 }

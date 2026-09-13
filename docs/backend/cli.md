@@ -22,7 +22,7 @@ Headless Vault / Catalog / Wiki 接口；**不含** BYOA / paper-reader。
 | `import` | 标识符入库 |
 | `export` | 导出 |
 | `doctor` | Vault 结构与 Catalog 诊断；含 wikilink 检查与 aliases / 视觉批注 / catalog 去重修复 |
-| `layout` | 侧栏同构版面索引：`list` / `get`（figure / table / algorithm / formula） |
+| `layout` | 侧栏同构版面索引：`list` / `get`（figure / table / algorithm / formula / section） |
 | `mark` | 阅读标注：`list` / `get` / `add`（`--quote` 文字锚点或 `--region` 区域锚点）/ `update` / `delete` |
 | `translate` | 免费机器翻译纯文本（无需 API Key，不读桌面 settings） |
 
@@ -47,9 +47,11 @@ agentero describe paper_list --json   # MCP tool 名亦可
 侧栏 Figures 同源列表落在 `{paper}/source/layout-index.json`（由桌面版面分析在 merge 后写入；raw 仍为 `source/layout.json`）。
 
 ```bash
-# 列出图 / 表 / 算法 / 公式（--kind 可重复，OR）
+# 列出图 / 表 / 算法 / 公式 / 章节标题（--kind 可重复，OR）
 agentero layout list papers/demo --json
 agentero layout list papers/demo --kind figure --kind formula --json
+# section 从 source/layout.json 的 header 区域实时合并，不写入 layout-index.json
+agentero layout list papers/demo --kind section --json
 agentero layout get  papers/demo figure-3 --json
 
 # 按区域钉批注（bbox 归一，页面尺寸由 PDF 引擎测量）
@@ -65,6 +67,7 @@ Mark id 是 nanoid，字母表含 `-`，约 1/64 的 id 以 `-` 开头。`mark g
 |---|---|
 | `figure` | 侧栏插图分区（image + chart） |
 | `image` / `chart` / `table` / `algorithm` / `formula` | 精确 kind |
+| `section` | 章节 / 段落标题，实时从 `source/layout.json` 的 `kind=header` 区域合并 |
 
 无 `layout-index.json` 时返回 `layout_index_missing`（提示先在 App 打开论文跑版面分析）。
 
