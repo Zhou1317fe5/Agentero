@@ -212,6 +212,12 @@ export {
 	PDF_PAPER_TONES,
 	type PdfPaperTone,
 } from "@/lib/pdf/page-theme";
+export {
+	clearPendingPdfPage,
+	consumePendingPdfPage,
+	peekPendingPdfPage,
+	setPendingPdfPage,
+} from "@/lib/pdf/pending-pdf-page";
 export { readReadingPage, writeReadingPage } from "@/lib/pdf/reading-position";
 export {
 	normalizedRegionFromPoints,

@@ -50,6 +50,10 @@ import {
 	setLayoutDocumentResult,
 } from "@/lib/pdf/layout";
 import { readLayoutSidecar } from "@/lib/pdf/layout/io";
+import {
+	clearPendingPdfPage,
+	setPendingPdfPage,
+} from "@/lib/pdf/pending-pdf-page";
 import { registerScrollSyncPair } from "@/lib/pdf/scroll-sync";
 import {
 	isPlazaVirtualPath,
@@ -849,23 +853,46 @@ export function openGraphPath(rel: string): void {
 	})();
 }
 
-/** Wait for the PDF handle registration after openPaper, then jump to a layout region. */
+/** Paper-key aliases so pending-page intent matches `usePdfNavigation`'s paperKey. */
+function citationPaperKeys(paperAbs: string): string[] {
+	const keys = [paperAbs];
+	const vaultPath = getVaultPath();
+	if (vaultPath) {
+		const rel = toVaultRelative(vaultPath, paperAbs);
+		if (rel && rel !== paperAbs) keys.push(rel);
+	}
+	return keys;
+}
+
+/**
+ * Wait for the PDF handle after openPaper, then jump to a layout region.
+ *
+ * First-open races with reading-position restore and EmbedPDF layout: a single
+ * early scroll often lands briefly then snaps back to page 1. Stash a pending
+ * page for restore to prefer, and re-apply the jump a few times while the
+ * viewport settles.
+ */
 function scheduleCitationJump(paperAbs: string, target: CitationTarget): void {
 	const tabId = tabIdForPath(paperAbs);
-	let unsubscribe: (() => void) | null = null;
-	let timeoutId: number | null = null;
-	let finished = false;
+	const keys = citationPaperKeys(paperAbs);
+	const page = target.pageIndex + 1;
+	setPendingPdfPage(keys, page);
 
-	const finish = () => {
-		if (finished) return false;
-		finished = true;
+	let unsubscribe: (() => void) | null = null;
+	const retryTimeoutIds: number[] = [];
+	let stopped = false;
+
+	const stop = () => {
+		if (stopped) return;
+		stopped = true;
 		unsubscribe?.();
-		if (timeoutId !== null) window.clearTimeout(timeoutId);
-		return true;
+		for (const id of retryTimeoutIds) window.clearTimeout(id);
 	};
 
-	const jump = (handle: PdfViewerHandle) => {
-		if (!finish()) return;
+	const tryJump = () => {
+		if (stopped) return;
+		const handle = pdfHandleFor(tabId);
+		if (!handle) return;
 		handle.scrollToLayoutRegion({
 			id: target.regionId,
 			pageIndex: target.pageIndex,
@@ -873,17 +900,19 @@ function scheduleCitationJump(paperAbs: string, target: CitationTarget): void {
 		});
 	};
 
-	const tryJump = () => {
-		const handle = pdfHandleFor(tabId);
-		if (handle) jump(handle);
-	};
-
 	tryJump();
-	if (finished) return;
 	unsubscribe = subscribePdfHandles(tryJump);
-	timeoutId = window.setTimeout(() => {
-		finish();
-	}, 2000);
+	// Re-apply after layout/restore can wipe an early scroll (not a busy loop).
+	for (const delayMs of [300, 800]) {
+		retryTimeoutIds.push(window.setTimeout(tryJump, delayMs));
+	}
+	retryTimeoutIds.push(
+		window.setTimeout(() => {
+			stop();
+			// Restore may still be about to run; keep the intent briefly.
+			window.setTimeout(() => clearPendingPdfPage(keys), 2000);
+		}, 2000),
+	);
 }
 
 /**
