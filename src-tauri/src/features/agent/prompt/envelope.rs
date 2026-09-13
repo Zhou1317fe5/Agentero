@@ -28,18 +28,16 @@ pub fn build_prompt(
 
     let skill_hint = skill_follow_hint(skill_style, skill_ids);
 
-    // Reading may use TeX/PAPER.md, but citation *hrefs* must target the local PDF
-    // (with #page=/#section=/#figure=) so pills can jump in the viewer.
+    // Reading may use TeX/PAPER.md; citation hrefs target the local PDF + fragment
+    // so the frontend can render pills and jump. No status-tag vocabulary here —
+    // agents just emit the formats below.
     let citation_directive = "Cite sources inline (no wrapping parentheses) as Markdown \
         links or vault wikilinks. Prefer the paper PDF with a fragment, e.g. \
         `[Section 2.3](papers/<id>/<id>.pdf#section=2.3)`, \
         `[Figure 1](papers/<id>/<id>.pdf#figure=1)`, or `[p.11](papers/<id>/<id>.pdf#page=11)`. \
-        You may also use `[[papers/<id>/NOTES]]` for notes. Do **not** cite \
-        `source/**/*.tex` paths in hrefs (read TeX for accuracy, link the PDF). \
-        For web pages use `[domain](https://...)`. Do not write `([…])` around citations, \
-        and do not end answers with a separate `## Sources` block. If a source cannot be \
-        read, omit the citation and explain in prose; never append `[blocked]`, `[read]`, \
-        `[failed]`, or similar status tags to links or paths.";
+        Notes: `[[papers/<id>/NOTES]]`. Do not cite `source/**/*.tex` in hrefs \
+        (read TeX for accuracy, link the PDF). For web pages use `[domain](https://...)`. \
+        Do not wrap citations as `([…])` and do not end with a separate `## Sources` block.";
 
     let system = match workflow {
         "summary" => {
@@ -382,16 +380,6 @@ fn extract_path_from_source_line(raw: &str) -> Option<String> {
         }
     }
 
-    // 6) Trim trailing bracket tags like [blocked], [read], [failed], etc.
-    if cleaned.ends_with(']') {
-        if let Some(start) = cleaned.rfind('[') {
-            let prefix = cleaned[..start].trim();
-            if looks_like_source_path(prefix) {
-                return Some(prefix.to_string());
-            }
-        }
-    }
-
     if looks_like_source_path(&cleaned) {
         return Some(cleaned);
     }
@@ -506,20 +494,6 @@ mod tests {
                 "papers/Towards-Long-Horizon-Agent/PAPER.md".to_string(),
                 "papers/Towards-Long-Horizon-Agent/NOTES.md".to_string(),
                 "assets/image-38fac94f-4577-46b6-af56-bb4465f2bc13.png".to_string(),
-            ]
-        );
-    }
-
-    #[test]
-    fn extracts_sources_from_plain_sources_block_with_blocked_tag() {
-        let text = "Answer.\n\nSources\npapers/Dflash/2608.02438/NOTES.md [blocked]\npapers/Dflash/2608.02438/source/main.tex [blocked]\npapers/Dflash/2608.02438/metadata.json [blocked]\n";
-        let s = extract_sources(text);
-        assert_eq!(
-            s,
-            vec![
-                "papers/Dflash/2608.02438/NOTES.md".to_string(),
-                "papers/Dflash/2608.02438/source/main.tex".to_string(),
-                "papers/Dflash/2608.02438/metadata.json".to_string(),
             ]
         );
     }

@@ -12,7 +12,7 @@ AI Elements (Conversation / Message / PromptInput / InlineCitation / Reasoning)
 
 流式：`agent:stream`（message | thought）→ 完成 / 失败事件。写 NOTES 后统一 Diff（Keep / Revert）。
 
-**行内 citation pill**：优先 `[label](papers/…/<id>.pdf#section|figure|page=…)` 与 `[[papers/…/NOTES]]`；`MessageResponse` 渲成 pill（`AgentCitationLink`）。`[[wikilink]]` 经 `linkifyWikilinks` 转 Markdown；`.tex` href 经 `rewriteCitationHrefToPdf` 回退到同论文 PDF；显示前剥离 `[blocked]` 等状态后缀。约定**不加**外层 `([…])`，不用文末 `## Sources`。
+**行内 citation pill**：Agent 按格式输出 `[label](papers/…/<id>.pdf#section|figure|page=…)` 或 `[[papers/…/NOTES]]`；前端 `MessageResponse` 负责渲成 pill（`AgentCitationLink`）、`linkifyWikilinks` 提升双链、`rewriteCitationHrefToPdf` 把残留 `.tex` href 回退到同论文 PDF 并跳转。约定不加外层 `([…])`，不用文末 `## Sources`。
 
 ## 面板行为
 

@@ -1,6 +1,6 @@
 ---
 name: paper-reader
-version: 5
+version: 6
 description: >-
   Read and explain a research paper clearly (prefer TeX, else PAPER.md/PDF).
   Use for core contribution, method deep-dive, experiments, limitations, and
@@ -193,6 +193,5 @@ term.
 - Math must use `$...$` / `$$...$$` so Agentero can render it (see vault `AGENTS.md`).
 - Final deliverable path: `{paper}/NOTES.md` only for the lecture notes body.
 - Cite with PDF fragment Markdown links or notes wikilinks (pill-friendly);
-  never wrap as `([…])`, never href `source/**/*.tex`, never append
-  `[blocked]` / `[read]` tags.
+  never wrap as `([…])`, never href `source/**/*.tex`.
 - Mark as read on completion: always run `agentero paper set-read {paper} --json` after notes and links are done.

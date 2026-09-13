@@ -27,7 +27,6 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { linkifyBareUrls } from "@/lib/agent/bare-url-link";
-import { stripCitationStatusTags } from "@/lib/agent/citation-href";
 import { linkifyWikilinks } from "@/lib/agent/wikilink-citation";
 import { cn } from "@/lib/core/utils";
 import { normalizeMarkdownMath } from "@/lib/markdown/math-normalize";
@@ -353,11 +352,7 @@ export const MessageResponse = memo(
 	({ className, children, onOpenSource, ...props }: MessageResponseProps) => {
 		const content =
 			typeof children === "string"
-				? linkifyBareUrls(
-						linkifyWikilinks(
-							stripCitationStatusTags(normalizeMarkdownMath(children)),
-						),
-					)
+				? linkifyBareUrls(linkifyWikilinks(normalizeMarkdownMath(children)))
 				: children;
 		return (
 			<Streamdown

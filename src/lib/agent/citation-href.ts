@@ -4,7 +4,6 @@
  */
 
 const TEX_EXT = /\.(tex|ltx)$/i;
-const STATUS_TAG = /\s*\[(blocked|read|failed|denied)\]/gi;
 
 /** Split `path#fragment` (fragment may be empty). */
 export function splitCitationHref(href: string): {
@@ -59,12 +58,4 @@ export function rewriteCitationHrefToPdf(href: string): string {
 	if (!id) return href.trim();
 	const pdf = `${paperDir}/${id}.pdf`;
 	return fragment ? `${pdf}#${fragment}` : pdf;
-}
-
-/**
- * Strip agent-authored status tags like `introduction.tex [blocked]` that
- * clutter the bubble and are not valid citation targets.
- */
-export function stripCitationStatusTags(text: string): string {
-	return text.replace(STATUS_TAG, "");
 }

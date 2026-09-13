@@ -58,6 +58,6 @@ Do not list the whole catalog first.
   or notes `[[papers/<id>/NOTES]]` / `[[papers/<id>/NOTES|short title]]`.
   Do **not** put `source/**/*.tex` in citation hrefs. Prefer vault-relative
   paths. For web pages use `[domain](https://...)`.
-  Do not write `([…])` around citations, do not append `[blocked]` / `[read]`
-  tags, and do not end with a separate `## Sources` block.
+  Do not wrap citations as `([…])`, and do not end with a separate `## Sources`
+  block. The UI turns these links into pills and resolves PDF fragments.
 - Never overwrite user notes without an explicit draft + confirmation path.

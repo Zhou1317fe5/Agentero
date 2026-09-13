@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
 	paperDirFromCitationPath,
 	rewriteCitationHrefToPdf,
-	stripCitationStatusTags,
 } from "@/lib/agent/citation-href";
 
 describe("paperDirFromCitationPath", () => {
@@ -40,15 +39,5 @@ describe("rewriteCitationHrefToPdf", () => {
 		expect(rewriteCitationHrefToPdf("papers/2303.17760/NOTES.md")).toBe(
 			"papers/2303.17760/NOTES.md",
 		);
-	});
-});
-
-describe("stripCitationStatusTags", () => {
-	it("removes [blocked] suffixes that agents append after paths", () => {
-		expect(
-			stripCitationStatusTags(
-				"[Introduction](papers/a/source/introduction.tex) introduction.tex [blocked]",
-			),
-		).toBe("[Introduction](papers/a/source/introduction.tex) introduction.tex");
 	});
 });
