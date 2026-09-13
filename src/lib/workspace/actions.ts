@@ -11,6 +11,7 @@ import type { CitationTarget } from "@/lib/agent/api";
 import { resolvePdfCitation } from "@/lib/agent/api";
 import {
 	citationHrefFromWikiParts,
+	cleanCitationHref,
 	isAgentCitationHref,
 	rewriteCitationHrefToPdf,
 } from "@/lib/agent/citation-href";
@@ -797,7 +798,7 @@ export function openPath(absoluteOrDemoPath: string): void {
  * open via the shared citation jumper. Returns true when handled.
  */
 export function tryOpenCitationHref(href: string): boolean {
-	const trimmed = href.trim().replace(/^<|>$/g, "");
+	const trimmed = cleanCitationHref(href);
 	if (!trimmed) return false;
 	const rewritten = rewriteCitationHrefToPdf(trimmed);
 	if (!isAgentCitationHref(trimmed) && !isAgentCitationHref(rewritten)) {
@@ -893,7 +894,7 @@ function scheduleCitationJump(paperAbs: string, target: CitationTarget): void {
  * the fragment on the Host and jump the PDF viewer to the cited location.
  */
 export function openCitation(source: string): void {
-	const trimmed = rewriteCitationHrefToPdf(source.trim());
+	const trimmed = rewriteCitationHrefToPdf(cleanCitationHref(source));
 	if (!trimmed) return;
 	if (/^https?:\/\//i.test(trimmed)) {
 		void import("@tauri-apps/plugin-opener")

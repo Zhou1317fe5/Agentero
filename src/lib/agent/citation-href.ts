@@ -27,14 +27,20 @@ export function splitCitationHref(href: string): {
 	return { path: trimmed.slice(0, idx), fragment: trimmed.slice(idx + 1) };
 }
 
+/** Strip zero-width / BOM noise that paste or LLM output often leaves on URLs. */
+export function cleanCitationHref(href: string): string {
+	return href
+		.trim()
+		.replace(/^<|>$/g, "")
+		.replace(/[\u200B-\u200D\uFEFF]/g, "");
+}
+
 /**
  * True when `href` is a vault-relative citation that should jump via
  * `openCitation` (e.g. `papers/a/a.pdf#page=1`).
  */
 export function isAgentCitationHref(href: string): boolean {
-	const { path, fragment } = splitCitationHref(
-		href.trim().replace(/^<|>$/g, ""),
-	);
+	const { path, fragment } = splitCitationHref(cleanCitationHref(href));
 	if (!path || !fragment) return false;
 	if (/^https?:\/\//i.test(path)) return false;
 	const key = fragment.split("=", 1)[0]?.trim().toLowerCase();
@@ -93,12 +99,13 @@ export function paperDirFromCitationPath(path: string): string | null {
  * Non-TeX hrefs are returned unchanged.
  */
 export function rewriteCitationHrefToPdf(href: string): string {
-	const { path, fragment } = splitCitationHref(href);
-	if (!TEX_EXT.test(path)) return href.trim();
+	const cleaned = cleanCitationHref(href);
+	const { path, fragment } = splitCitationHref(cleaned);
+	if (!TEX_EXT.test(path)) return cleaned;
 	const paperDir = paperDirFromCitationPath(path);
-	if (!paperDir) return href.trim();
+	if (!paperDir) return cleaned;
 	const id = paperDir.split("/").filter(Boolean).pop();
-	if (!id) return href.trim();
+	if (!id) return cleaned;
 	const pdf = `${paperDir}/${id}.pdf`;
 	return fragment ? `${pdf}#${fragment}` : pdf;
 }

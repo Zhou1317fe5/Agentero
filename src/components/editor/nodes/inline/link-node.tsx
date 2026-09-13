@@ -7,7 +7,10 @@ import { useTranslation } from "react-i18next";
 import { useMarkdownDoc } from "@/components/editor/context/markdown-doc-context";
 import { ExternalLinkElement } from "@/components/editor/nodes/inline/external-link-popover";
 import { linkClassName } from "@/components/editor/nodes/inline/link-styles";
-import { isAgentCitationHref } from "@/lib/agent/citation-href";
+import {
+	cleanCitationHref,
+	isAgentCitationHref,
+} from "@/lib/agent/citation-href";
 import { cn } from "@/lib/core/utils";
 import {
 	isVaultLocalMarkdownLink,
@@ -29,7 +32,7 @@ type LinkEl = TElement & {
 export function LinkElement(props: PlateElementProps) {
 	const { t } = useTranslation("editor");
 	const { children, element } = props;
-	const url = (element as LinkEl).url ?? "";
+	const url = cleanCitationHref((element as LinkEl).url ?? "");
 	const wiki = url.startsWith(WIKI_HREF_PREFIX) ? parseWikiHref(url) : null;
 	const wikiNav = useWikiNav();
 	const markdownDoc = useMarkdownDoc();
@@ -46,6 +49,7 @@ export function LinkElement(props: PlateElementProps) {
 					...props.attributes,
 					href: url,
 					title: url,
+					"data-citation": "pdf",
 					onClick: (event: MouseEvent) => {
 						event.preventDefault();
 						event.stopPropagation();

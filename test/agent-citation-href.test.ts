@@ -66,6 +66,14 @@ describe("isAgentCitationHref", () => {
 			false,
 		);
 	});
+
+	it("tolerates zero-width spaces around the href", () => {
+		expect(
+			isAgentCitationHref(
+				"\u200bpapers/vla/2504.16054/2504.16054.pdf#page=1\u200b",
+			),
+		).toBe(true);
+	});
 });
 
 describe("citationHrefFromWikiParts", () => {
