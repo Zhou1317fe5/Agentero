@@ -87,16 +87,13 @@ pub fn build_prompt(
 /// Keep structured Vault mutations on the public CLI, even when the optional
 /// `agentero-cli` skill was not explicitly selected in the Composer.
 fn agentero_cli_directive() -> &'static str {
-    "\n\nAgentero CLI policy: for Vault/catalog operations, prefer the `agentero` CLI \
-     with `--json` instead of manually creating paper folders or editing catalog data. \
-     When asked to add/import a paper, run `agentero import id <arxiv|doi|url> --json`; \
-     when asked to download a paper's assets, run `agentero paper download <path|id> --json`; \
-     when asked to produce PAPER.md, run `agentero paper parse <path|id> --json`; \
-     use `agentero paper list|get|paths --json` to discover catalog records and \
-     `agentero paper tag ...` or `agentero paper set-read ...` for those catalog updates. \
-     Read and edit the Markdown/source paths returned by the CLI directly when doing \
-     research or notes. If `agentero` is unavailable, say so and fall back to the \
-     Vault files; never invent catalog records."
+    // Keep this short: detailed protocols live in skill `agentero-cli` / AGENTS.md.
+    // Long flag recipes here made agents re-read the skill and over-call describe/list.
+    "\n\nAgentero CLI policy: mutate vault/catalog (import, download, parse, layout, \
+     mark, tag, set-read) via `agentero … --json` with vault-relative `papers/…` paths. \
+     For ordinary reading/Q&A, open NOTES/TeX/PAPER.md directly—do not list the whole \
+     catalog first. If `agentero` is missing, say so and fall back to Vault files; \
+     never invent catalog rows. Exact flags: skill `agentero-cli`."
 }
 
 /// Marker Host always inserts before the real user text in `build_prompt`.
@@ -547,9 +544,11 @@ mod tests {
             None,
             None,
         );
-        assert!(p.contains("agentero import id <arxiv|doi|url> --json"));
-        assert!(p.contains("agentero paper download <path|id> --json"));
-        assert!(p.contains("agentero paper parse <path|id> --json"));
+        assert!(p.contains("Agentero CLI policy"));
+        assert!(p.contains("agentero … --json") || p.contains("agentero"));
+        assert!(p.contains("papers/"));
+        assert!(p.contains("skill `agentero-cli`"));
+        assert!(!p.contains("agentero import id <arxiv|doi|url> --json"));
     }
 
     #[test]

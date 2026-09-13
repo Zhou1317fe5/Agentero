@@ -36,9 +36,15 @@ For a paper folder, use the richest available source in this order:
 `NOTES.md` is the user's working note, not the paper body. Read it for context;
 preserve user-written content; never treat it as a substitute for the source.
 
+When the user already gives a paper path, start from that folder (NOTES → body).
+Do not list the whole catalog first.
+
 ## Rules
 
-- Prefer using CLI to manage vault, including moving, downloading, analyzing layout papers. refer skill **`agentero-cli`** (`$agentero-cli` / `/agentero-cli`) with `--json`. 
+- Structured vault/catalog changes (import, move, download, parse, layout, marks,
+  tags): use the `agentero` CLI with `--json` and **vault-relative paths**.
+  Exact flags: skill **`agentero-cli`** (`$agentero-cli` / `/agentero-cli` /
+  `/skill:agentero-cli`). Prefer files for ordinary reading/Q&A.
 - Do not invent facts, numbers, citations, or experimental conclusions. Mark uncertainty.
 - Keep `[[wikilinks]]` and `![[embeds]]` as written; preserve ` ```mermaid ` fences.
 - Math (KaTeX): inline `$…$`, display `$$…$$` on their own lines; prefer `$`/`$$`
@@ -46,5 +52,6 @@ preserve user-written content; never treat it as a substitute for the source.
 - Cite sources inline with Markdown links, e.g.
   `([Section 2.3](papers/<id>/PAPER.md#section=2.3))` or
   `([Figure 1](papers/<id>/<id>.pdf#figure=1))`. Prefer vault-relative paths.
-  For web pages use `([domain](https://...))`.
+  For web pages use `([domain](https://...))`. Do not end with a separate
+  `## Sources` block.
 - Never overwrite user notes without an explicit draft + confirmation path.

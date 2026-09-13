@@ -13,7 +13,7 @@
 | MCP 瘦 `paper_list` + `fields`/`full` | `integration/mcp` |
 | MCP `paper_set_read` / `layout_list` / `layout_get` | 同上 |
 | MCP resources | `agentero://vault`、`agentero://agent-invariants`、`agentero://skills/agentero-cli` |
-| Skill 削薄 | `templates/vault/.agents/skills/agentero-cli` v15 |
+| Skill 削薄 | `templates/vault/.agents/skills/agentero-cli` v16（任务分支协议；`describe`/`set-read`/`vault list` 不再默认开场） |
 
 ## 刻意未做（后续）
 
