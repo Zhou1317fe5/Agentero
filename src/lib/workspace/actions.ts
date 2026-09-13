@@ -9,6 +9,7 @@ import i18n from "@/i18n";
 import { notePaperFocus, track } from "@/lib/activity";
 import type { CitationTarget } from "@/lib/agent/api";
 import { resolvePdfCitation } from "@/lib/agent/api";
+import { rewriteCitationHrefToPdf } from "@/lib/agent/citation-href";
 import { errorText } from "@/lib/core/error";
 import { notifyError, notifyUndo, notifyWarning } from "@/lib/core/notify";
 import { closeTopOverlay } from "@/lib/core/overlay-stack";
@@ -871,7 +872,7 @@ function scheduleCitationJump(paperAbs: string, target: CitationTarget): void {
  * the fragment on the Host and jump the PDF viewer to the cited location.
  */
 export function openCitation(source: string): void {
-	const trimmed = source.trim();
+	const trimmed = rewriteCitationHrefToPdf(source.trim());
 	if (!trimmed) return;
 	if (/^https?:\/\//i.test(trimmed)) {
 		void import("@tauri-apps/plugin-opener")
@@ -886,6 +887,20 @@ export function openCitation(source: string): void {
 	const path = fragmentIndex >= 0 ? trimmed.slice(0, fragmentIndex) : trimmed;
 	const fragment = fragmentIndex >= 0 ? trimmed.slice(fragmentIndex + 1) : "";
 	if (!fragment) {
+		// Prefer opening the paper unit for PDF paths; plain notes still use graph open.
+		if (/\.pdf$/i.test(path)) {
+			const vaultPath = getVaultPath();
+			if (vaultPath) {
+				const clean = normalizeVaultRel(path);
+				const full = joinVaultPath(vaultPath, clean);
+				const paperAbs =
+					paperDirFromPath(full, vaultStore.getState().paperFolders) ?? null;
+				if (paperAbs) {
+					openPaper(paperAbs);
+					return;
+				}
+			}
+		}
 		openGraphPath(path);
 		return;
 	}

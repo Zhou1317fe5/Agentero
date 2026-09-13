@@ -1,7 +1,8 @@
 "use client";
 
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
+import { rewriteCitationHrefToPdf } from "@/lib/agent/citation-href";
 import { cn } from "@/lib/core/utils";
 
 type AgentCitationLinkProps = ComponentPropsWithoutRef<"a"> & {
@@ -23,6 +24,7 @@ function looksLikeVaultPath(href: string): boolean {
 	if (
 		lower.endsWith(".md") ||
 		lower.endsWith(".tex") ||
+		lower.endsWith(".ltx") ||
 		lower.endsWith(".pdf") ||
 		lower.endsWith(".png") ||
 		lower.endsWith(".jpg") ||
@@ -49,21 +51,26 @@ export function AgentCitationLink({
 	rel: _rel,
 	...props
 }: AgentCitationLinkProps) {
+	const resolvedHref = useMemo(
+		() => (href ? rewriteCitationHrefToPdf(href) : href),
+		[href],
+	);
+
 	const handleClick = useCallback(
 		(event: React.MouseEvent<HTMLAnchorElement>) => {
 			event.preventDefault();
-			if (!href) return;
-			if (isHttpUrl(href)) {
+			if (!resolvedHref) return;
+			if (isHttpUrl(resolvedHref)) {
 				void import("@tauri-apps/plugin-opener")
-					.then(({ openUrl }) => openUrl(href))
+					.then(({ openUrl }) => openUrl(resolvedHref))
 					.catch(() => {
-						window.open(href, "_blank", "noopener,noreferrer");
+						window.open(resolvedHref, "_blank", "noopener,noreferrer");
 					});
 				return;
 			}
-			onOpenSource?.(href);
+			onOpenSource?.(resolvedHref);
 		},
-		[href, onOpenSource],
+		[resolvedHref, onOpenSource],
 	);
 
 	const label =
@@ -73,12 +80,14 @@ export function AgentCitationLink({
 
 	// Only render the pill style for vault paths or http(s) URLs.
 	// Other Streamdown links (e.g. incomplete-link) fall back to a subtle inline anchor.
-	const isPill = href && (isHttpUrl(href) || looksLikeVaultPath(href));
+	const isPill =
+		resolvedHref &&
+		(isHttpUrl(resolvedHref) || looksLikeVaultPath(resolvedHref));
 
 	if (!isPill) {
 		return (
 			<a
-				href={href}
+				href={resolvedHref}
 				className={cn(
 					"wrap-anywhere font-medium text-primary underline",
 					className,
@@ -93,7 +102,7 @@ export function AgentCitationLink({
 
 	return (
 		<a
-			href={href}
+			href={resolvedHref}
 			className={cn(
 				"inline-flex max-w-[12rem] shrink-0 cursor-pointer items-center gap-1 rounded-full",
 				"border border-border/60 bg-muted/60 px-2 py-0.5 text-xs font-medium text-muted-foreground",
@@ -101,7 +110,7 @@ export function AgentCitationLink({
 				"focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
 				className,
 			)}
-			title={href}
+			title={resolvedHref}
 			{...props}
 			onClick={handleClick}
 		>

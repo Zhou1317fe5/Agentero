@@ -28,14 +28,18 @@ pub fn build_prompt(
 
     let skill_hint = skill_follow_hint(skill_style, skill_ids);
 
+    // Reading may use TeX/PAPER.md, but citation *hrefs* must target the local PDF
+    // (with #page=/#section=/#figure=) so pills can jump in the viewer.
     let citation_directive = "Cite sources inline (no wrapping parentheses) as Markdown \
-        links or vault wikilinks, e.g. `[Section 2.3](papers/<id>/PAPER.md#section=2.3)`, \
-        `[Figure 1](papers/<id>/<id>.pdf#figure=1)`, or `[[papers/<id>/NOTES]]`. \
-        Prefer vault-relative paths; for web pages use `[domain](https://...)`. \
-        Do not write `([…])` around citations, and do not end answers with a separate \
-        `## Sources` block. If a source or page cannot be read, omit the citation and \
-        explain in prose; never append `[blocked]`, `[read]`, `[failed]`, or similar \
-        status tags to links or paths.";
+        links or vault wikilinks. Prefer the paper PDF with a fragment, e.g. \
+        `[Section 2.3](papers/<id>/<id>.pdf#section=2.3)`, \
+        `[Figure 1](papers/<id>/<id>.pdf#figure=1)`, or `[p.11](papers/<id>/<id>.pdf#page=11)`. \
+        You may also use `[[papers/<id>/NOTES]]` for notes. Do **not** cite \
+        `source/**/*.tex` paths in hrefs (read TeX for accuracy, link the PDF). \
+        For web pages use `[domain](https://...)`. Do not write `([…])` around citations, \
+        and do not end answers with a separate `## Sources` block. If a source cannot be \
+        read, omit the citation and explain in prose; never append `[blocked]`, `[read]`, \
+        `[failed]`, or similar status tags to links or paths.";
 
     let system = match workflow {
         "summary" => {
@@ -554,7 +558,7 @@ mod tests {
     }
 
     #[test]
-    fn citation_directive_allows_wikilinks_without_wrapping_parens() {
+    fn citation_directive_prefers_pdf_fragments_without_wrapping_parens() {
         let p = build_prompt(
             Some("qa"),
             "What is the claim?",
@@ -565,10 +569,12 @@ mod tests {
             None,
         );
         assert!(p.contains("[[papers/<id>/NOTES]]"));
-        assert!(p.contains("[Section 2.3](papers/<id>/PAPER.md#section=2.3)"));
+        assert!(p.contains("[Section 2.3](papers/<id>/<id>.pdf#section=2.3)"));
+        assert!(p.contains("Do **not** cite") || p.contains("source/**/*.tex"));
         assert!(p.contains("no wrapping parentheses") || p.contains("Do not write `([…])`"));
         assert!(!p.contains("([Section 2.3]"));
         assert!(!p.contains("([Figure 1]"));
+        assert!(!p.contains("PAPER.md#section=2.3)"));
     }
 
     #[test]

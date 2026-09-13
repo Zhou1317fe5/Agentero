@@ -1,6 +1,6 @@
 ---
 name: paper-reader
-version: 4
+version: 5
 description: >-
   Read and explain a research paper clearly (prefer TeX, else PAPER.md/PDF).
   Use for core contribution, method deep-dive, experiments, limitations, and
@@ -178,10 +178,11 @@ term.
      changed by this run, then check again.
    - If this CLI command is unavailable, report that semantic link validation
      was not completed. Do not claim that every link resolves.
-8. Cite paths you actually read **inline** in the lecture body (no wrapping
-   parentheses, no trailing `## Sources` block), e.g.
-   `[Section 2.3](papers/<id>/PAPER.md#section=2.3)` or
-   `[[papers/<id>/NOTES]]` / `[[papers/<id>/source/main.tex|TeX]]`.
+8. Cite **inline** in the lecture body (no wrapping parentheses, no trailing
+   `## Sources` block). Prefer PDF fragment hrefs even when you read TeX, e.g.
+   `[Section 2.3](papers/<id>/<id>.pdf#section=2.3)`,
+   `[Figure 1](papers/<id>/<id>.pdf#figure=1)`, or notes
+   `[[papers/<id>/NOTES]]`. Do not cite `source/**/*.tex` in hrefs.
 9. Mark as read in catalog: run `agentero paper set-read {paper} --json`.
 
 ## Rules
@@ -191,6 +192,7 @@ term.
 - Never invent experimental numbers; if something is unclear, say so.
 - Math must use `$...$` / `$$...$$` so Agentero can render it (see vault `AGENTS.md`).
 - Final deliverable path: `{paper}/NOTES.md` only for the lecture notes body.
-- Cite with inline Markdown links or vault wikilinks (pill-friendly); never
-  wrap citations as `([…])` and never append `[blocked]` / `[read]` tags.
+- Cite with PDF fragment Markdown links or notes wikilinks (pill-friendly);
+  never wrap as `([…])`, never href `source/**/*.tex`, never append
+  `[blocked]` / `[read]` tags.
 - Mark as read on completion: always run `agentero paper set-read {paper} --json` after notes and links are done.
