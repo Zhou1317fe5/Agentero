@@ -153,7 +153,8 @@
 		"expand": "展开问卷"
 	},
 	"citation": {
-		"vaultPath": "Agent 引用的知识库路径"
+		"vaultPath": "Agent 引用的知识库路径",
+		"resolveFailed": "无法打开引用：{{source}}"
 	},
 	"models": {
 		"currentSelection": "当前选择",

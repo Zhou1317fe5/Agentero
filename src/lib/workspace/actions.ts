@@ -908,7 +908,12 @@ export function openCitation(source: string): void {
 				openPaper(full);
 				void resolvePdfCitation(vaultPath, trimmed)
 					.then((target) => scheduleCitationJump(full, target))
-					.catch(() => {});
+					.catch((e) => {
+						notifyError(
+							i18n.t("agent:citation.resolveFailed", { source: trimmed }),
+						);
+						console.warn("resolve citation failed", e);
+					});
 				return;
 			}
 			openGraphPath(path);
@@ -919,7 +924,10 @@ export function openCitation(source: string): void {
 	openPaper(paperAbs);
 	void resolvePdfCitation(vaultPath, trimmed)
 		.then((target) => scheduleCitationJump(paperAbs, target))
-		.catch(() => {});
+		.catch((e) => {
+			notifyError(i18n.t("agent:citation.resolveFailed", { source: trimmed }));
+			console.warn("resolve citation failed", e);
+		});
 }
 
 let wikiNavigationIntentId = 0;

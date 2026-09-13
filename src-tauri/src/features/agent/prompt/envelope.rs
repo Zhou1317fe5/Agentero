@@ -31,7 +31,9 @@ pub fn build_prompt(
     let citation_directive = "Cite sources inline with Markdown links, e.g. \
         `([Section 2.3](papers/<id>/PAPER.md#section=2.3))` or \
         `([Figure 1](papers/<id>/<id>.pdf#figure=1))`. Prefer vault-relative paths; \
-        for web pages use `([domain](https://...))`. Do not end answers with a separate `## Sources` block.";
+        for web pages use `([domain](https://...))`. Do not end answers with a separate `## Sources` block. \
+        If a source or page cannot be read, omit the citation and explain in prose; \
+        never append `[blocked]`, `[read]`, `[failed]`, or similar status tags to links or paths.";
 
     let system = match workflow {
         "summary" => {
