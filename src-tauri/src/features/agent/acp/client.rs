@@ -346,7 +346,9 @@ fn plan_local_launch_with(
         }
         let mut launch_desc = desc.clone();
         let mut args = Vec::with_capacity(desc.args.len() + 1);
-        args.push(adapter.entry_js.display().to_string());
+        // Tauri resource paths can carry a Windows extended-length prefix;
+        // Node's entry-script resolution rejects it before ACP initializes.
+        args.push(windows_shell_path(&adapter.entry_js).display().to_string());
         args.extend(desc.args.iter().cloned());
         launch_desc.args = args;
         return (launch_desc, node);
@@ -733,6 +735,36 @@ mod cwd_shell_wrap_tests {
                 "value".to_string(),
             ]
         );
+    }
+
+    #[test]
+    fn plan_local_launch_normalizes_bundled_windows_entry() {
+        for template in [AgentTemplate::CodexAcp, AgentTemplate::ClaudeAcp] {
+            let (_tmp, mut env) = fake_agent_bin(&[]);
+            let mut desc = descriptor(template);
+            desc.args = vec!["--flag".to_string(), "value with spaces".to_string()];
+            let (launch_desc, command) = plan_local_launch_with(&desc, &mut env, |_, _| {
+                Some((
+                    PathBuf::from(r"C:\Program Files\nodejs\node.exe"),
+                    crate::features::agent::registry::bundled::BundledAdapter {
+                        entry_js: PathBuf::from(
+                            r"\\?\C:\Users\Test User\Agentero\adapters\dist\index.js",
+                        ),
+                        version: "0.0.0-test".to_string(),
+                        node_major: Some(22),
+                    },
+                ))
+            });
+            assert_eq!(command, PathBuf::from(r"C:\Program Files\nodejs\node.exe"));
+            assert_eq!(
+                launch_desc.args,
+                vec![
+                    r"C:\Users\Test User\Agentero\adapters\dist\index.js".to_string(),
+                    "--flag".to_string(),
+                    "value with spaces".to_string(),
+                ]
+            );
+        }
     }
 
     #[test]
