@@ -25,6 +25,7 @@ import {
 	setLayoutMode,
 	setRightSidebarOpenState,
 	setSidebarCollapsedState,
+	uiStore,
 } from "@/lib/shell/ui-store";
 import { setNotesSplit, toggleNotesSplit } from "@/lib/workspace/actions";
 import { getActiveTabId, getTabs } from "@/lib/workspace/store";
@@ -92,6 +93,14 @@ export function useShellLayout(): ShellLayout {
 	const railAnimTimerRef = useRef({ left: 0, right: 0 });
 
 	const controller = useMemo(() => {
+		const rememberedWidths = () =>
+			railWidthsForSlot(
+				getShellLayoutPrefs(),
+				uiStore.getState().lastAppliedPreset ?? "custom",
+				window.innerWidth,
+				LEFT_LIMITS,
+				RIGHT_LIMITS,
+			);
 		const setAnimatingRail = (side: "left" | "right") => {
 			const current = animatingRailRef.current;
 			animatingRailRef.current = !current || current === side ? side : "both";
@@ -182,7 +191,9 @@ export function useShellLayout(): ShellLayout {
 						}
 					});
 				} else {
-					const targetPx = leftWidthPxRef.current || SIDEBAR_DEFAULT_PX;
+					const targetPx =
+						rememberedWidths().leftPx ??
+						(leftWidthPxRef.current || SIDEBAR_DEFAULT_PX);
 					withRailAnimation("left", el, () => {
 						try {
 							panel.expand();
@@ -216,7 +227,9 @@ export function useShellLayout(): ShellLayout {
 						}
 					});
 				} else {
-					const targetPx = rightWidthPxRef.current || RIGHT_SIDEBAR_DEFAULT_PX;
+					const targetPx =
+						rememberedWidths().rightPx ??
+						(rightWidthPxRef.current || RIGHT_SIDEBAR_DEFAULT_PX);
 					withRailAnimation("right", el, () => {
 						try {
 							panel.expand();
@@ -259,6 +272,9 @@ export function useShellLayout(): ShellLayout {
 		};
 
 		const applyLayoutMode = (mode: LayoutPresetMode) => {
+			// Stop recording custom visibility before programmatic panel changes.
+			setLayoutMode(mode);
+			setLastAppliedPreset(mode);
 			// Prefer the widths remembered for this mode; fall back to the
 			// static preset ratios on first use.
 			const saved = railWidthsForSlot(
@@ -271,23 +287,24 @@ export function useShellLayout(): ShellLayout {
 			// Seed the remembered width before collapsing so a later manual
 			// reopen (setLeftCollapsed(false) / setRightCollapsed(false))
 			// restores this mode's width instead of the static default.
-			if (saved.leftPx !== undefined) leftWidthPxRef.current = saved.leftPx;
+			const leftPx = saved.leftPx ?? SIDEBAR_DEFAULT_PX;
+			const rightPx = saved.rightPx ?? RIGHT_SIDEBAR_DEFAULT_PX;
+			leftWidthPxRef.current = leftPx;
 			setLeftCollapsed(layoutModeLeftCollapsed(mode));
 
 			if (mode === "notes") setNotesSplit(true, { preserveLayoutMode: true });
 			else setNotesSplit(false, { preserveLayoutMode: true });
 
 			if (layoutModeRightCollapsed(mode)) {
-				if (saved.rightPx !== undefined)
-					rightWidthPxRef.current = saved.rightPx;
 				setRightCollapsed(true);
+				// Collapse can synchronously report the outgoing layout's width.
+				rightWidthPxRef.current = rightPx;
 			} else if (saved.rightPx !== undefined) {
 				setRightPx(saved.rightPx);
 			} else {
 				setRightRatio(layoutModeRightRatio(mode));
 			}
-			setLayoutMode(mode);
-			setLastAppliedPreset(mode);
+			leftWidthPxRef.current = leftPx;
 		};
 
 		const focusSidebar = () => {
