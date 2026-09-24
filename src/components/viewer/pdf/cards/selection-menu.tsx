@@ -26,6 +26,7 @@ type SelectionMenuProps = {
 	/** Open an optional inline comment before adding the quote to chat. */
 	onAddToChat: () => void;
 	onTranslate: () => void;
+	onCopy?: () => void;
 	/** Show the highlight color stack (needs marks/ to persist into). */
 	showHighlight?: boolean;
 	/** Show the translate action (ephemeral cards on surfaces without marks/). */
@@ -36,7 +37,7 @@ const BAR_H = 32;
 
 /**
  * Floating action bar shown next to a text selection: overlapping highlight
- * color dots (fan left on hover), then Translate / Quick chat / Add to chat.
+ * color dots (fan left on hover), then Translate / Copy / Quick chat / Add to chat.
  * The bar is pinned by its right edge so expanding colors only grow left —
  * action buttons never shift.
  * Annotate lives on the right-rail selection comment chip instead.
@@ -49,6 +50,7 @@ export function SelectionMenu({
 	onAsk,
 	onAddToChat,
 	onTranslate,
+	onCopy,
 	showHighlight = true,
 	showTranslate = true,
 }: SelectionMenuProps) {
@@ -56,12 +58,13 @@ export function SelectionMenu({
 	// ⌘K = in-page Quick chat (Ask); ⌘L = Add to chat (pin + open Agent).
 	const quickChatShortcut = formatModShortcut("k");
 	const addToChatShortcut = formatModShortcut("l");
+	const copyShortcut = formatModShortcut("c");
 
 	const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
 	const vh = typeof window !== "undefined" ? window.innerHeight : 800;
 	// Approximate collapsed width for centering; flex content sizes the real bar.
 	// Pin with CSS `right` so stack width changes grow left without moving actions.
-	const barW = showTranslate ? 280 : 200;
+	const barW = (showTranslate ? 280 : 200) + (onCopy ? 72 : 0);
 	const expandPad = showHighlight ? HIGHLIGHT_COLOR_STACK_WIDTH_DELTA : 0;
 	let left = screen.x - barW / 2;
 	// Leave room on the left so the color stack can expand without clipping.
@@ -120,6 +123,20 @@ export function SelectionMenu({
 							{t("selection.translate")}
 						</TooltipContent>
 					</Tooltip>
+				) : null}
+				{onCopy ? (
+					<button
+						type="button"
+						className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-caption font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-[0.97] motion-reduce:active:scale-100"
+						aria-label={`${t("selection.copy")} ${copyShortcut}`}
+						onPointerDown={(event) => event.preventDefault()}
+						onClick={onCopy}
+					>
+						<span>{t("selection.copy")}</span>
+						<kbd className="translate-y-px scale-90 text-caption font-normal text-muted-foreground/80 tabular-nums">
+							{copyShortcut}
+						</kbd>
+					</button>
 				) : null}
 				<button
 					type="button"
