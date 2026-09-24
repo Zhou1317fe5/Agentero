@@ -109,6 +109,9 @@ Agentero 作为 **ACP Client**，stdio JSON-RPC 连接用户本机或远端 Agen
     `cd <vault> && exec` 包装（#570）自动覆盖 node 命令。裁剪后的适配器通过注入 env 找到
     host CLI——claude 适配器 `CLAUDE_CODE_EXECUTABLE`、codex 适配器 `CODEX_PATH`——均
     `or_insert`，用户在注册项 env 里显式配置的值永远优先。
+    Windows 下传给 Node 的入口脚本参数先经 `windows_shell_path` 去除本地盘符路径的
+    `\\?\` 前缀，避免安装包资源路径触发 Node 的 `EISDIR` 并在 ACP 握手前退出；
+    详见 [Windows 内置 ACP 启动失败](../bug_fix/windows-bundled-acp-node-path.md)。
   - Node 门槛：claude-agent-acp 需 Node ≥22（manifest `nodeMajor`）；node 缺失或版本不足
     时该层静默关闭（`bundled_spawnable` = false），catalog 的 `last_probe_error` 显示
     `node_blocker_message` 提示，安装按钮回归 npm 路径。
