@@ -38,6 +38,8 @@ export const SIDEBAR_MIN_PX = 160;
 export const SIDEBAR_MAX_RATIO = 0.3;
 export const RIGHT_SIDEBAR_MIN_PX = 260;
 export const RIGHT_SIDEBAR_MAX_RATIO = 0.5;
+/** Collapse detection tolerance (collapsedSize is 0; sub-pixel rounding). */
+export const RAIL_COLLAPSED_MAX_PX = 1;
 
 const LEFT_LIMITS: RailLimits = {
 	minPx: SIDEBAR_MIN_PX,
@@ -106,6 +108,12 @@ export function useShellLayout(vaultPath: string | null = null): ShellLayout {
 			animatingRailRef.current = !current || current === side ? side : "both";
 		};
 
+		const clearRailAnimating = () => {
+			for (const el of document.querySelectorAll("[data-rail-animating]")) {
+				el.removeAttribute("data-rail-animating");
+			}
+		};
+
 		const clearAnimatingRail = (side: "left" | "right") => {
 			railAnimTimerRef.current[side] = 0;
 			const leftActive = railAnimTimerRef.current.left !== 0;
@@ -122,16 +130,8 @@ export function useShellLayout(vaultPath: string | null = null): ShellLayout {
 				animatingRailRef.current = "right";
 				return;
 			}
-			for (const el of document.querySelectorAll("[data-rail-animating]")) {
-				el.removeAttribute("data-rail-animating");
-			}
+			clearRailAnimating();
 			animatingRailRef.current = null;
-		};
-
-		const clearRailAnimating = () => {
-			for (const el of document.querySelectorAll("[data-rail-animating]")) {
-				el.removeAttribute("data-rail-animating");
-			}
 		};
 
 		const cancelRailAnimation = () => {
@@ -304,10 +304,11 @@ export function useShellLayout(vaultPath: string | null = null): ShellLayout {
 			} else {
 				setRightRatio(layoutModeRightRatio(mode));
 			}
-			leftWidthPxRef.current = leftPx;
 		};
 
 		const focusSidebar = () => {
+			// Expanding a collapsed rail deviates from the active preset.
+			if (uiStore.getState().sidebarCollapsed) setLayoutMode("custom");
 			setLeftCollapsed(false);
 			requestAnimationFrame(() => {
 				sidebarAsideRef.current?.querySelector<HTMLElement>("button")?.focus();

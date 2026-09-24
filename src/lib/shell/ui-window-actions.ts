@@ -72,6 +72,8 @@ export function requestOpenAgentSession(
 				broadcastAgentOpenSession(request);
 				return;
 			}
+			// Expanding the rail deviates from the active preset — persist it.
+			setLayoutMode("custom");
 			openRightTabInRail("agent");
 		},
 	);
