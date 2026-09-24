@@ -62,6 +62,10 @@ import {
 	isLibraryPanel,
 } from "@/lib/workspace/library-tab-position";
 import {
+	rememberNotesSplitWidth,
+	restoreNotesSplitWidth,
+} from "@/lib/workspace/notes-split-width";
+import {
 	isSplitDragPayload,
 	readDraggedVaultPaths,
 } from "@/lib/workspace/tab-dnd";
@@ -138,8 +142,9 @@ export type DockWorkspaceHandle = {
 	activatePanel: (panelId: string) => void;
 	/** True when the panel is registered in this dock and can be activated. */
 	canActivatePanel: (panelId: string) => boolean;
-	/** Make all visible Dockview grid groups equal width. */
-	equalizeGridGroups: () => void;
+	/** Remember / restore the shared two-column PDF / Notes proportion. */
+	rememberNotesSplitWidth: (paperId: string, notesId: string) => void;
+	restoreNotesSplitWidth: (paperId: string, notesId: string) => void;
 };
 
 type WorkspaceCtx = {
@@ -725,10 +730,13 @@ export const DockWorkspace = memo(
 				canActivatePanel(panelId) {
 					return Boolean(apiRef.current?.getPanel(panelId));
 				},
-				equalizeGridGroups() {
+				rememberNotesSplitWidth(paperId, notesId) {
 					const api = apiRef.current;
-					if (!api) return;
-					rebalanceGridGroupWidths(api);
+					if (api) rememberNotesSplitWidth(api, paperId, notesId);
+				},
+				restoreNotesSplitWidth(paperId, notesId) {
+					const api = apiRef.current;
+					if (api) restoreNotesSplitWidth(api, paperId, notesId);
 				},
 			}),
 			[endSync],
