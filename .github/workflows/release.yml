@@ -9,6 +9,17 @@ permissions:
   contents: write
 
 jobs:
+  atomgit:
+    name: Sync release to AtomGit
+    needs: [installers, android, cli]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/sync-atomgit-release.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets:
+      ATOMGIT_TOKEN: ${{ secrets.ATOMGIT_TOKEN }}
+
   # Shared draft so installers + CLI can upload in parallel without racing create.
   prepare:
     name: Create draft release
