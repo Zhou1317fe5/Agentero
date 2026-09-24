@@ -35,9 +35,9 @@ vi.mock("@/lib/workspace/store", () => ({
 	getTabs: () => [],
 }));
 
-function mountController() {
+function mountController(vaultPath: string | null = null) {
 	// biome-ignore lint/correctness/useHookAtTopLevel: React hooks are mocked to exercise the registered controller in Node.
-	const shell = useShellLayout();
+	const shell = useShellLayout(vaultPath);
 	const widths = { left: shell.initialLeftPx, right: shell.initialRightPx };
 	for (const side of ["left", "right"] as const) {
 		const ref =
@@ -115,6 +115,35 @@ describe("shell layout restoration", () => {
 		initShellLayoutFromPrefs();
 		expect(uiStore.getState().lastAppliedPreset).toBe("agent");
 		expect(mountController().widths).toEqual({ left: 240, right: 360 });
+	});
+
+	it("reapplies the latest saved left width after Vault panel registration", () => {
+		const frames: FrameRequestCallback[] = [];
+		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+			frames.push(callback),
+		);
+		const { widths, shell } = mountController("/vault");
+		expect(shell.initialLeftPx).toBe(200);
+		commitShellRailWidths({ leftRatio: 0.24 }, "custom", 1200);
+		// Registration may restore an old library layout; the explicit restore
+		// must read the latest preference rather than the boot default.
+		widths.left = 200;
+		frames[0](0);
+		expect(widths.left).toBe(288);
+		expect(shell.leftWidthPxRef.current).toBe(288);
+	});
+
+	it("keeps a remembered left rail collapsed when a Vault opens", () => {
+		const frames: FrameRequestCallback[] = [];
+		vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) =>
+			frames.push(callback),
+		);
+		commitShellRailWidths({ leftRatio: 0.24 }, "custom", 1200);
+		const { widths, shell } = mountController("/vault");
+		setSidebarCollapsedState(true);
+		frames[0](0);
+		expect(widths.left).toBe(0);
+		expect(shell.leftWidthPxRef.current).toBe(288);
 	});
 	it("restores both notes rails after Agent round-trips, including reopening", () => {
 		const { controller, widths } = mountController();

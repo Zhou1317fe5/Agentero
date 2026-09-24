@@ -213,6 +213,7 @@ export default function App() {
 	useExternalFileDrop();
 	// First-vault highlight tour (driver.js) + Settings replay listener.
 	useFeatureTour();
+	const vaultPath = useVaultStore((s) => s.vaultPath);
 	const {
 		sidebarPanelRef,
 		rightSidebarPanelRef,
@@ -225,9 +226,8 @@ export default function App() {
 		initialRightPx,
 		animatingRailRef,
 		cancelRailAnimation,
-	} = useShellLayout();
+	} = useShellLayout(vaultPath);
 
-	const vaultPath = useVaultStore((s) => s.vaultPath);
 	const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
 	const rightSidebarOpen = useUiStore((s) => s.rightSidebarOpen);
 

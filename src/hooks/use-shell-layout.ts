@@ -68,7 +68,7 @@ export type ShellLayout = {
 /** Keep in sync with --motion-duration-normal in index.css. */
 const RAIL_ANIMATION_MS = 200;
 
-export function useShellLayout(): ShellLayout {
+export function useShellLayout(vaultPath: string | null = null): ShellLayout {
 	const sidebarPanelRef = usePanelRef();
 	const rightSidebarPanelRef = usePanelRef();
 	const sourcePanelRef = usePanelRef();
@@ -357,6 +357,30 @@ export function useShellLayout(): ShellLayout {
 			controller.cancelRailAnimation();
 		};
 	}, [controller]);
+
+	useEffect(() => {
+		if (!vaultPath) return;
+		// The left panel is conditional on the Vault. Its initial default and
+		// the panel library's cached layout can predate the latest user resize.
+		// Wait for panel registration, then restore from the current width slot.
+		const frame = requestAnimationFrame(() => {
+			const panel = sidebarPanelRef.current;
+			if (!panel) return;
+			const state = uiStore.getState();
+			const saved = railWidthsForSlot(
+				getShellLayoutPrefs(),
+				state.lastAppliedPreset ?? "custom",
+				window.innerWidth,
+				LEFT_LIMITS,
+				RIGHT_LIMITS,
+			);
+			const width = saved.leftPx ?? leftWidthPxRef.current;
+			if (state.sidebarCollapsed) panel.collapse();
+			else panel.resize(width);
+			leftWidthPxRef.current = width;
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [vaultPath, sidebarPanelRef]);
 
 	return {
 		sidebarPanelRef,
