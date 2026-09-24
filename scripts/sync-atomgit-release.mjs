@@ -32,6 +32,9 @@ export async function retry(operation, pause = sleep) {
 			) {
 				throw error;
 			}
+			console.warn(
+				`Retry ${attempt + 1}/2 after ${error instanceof HttpError ? error.message : error.name}`,
+			);
 			await pause(2000 * 2 ** attempt);
 		}
 	}
@@ -111,6 +114,7 @@ export class AtomGit {
 	}
 
 	async remoteDigest(tag, name, registering = false) {
+		console.log(`Checking AtomGit bytes: ${name}`);
 		return retry(async () => {
 			const response = await this.request(
 				`${this.base}/releases/${encode(tag)}/attach_files/${encode(name)}/download`,
@@ -160,6 +164,7 @@ export class AtomGit {
 				throw new Error("Invalid AtomGit upload response");
 			}
 			const stream = createReadStream(file);
+			console.log(`Uploading: ${asset.name} (${expected.size} bytes)`);
 			try {
 				const response = await this.request(info.url, {
 					method: "PUT",
@@ -290,6 +295,9 @@ async function main() {
 			commit,
 			latestTag,
 			download: async (asset) => {
+				console.log(
+					`Downloading from GitHub: ${asset.name} (${asset.size} bytes)`,
+				);
 				const file = join(directory, asset.name);
 				await retry(async () => {
 					const output = await open(file, "w");
