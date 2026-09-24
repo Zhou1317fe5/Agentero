@@ -58,6 +58,10 @@ import { installDockviewDropOverlayCleanup } from "@/lib/workspace/dockview-drop
 import { installDockviewSashFrameLoop } from "@/lib/workspace/dockview-sash";
 import { agenteroDockTheme } from "@/lib/workspace/dockview-theme";
 import {
+	ensureLibraryTabFirst,
+	isLibraryPanel,
+} from "@/lib/workspace/library-tab-position";
+import {
 	isSplitDragPayload,
 	readDraggedVaultPaths,
 } from "@/lib/workspace/tab-dnd";
@@ -458,6 +462,7 @@ function reconcilePanelMembership(api: DockviewApi, list: DocTab[]): void {
 		addPanelWithPlacement(api, tab, null);
 	}
 	compactEmptyGroups(api);
+	ensureLibraryTabFirst(api);
 }
 
 /**
@@ -735,6 +740,14 @@ export const DockWorkspace = memo(
 				apiRef.current = api;
 
 				disposablesRef.current = [
+					api.onWillDragPanel((e) => {
+						if (isLibraryPanel(e.panel)) e.nativeEvent.preventDefault();
+					}),
+					api.onWillDragGroup((e) => {
+						if (e.group.panels.some(isLibraryPanel)) {
+							e.nativeEvent.preventDefault();
+						}
+					}),
 					installDockviewDragSelectionGuard(
 						workspaceRootRef.current as HTMLDivElement,
 						api,
@@ -748,6 +761,14 @@ export const DockWorkspace = memo(
 					}),
 					// Veto overlay for unknown external drags (keep internal + path drops).
 					api.onWillShowOverlay((e) => {
+						if (
+							e.kind === "tab" &&
+							isLibraryPanel(e.panel) &&
+							e.position === "left"
+						) {
+							e.preventDefault();
+							return;
+						}
 						if (isInternalDockDrag(() => e.getData())) return;
 						if (!isExternalPathDrag(e.nativeEvent)) {
 							e.preventDefault();
@@ -765,6 +786,7 @@ export const DockWorkspace = memo(
 					// Single layout-save path (debounce). Programmatic + user changes
 					// (incl. tab-group rename / color / membership via toJSON).
 					api.onDidLayoutChange(() => {
+						ensureLibraryTabFirst(api);
 						if (!syncingRef.current) publishVisiblePanels(api);
 						scheduleLayoutSave(api);
 					}),
@@ -855,8 +877,16 @@ export const DockWorkspace = memo(
 			onDropRef.current({ paths, direction, referencePanelId });
 		}, []);
 
-		/** Cancel drop for unknown external payloads; internal moves always ok. */
+		/** Protect Library's first slot and reject unknown external payloads. */
 		const handleWillDrop = useCallback((e: DockviewWillDropEvent) => {
+			if (
+				e.kind === "tab" &&
+				isLibraryPanel(e.panel) &&
+				e.position === "left"
+			) {
+				e.preventDefault();
+				return;
+			}
 			if (isInternalDockDrag(() => e.getData())) return;
 			if (!isExternalPathDrag(e.nativeEvent)) {
 				e.preventDefault();
