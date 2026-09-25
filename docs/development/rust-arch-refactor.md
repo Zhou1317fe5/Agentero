@@ -1,6 +1,6 @@
 # Rust 端架构重构计划（2026-09）
 
-状态：**规划已更新，实施未开始**。最后更新：2026-09-08。
+状态：**实施中：R2 字段原子更新已完成，其余按下文状态推进**。最后更新：2026-09-25。
 
 来源：2026-09-06 三轮架构审计；2026-09-08 由 3 个 sub-agent 分别复核应用边界、存储一致性、运行时与集成，主评审补充核实论文入库及解析链路。本次为静态代码评审，未运行行为测试。历史 V 编号保留，旧 P0–P6 执行顺序由本文新计划替代。
 
@@ -52,9 +52,9 @@
 
 ## B · 数据提交、投影与恢复契约
 
-**问题与证据：** core `catalog/papers.rs:391` 在 DB 提交后独立写 sidecar，`:1001` 起的字段操作读整行再 upsert；Host `integration/remote/catalog_mirror.rs:105` 发布时裸读 SQLite 主文件。`integration/sync/engine.rs:466` 从拉取的文件重建 Catalog，说明投影失败会影响跨设备传播。关联 V1、V10、V11、V33、V35。
+**问题与证据：** core `catalog/papers.rs::upsert_paper` 在 DB 提交后独立写 sidecar；字段操作原先读整行再 upsert 的并发窗口已由 R2 的事务内 patch 修复，可靠投影仍待实施；Host `integration/remote/catalog_mirror.rs:105` 发布时裸读 SQLite 主文件。`integration/sync/engine.rs:466` 从拉取的文件重建 Catalog，说明投影失败会影响跨设备传播。关联 V1、V10、V11、V33、V35。
 
-- [ ] **B1 字段级事务与可重试投影**（以前置 R1/R2 为基础）
+- [ ] **B1 字段级事务与可重试投影**（以前置 R1/R2 为基础；R2 字段修改事务已完成，投影部分未开始）
   - 以 `PaperMutation` 或等价用例保存字段 patch 语义，读改写在一个 DB 事务内完成；不把所有更新统一成全行覆盖。
   - 同事务记录待投影版本，由有序 projector 写 sidecar；失败可重试，旧版本不得覆盖新版本。同步扫描前排空相关投影或显式报告未就绪。
   - 验收：并发改不同字段不丢值；投影失败、乱序及重启后可恢复；Catalog 始终是结构化 metadata 的事实来源。
@@ -130,10 +130,10 @@
 
 ## R · 前置正确性修复
 
-小范围修复可单独提交，不等待架构重构；以下均未实施。安全与正确性修复不因其规模小而推迟。
+小范围修复可单独提交，不等待架构重构；R2 已完成，其余状态见各项。安全与正确性修复不因其规模小而推迟。
 
 - [ ] **R1 WAL 一致快照**（旧 P0-1）：用 SQLite 支持的一致快照机制导出；若采用 checkpoint + 读文件，必须协调写连接、检查 checkpoint 结果并保证读取窗口，不能认为新开短连接就自动安全。活跃 WAL 连接 write→push→pull 的 LocalFs 测试进入 CI，无需真实 SSH。
-- [ ] **R2 字段原子更新**（旧 P0-7）：局部 UPDATE 或单事务读改写，尤其 add/remove tags 必须保护集合操作；事务内回读返回完整 record。验证并发不同字段和标签集合更新。
+- [x] **R2 字段原子更新**（旧 P0-7，2026-09-25）：`papers.rs::mutate_paper` 用 `BEGIN IMMEDIATE` 统一 `update_meta`、`set_is_read`、`set_tags`、`add_tags`、`remove_tags` 的事务内读改写与回读。标签集合修改受同一写预约保护，覆盖独立 SQLite 连接。验证：`cargo test -p agentero-core features::paper::catalog::papers::tests -- --nocapture`（22 通过），新增独立连接写预约/错误释放及并发字段/标签集合测试。sidecar 与 NOTES 仍在提交后 best-effort 写入；B1 的投影重试和顺序保护未完成。提交记录待主审提交后补充。
 - [ ] **R3 sync 占用 RAII**（旧 P0-2）：guard 释放占用；abort 后可再次同步，作为 E2 的第一个落点。
 - [ ] **R4 Agent 交互清理与转发**（旧 P0-3/P0-4）：超时/取消移除 pending，补齐 Bridge ask-user/elicitation 请求转发；晚到回答保持 `resolved:false`，完整交互链路验证后再由 F1 替换临时转发。
 - [ ] **R5 论文附件分类**（旧 P0-5）：附件 PDF/TeX 不成为主资产；测试锁定 AGENTS.md 约定，不未经确认搬动历史用户文件。
@@ -154,7 +154,7 @@
 
 | 批次 | 工作 | 主要依赖 | 状态 |
 |---|---|---|---|
-| 前置修复 | R1–R6 | 各项独立；按影响优先处理 R1/R2/R3 | 未开始 |
+| 前置修复 | R1–R6 | 各项独立；按影响优先处理 R1/R2/R3 | R2 已完成，其余未开始 |
 | 第一批 | A1 移动用例，随后 A2/A3 | 复用已有 rename；A2 与 B3 明确恢复契约 | 未开始 |
 | 第二批 | B1–B3、A4、C1/C2 | B 以前置数据修复为基础；A4/C 接入提交结果 | 未开始 |
 | 第三批 | D1/D2、E1 | D1 与 E1 先对齐计划接口；D2 可独立试点 | 未开始 |
@@ -180,7 +180,7 @@
 
 不扩大 HostHooks 为万能宿主对象，不引入覆盖所有 feature 的 VaultService，不强并 ACP/Bridge/Connector wire 协议。不为了搬模块引入 ConfigProvider，不要求所有本地 IO 走 async trait，不把 UI 未保存内容的决策交给后台对账。继续保留 `core::http`、`run_blocking`、settings 订阅、JobCenter 既有 runner/清理能力与 feature-first 语义目录。
 
-相关路线图：[crate 拆分记录](crate-split-roadmap.md)、[开发索引](index.md)。本文为未实施架构计划；已实现行为仍以 `docs/backend/`、`docs/frontend/` 和代码为准。
+相关路线图：[crate 拆分记录](crate-split-roadmap.md)、[开发索引](index.md)。本文为进行中的架构计划；已实现行为仍以 `docs/backend/`、`docs/frontend/` 和代码为准。
 
 ## 附录：历史证据与裁决（V 编号保持稳定）
 

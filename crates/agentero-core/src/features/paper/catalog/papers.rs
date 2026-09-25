@@ -1045,85 +1045,81 @@ pub fn update_meta(
     path: &str,
     patch: &PaperMetaPatch,
 ) -> Result<PaperRecord, AppError> {
-    let path = crate::fs::normalize_rel_separators(path);
-    let Some(mut row) = get_by_path(vault_root, &path)? else {
-        return Err(AppError::message("paper not found in catalog"));
-    };
-
-    fn norm(value: &str) -> Option<String> {
-        let trimmed = value.trim();
-        (!trimmed.is_empty()).then(|| trimmed.to_string())
-    }
-
     let mut old_title = String::new();
     let mut title_changed = false;
-    if let Some(title) = patch.title.as_deref() {
-        let title = title.trim();
-        if title.is_empty() {
-            return Err(AppError::message("title cannot be empty"));
+    let updated = mutate_paper(vault_root, path, |row| {
+        fn norm(value: &str) -> Option<String> {
+            let trimmed = value.trim();
+            (!trimmed.is_empty()).then(|| trimmed.to_string())
         }
-        old_title = row.title.clone();
-        title_changed = title != row.title;
-        row.title = title.to_string();
-    }
-    if let Some(authors) = &patch.authors {
-        row.authors = authors
-            .iter()
-            .map(|a| a.trim().to_string())
-            .filter(|a| !a.is_empty())
-            .collect();
-    }
-    if let Some(date) = patch.date.as_deref() {
-        match norm(date) {
-            None => {
-                row.date = None;
-                row.year = None;
-            }
-            Some(text) => {
-                let parsed = parse_publication_date(&text).ok_or_else(|| {
-                    AppError::message(
-                        "date must be a year (YYYY), year-month (YYYY-MM) or full date (YYYY-MM-DD)",
-                    )
-                })?;
-                row.year = Some(parsed.year);
-                row.date = Some(parsed.canonical());
-            }
-        }
-    }
-    if let Some(v) = patch.doi.as_deref() {
-        row.doi = norm(v);
-    }
-    if let Some(v) = patch.arxiv_id.as_deref() {
-        row.arxiv_id = norm(v);
-    }
-    if let Some(v) = patch.publication.as_deref() {
-        row.publication = norm(v);
-    }
-    if let Some(v) = patch.volume.as_deref() {
-        row.volume = norm(v);
-    }
-    if let Some(v) = patch.issue.as_deref() {
-        row.issue = norm(v);
-    }
-    if let Some(v) = patch.pages.as_deref() {
-        row.pages = norm(v);
-    }
-    if let Some(v) = patch.publisher.as_deref() {
-        row.publisher = norm(v);
-    }
-    if let Some(v) = patch.abstract_text.as_deref() {
-        row.abstract_text = norm(v);
-    }
-    if let Some(v) = patch.pdf_url.as_deref() {
-        row.pdf_url = norm(v);
-    }
-    if let Some(v) = patch.html_url.as_deref() {
-        row.html_url = norm(v);
-    }
 
-    row.meta_source = Some("manual".to_string());
-    row.updated_at = crate::time::now_rfc3339_millis();
-    let updated = upsert_paper(vault_root, &row)?;
+        if let Some(title) = patch.title.as_deref() {
+            let title = title.trim();
+            if title.is_empty() {
+                return Err(AppError::message("title cannot be empty"));
+            }
+            old_title = row.title.clone();
+            title_changed = title != row.title;
+            row.title = title.to_string();
+        }
+        if let Some(authors) = &patch.authors {
+            row.authors = authors
+                .iter()
+                .map(|a| a.trim().to_string())
+                .filter(|a| !a.is_empty())
+                .collect();
+        }
+        if let Some(date) = patch.date.as_deref() {
+            match norm(date) {
+                None => {
+                    row.date = None;
+                    row.year = None;
+                }
+                Some(text) => {
+                    let parsed = parse_publication_date(&text).ok_or_else(|| {
+                        AppError::message(
+                            "date must be a year (YYYY), year-month (YYYY-MM) or full date (YYYY-MM-DD)",
+                        )
+                    })?;
+                    row.year = Some(parsed.year);
+                    row.date = Some(parsed.canonical());
+                }
+            }
+        }
+        if let Some(v) = patch.doi.as_deref() {
+            row.doi = norm(v);
+        }
+        if let Some(v) = patch.arxiv_id.as_deref() {
+            row.arxiv_id = norm(v);
+        }
+        if let Some(v) = patch.publication.as_deref() {
+            row.publication = norm(v);
+        }
+        if let Some(v) = patch.volume.as_deref() {
+            row.volume = norm(v);
+        }
+        if let Some(v) = patch.issue.as_deref() {
+            row.issue = norm(v);
+        }
+        if let Some(v) = patch.pages.as_deref() {
+            row.pages = norm(v);
+        }
+        if let Some(v) = patch.publisher.as_deref() {
+            row.publisher = norm(v);
+        }
+        if let Some(v) = patch.abstract_text.as_deref() {
+            row.abstract_text = norm(v);
+        }
+        if let Some(v) = patch.pdf_url.as_deref() {
+            row.pdf_url = norm(v);
+        }
+        if let Some(v) = patch.html_url.as_deref() {
+            row.html_url = norm(v);
+        }
+
+        row.meta_source = Some("manual".to_string());
+        Ok(())
+    })?;
     if title_changed {
         log::info!(
             target: "agentero::catalog",
@@ -1133,7 +1129,7 @@ pub fn update_meta(
         );
         crate::features::wiki::sync_notes_title_and_alias(
             vault_root,
-            &path,
+            &updated.path,
             &old_title,
             &updated.title,
         );
@@ -1143,39 +1139,29 @@ pub fn update_meta(
 
 /// Set `is_read` for a paper path; returns the updated row.
 pub fn set_is_read(vault_root: &Path, path: &str, is_read: bool) -> Result<PaperRecord, AppError> {
-    let path = crate::fs::normalize_rel_separators(path);
-    let Some(mut row) = get_by_path(vault_root, &path)? else {
-        return Err(AppError::message("paper not found in catalog"));
-    };
-    row.is_read = is_read;
-    row.updated_at = crate::time::now_rfc3339_millis();
-    upsert_paper(vault_root, &row)
+    mutate_paper(vault_root, path, |row| {
+        row.is_read = is_read;
+        Ok(())
+    })
 }
 
 /// Replace tags for a paper path; returns the updated row.
 /// Tags are trimmed, empty strings dropped, and de-duplicated case-insensitively
 /// (first occurrence keeps its original casing).
 pub fn set_tags(vault_root: &Path, path: &str, tags: &[PaperTag]) -> Result<PaperRecord, AppError> {
-    let path = crate::fs::normalize_rel_separators(path);
-    let Some(mut row) = get_by_path(vault_root, &path)? else {
-        return Err(AppError::message("paper not found in catalog"));
-    };
-    row.tags = normalize_tags(tags);
-    row.updated_at = crate::time::now_rfc3339_millis();
-    upsert_paper(vault_root, &row)
+    mutate_paper(vault_root, path, |row| {
+        row.tags = normalize_tags(tags);
+        Ok(())
+    })
 }
 
 /// Append tags to a paper (trim + case-insensitive dedupe). Returns the updated row.
 pub fn add_tags(vault_root: &Path, path: &str, tags: &[PaperTag]) -> Result<PaperRecord, AppError> {
-    let path = crate::fs::normalize_rel_separators(path);
-    let Some(mut row) = get_by_path(vault_root, &path)? else {
-        return Err(AppError::message("paper not found in catalog"));
-    };
-    let mut next = row.tags.clone();
-    next.extend(tags.iter().cloned());
-    row.tags = normalize_tags(&next);
-    row.updated_at = crate::time::now_rfc3339_millis();
-    upsert_paper(vault_root, &row)
+    mutate_paper(vault_root, path, |row| {
+        row.tags.extend(tags.iter().cloned());
+        row.tags = normalize_tags(&row.tags);
+        Ok(())
+    })
 }
 
 /// Remove tags from a paper (case-insensitive). Returns the updated row.
@@ -1184,19 +1170,43 @@ pub fn remove_tags(
     path: &str,
     tags: &[String],
 ) -> Result<PaperRecord, AppError> {
+    mutate_paper(vault_root, path, |row| {
+        let drop: Vec<String> = tags
+            .iter()
+            .map(|t| t.trim().to_string())
+            .filter(|t| !t.is_empty())
+            .collect();
+        row.tags
+            .retain(|existing| !drop.iter().any(|d| d.eq_ignore_ascii_case(&existing.name)));
+        Ok(())
+    })
+}
+
+/// Keep the read/patch/write under one SQLite write reservation, including
+/// writers in other processes (e.g. CLI alongside desktop). A deferred
+/// transaction would allow a stale read before acquiring the write lock.
+fn mutate_paper(
+    vault_root: &Path,
+    path: &str,
+    patch: impl FnOnce(&mut PaperRecord) -> Result<(), AppError>,
+) -> Result<PaperRecord, AppError> {
     let path = crate::fs::normalize_rel_separators(path);
-    let Some(mut row) = get_by_path(vault_root, &path)? else {
-        return Err(AppError::message("paper not found in catalog"));
-    };
-    let drop: Vec<String> = tags
-        .iter()
-        .map(|t| t.trim().to_string())
-        .filter(|t| !t.is_empty())
-        .collect();
-    row.tags
-        .retain(|existing| !drop.iter().any(|d| d.eq_ignore_ascii_case(&existing.name)));
-    row.updated_at = crate::time::now_rfc3339_millis();
-    upsert_paper(vault_root, &row)
+    let persisted = with_catalog(vault_root, |conn| {
+        let tx =
+            rusqlite::Transaction::new_unchecked(conn, rusqlite::TransactionBehavior::Immediate)?;
+        let mut row =
+            get_conn(&tx, &path)?.ok_or_else(|| AppError::message("paper not found in catalog"))?;
+        patch(&mut row)?;
+        row.updated_at = crate::time::now_rfc3339_millis();
+        upsert_conn(&tx, &row)?;
+        let persisted =
+            get_conn(&tx, &path)?.ok_or_else(|| AppError::message("paper not found in catalog"))?;
+        tx.commit()?;
+        Ok(persisted)
+    })?;
+    // Projection stays best-effort and outside the transaction, as for upsert.
+    super::sidecar::write_sidecar(vault_root, &persisted);
+    Ok(persisted)
 }
 
 /// Catalog-wide tag inventory entry (name + optional color + count).
@@ -1673,6 +1683,103 @@ mod tests {
         assert_eq!(count("papers/a"), 0);
 
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn paper_patch_reserves_writer_before_read_modify_write() {
+        let dir = env::temp_dir().join(format!("agentero-patch-lock-{}", uuid::Uuid::new_v4()));
+        let other = ensure_catalog(&dir).unwrap();
+        insert(&other, "papers/x");
+        other.busy_timeout(std::time::Duration::ZERO).unwrap();
+
+        let updated = mutate_paper(&dir, "papers\\x", |row| {
+            // An independent connection models a CLI writer. The reservation
+            // must already exist while a patch computes from the current row.
+            let err = other.execute_batch("BEGIN IMMEDIATE").unwrap_err();
+            assert_eq!(
+                err.sqlite_error_code(),
+                Some(rusqlite::ErrorCode::DatabaseBusy)
+            );
+            row.is_read = true;
+            Ok(())
+        })
+        .unwrap();
+        assert!(updated.is_read);
+        assert_eq!(updated.path, "papers/x");
+        assert!(get_conn(&other, "papers/x").unwrap().unwrap().is_read);
+
+        // Both success and validation failure release the write reservation.
+        let err = mutate_paper(&dir, "papers/x", |row| {
+            row.is_read = false;
+            Err(AppError::message("invalid patch"))
+        });
+        assert!(err.is_err());
+        other.execute_batch("BEGIN IMMEDIATE; COMMIT;").unwrap();
+        assert!(get_conn(&other, "papers/x").unwrap().unwrap().is_read);
+        super::super::evict_catalog_conn(&dir);
+        drop(other);
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn concurrent_paper_patches_preserve_fields_and_tag_sets() {
+        use std::sync::{Arc, Barrier};
+        let dir = env::temp_dir().join(format!(
+            "agentero-patch-concurrent-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let conn = ensure_catalog(&dir).unwrap();
+        insert(&conn, "papers/x");
+        drop(conn);
+        let count = 32;
+        let initial: Vec<_> = (0..count)
+            .map(|i| PaperTag::new(format!("remove-{i}")))
+            .collect();
+        set_tags(&dir, "papers/x", &initial).unwrap();
+        let barrier = Arc::new(Barrier::new(4));
+        std::thread::scope(|scope| {
+            for worker in 0..4 {
+                let dir = &dir;
+                let barrier = Arc::clone(&barrier);
+                scope.spawn(move || {
+                    for i in 0..count {
+                        barrier.wait();
+                        match worker {
+                            0 => {
+                                add_tags(dir, "papers/x", &[PaperTag::new(format!("add-{i}"))])
+                                    .unwrap();
+                            }
+                            1 => {
+                                remove_tags(dir, "papers/x", &[format!("REMOVE-{i}")]).unwrap();
+                            }
+                            2 => {
+                                update_meta(
+                                    dir,
+                                    "papers/x",
+                                    &PaperMetaPatch {
+                                        publication: Some(format!("Journal {i}")),
+                                        ..Default::default()
+                                    },
+                                )
+                                .unwrap();
+                            }
+                            _ => {
+                                set_is_read(dir, "papers/x", true).unwrap();
+                            }
+                        }
+                    }
+                });
+            }
+        });
+        let row = get_by_path(&dir, "papers/x").unwrap().unwrap();
+        assert!(row.is_read);
+        assert_eq!(row.publication.as_deref(), Some("Journal 31"));
+        assert_eq!(row.tags.len(), count);
+        for i in 0..count {
+            assert!(row.tags.iter().any(|tag| tag.name == format!("add-{i}")));
+        }
+        super::super::evict_catalog_conn(&dir);
+        fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
