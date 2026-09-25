@@ -25,7 +25,7 @@ overrides:
 patchedDependencies:
   '@embedpdf/ai@0.0.1': a6b2b0295114a7b189d832890228c861b9fda9da2174f2b5b55e6c06891dfee8
   '@embedpdf/engines@2.14.4': ac8face3dfcc93646da18b7be7abcb3b174ab5ea20957a2c057d945a995c880f
-  '@embedpdf/plugin-tiling@2.14.4': dfcba38cbaf4a76a7244384ca6a0ae9d46082e9e5ac1573dfaaeb5dd2509a9e1
+  '@embedpdf/plugin-tiling@2.14.4': 5aac0560c2591dab27e0caeb20cf918ce33d1b26e3bc4f8333132b56a99207e8
 
 importers:
 
@@ -105,7 +105,7 @@ importers:
         version: 2.14.4(@embedpdf/core@2.14.4(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3)))(@embedpdf/plugin-interaction-manager@2.14.4(@embedpdf/core@2.14.4(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3)))(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3)))(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3))
       '@embedpdf/plugin-tiling':
         specifier: 2.14.4
-        version: 2.14.4(patch_hash=dfcba38cbaf4a76a7244384ca6a0ae9d46082e9e5ac1573dfaaeb5dd2509a9e1)(806daa08ea00764c79dcc58df56c8988)
+        version: 2.14.4(patch_hash=5aac0560c2591dab27e0caeb20cf918ce33d1b26e3bc4f8333132b56a99207e8)(806daa08ea00764c79dcc58df56c8988)
       '@embedpdf/plugin-viewport':
         specifier: 2.14.4
         version: 2.14.4(@embedpdf/core@2.14.4(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3)))(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3))
@@ -6796,7 +6796,7 @@ snapshots:
       svelte: 5.56.6
       vue: 3.5.40(typescript@5.8.3)
 
-  '@embedpdf/plugin-tiling@2.14.4(patch_hash=dfcba38cbaf4a76a7244384ca6a0ae9d46082e9e5ac1573dfaaeb5dd2509a9e1)(806daa08ea00764c79dcc58df56c8988)':
+  '@embedpdf/plugin-tiling@2.14.4(patch_hash=5aac0560c2591dab27e0caeb20cf918ce33d1b26e3bc4f8333132b56a99207e8)(806daa08ea00764c79dcc58df56c8988)':
     dependencies:
       '@embedpdf/core': 2.14.4(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3))
       '@embedpdf/models': 2.14.4
