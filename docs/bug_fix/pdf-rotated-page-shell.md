@@ -20,20 +20,27 @@ Scroller 外层 page slot 已经使用 `rotatedWidth` / `rotatedHeight`，但 Ag
 `PdfPageLayers` 内层 page shell 仍只接收 `width` / `height`。结果是外层槽位按横向尺寸布局，
 内层纸面和 raster/overlay 按竖向尺寸绘制，旋转页看起来没有转正。
 
+后续 CI 又暴露出类型层问题：`TilingLayer` 运行时代码已经支持 `dpr`，但
+`@embedpdf/plugin-tiling` 的 React `.d.ts` 没有声明该 prop，导致 `tsc --noEmit`
+在 `PdfPageLayers` 传入 `pdfTileDpr()` 时失败。
+
 ## 修复
 
 - `src/components/viewer/pdf/pdf-viewer.tsx`：`renderPage` 改为接收 `PageLayout`，传给
   `PdfPageLayers` 的尺寸优先使用 `rotatedWidth` / `rotatedHeight`。
 - `src/components/viewer/pdf/pdf-translation-viewer-inner.tsx`：翻译分屏同样使用旋转后的显示尺寸。
+- `patches/@embedpdf__plugin-tiling@2.14.4.patch`：补齐 React `TilingLayer` 的 `dpr`
+  类型声明，保留原包对 `page.rotation + coreDoc.rotation` 的瓦片坐标计算。
 
-页面内容仍由 EmbedPDF/PDFium 按自身 rotation 管线渲染；这次修复只统一内外 page shell 的显示尺寸，
-避免把旋转后的 raster 塞进未旋转页框。
+页面槽位和实际 PDFium 光栅都必须参与旋转：槽位使用 `rotatedWidth` / `rotatedHeight`，
+高清瓦片沿用 EmbedPDF 的页面 `/Rotate` 与阅读器旋转合成值。
 
 ## 验证
 
 ```bash
 pdfinfo -f 1 -l 10 -box /Users/philfan/l/test/papers/10_3389_fpls_2025_1611992/10_3389_fpls_2025_1611992.pdf
-pnpm exec biome check src/components/viewer/pdf/pdf-viewer.tsx src/components/viewer/pdf/pdf-translation-viewer-inner.tsx
+pnpm exec biome check src/components/viewer/pdf/layers/page-layers.tsx src/components/viewer/pdf/pdf-viewer.tsx src/components/viewer/pdf/pdf-translation-viewer-inner.tsx
+pnpm typecheck
 pnpm exec vitest run --passWithNoTests test/pdf-viewport-scroll.test.ts test/pdf-pending-page.test.ts
 ```
 

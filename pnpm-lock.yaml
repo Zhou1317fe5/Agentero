@@ -27,7 +27,7 @@ patchedDependencies:
   '@embedpdf/engines@2.14.4': ac8face3dfcc93646da18b7be7abcb3b174ab5ea20957a2c057d945a995c880f
   '@embedpdf/plugin-scroll@2.14.4': f9891c531eb7dd37d972e8d040c9208e73bc02b16993eced73a00a515e3545ba
   '@embedpdf/plugin-selection@2.14.4': a5f45cc376e650d0ba78674fd9c9b13fdab7ec25542de5e5470cd288dd8b8323
-  '@embedpdf/plugin-tiling@2.14.4': c32b3453158b72bbd44423626784512bb5dc108d7a4fd70823181d95f0c5dd1a
+  '@embedpdf/plugin-tiling@2.14.4': dfcba38cbaf4a76a7244384ca6a0ae9d46082e9e5ac1573dfaaeb5dd2509a9e1
 
 importers:
 
@@ -107,7 +107,7 @@ importers:
         version: 2.14.4(patch_hash=a5f45cc376e650d0ba78674fd9c9b13fdab7ec25542de5e5470cd288dd8b8323)(@embedpdf/core@2.14.4(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3)))(@embedpdf/plugin-interaction-manager@2.14.4(@embedpdf/core@2.14.4(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3)))(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3)))(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3))
       '@embedpdf/plugin-tiling':
         specifier: 2.14.4
-        version: 2.14.4(patch_hash=c32b3453158b72bbd44423626784512bb5dc108d7a4fd70823181d95f0c5dd1a)(16384d594bb4962736f77a8463e936aa)
+        version: 2.14.4(patch_hash=dfcba38cbaf4a76a7244384ca6a0ae9d46082e9e5ac1573dfaaeb5dd2509a9e1)(16384d594bb4962736f77a8463e936aa)
       '@embedpdf/plugin-viewport':
         specifier: 2.14.4
         version: 2.14.4(@embedpdf/core@2.14.4(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3)))(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3))
@@ -6798,7 +6798,7 @@ snapshots:
       svelte: 5.56.6
       vue: 3.5.40(typescript@5.8.3)
 
-  '@embedpdf/plugin-tiling@2.14.4(patch_hash=c32b3453158b72bbd44423626784512bb5dc108d7a4fd70823181d95f0c5dd1a)(16384d594bb4962736f77a8463e936aa)':
+  '@embedpdf/plugin-tiling@2.14.4(patch_hash=dfcba38cbaf4a76a7244384ca6a0ae9d46082e9e5ac1573dfaaeb5dd2509a9e1)(16384d594bb4962736f77a8463e936aa)':
     dependencies:
       '@embedpdf/core': 2.14.4(preact@10.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(svelte@5.56.6)(vue@3.5.40(typescript@5.8.3))
       '@embedpdf/models': 2.14.4
