@@ -1346,19 +1346,22 @@ pub fn move_under_path(vault_root: &Path, from: &str, to: &str) -> Result<usize,
     // substr uses a 1-based CHARACTER index so non-ASCII folder names are safe.
     let offset = from.chars().count() as i64 + 1;
     with_catalog(vault_root, |conn| {
-        let n = conn
+        let tx =
+            rusqlite::Transaction::new_unchecked(conn, rusqlite::TransactionBehavior::Immediate)?;
+        let n = tx
             .execute(
                 "UPDATE papers SET path = ?1 || substr(path, ?2), updated_at = ?3 \
                  WHERE path = ?4 OR path LIKE ?5",
                 params![to, offset, now, from, like],
             )
             .map_err(AppError::from)?;
-        conn.execute(
+        tx.execute(
             "UPDATE pdf_page_counts SET path = ?1 || substr(path, ?2) \
              WHERE path = ?3 OR path LIKE ?4",
             params![to, offset, from, like],
         )
         .map_err(AppError::from)?;
+        tx.commit()?;
         Ok(n)
     })
 }

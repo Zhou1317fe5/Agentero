@@ -1,6 +1,6 @@
 # Rust 端架构重构计划（2026-09）
 
-状态：**实施中：R1 WAL 一致快照、R2 字段原子更新、R3 sync 占用 RAII 已完成，其余按下文状态推进**。最后更新：2026-09-25。
+状态：**实施中：R1 WAL 一致快照、R2 字段原子更新、R3 sync 占用 RAII、A1 共享移动用例已完成，其余按下文状态推进**。最后更新：2026-09-25。
 
 来源：2026-09-06 三轮架构审计；2026-09-08 由 3 个 sub-agent 分别复核应用边界、存储一致性、运行时与集成，主评审补充核实论文入库及解析链路。本次为静态代码评审，未运行行为测试。历史 V 编号保留，旧 P0–P6 执行顺序由本文新计划替代。
 
@@ -32,12 +32,13 @@
 
 ## A · 共享完整业务用例
 
-**问题与证据：** 桌面及 Connector 已共用 `src-tauri/src/features/paper/catalog/commands.rs::paper_move_service`（550 行），调用现有 `run_local_rename_transaction`；CLI 的 `cli/src/commands/paper.rs` 仍走 core `catalog/mod.rs::move_paper_under`（66 行），只移动文件并更新 Catalog。业务服务放在 commands 层，也迫使其他入口引用传输层。关联 V2–V9、V38。
+**问题与证据：** 原先桌面/Connector 的完整移动服务位于 commands，CLI 只移动文件与 Catalog；A1 已将这三条本地路径统一到 core 用例。跨 Vault migrate、远端移动、trash 与入库仍按后续切片处理。关联 V2–V9、V38。
 
-- [ ] **A1 共享移动用例（首个架构切片）**
+- [x] **A1 共享移动用例（首个架构切片，2026-09-25）**
   - 在现有 core 的对应业务域建立 application/service 入口，复用已有 Wiki 规划、执行和回滚，不再造 rename 引擎。
   - Desktop 传入当前索引与 dirty paths；CLI 构造所需索引并明确无本进程编辑状态。Connector 调用服务而非 `commands`。
   - 验收：同一 fixture 经桌面服务和 CLI 后，文件、Catalog、`[[...]]` 双链结果一致；失败不遗留半移动状态；桌面脏文档保护保留。
+  - 实施：core `catalog/move_paper.rs::move_with_index` 复用 rename 引擎；Host `catalog/service.rs` 仅适配 blocking/索引锁，Connector 不再引用 commands；CLI 的兼容入口构建新索引。`papers` 与 `pdf_page_counts` 路径更新补为同一事务。重复移动统一成功 no-op（桌面原报错语义调整，wire 形状不变）。核心测试覆盖冷/热索引结果、dirty 阻止、第二条 SQL 故障后的文件/链接/Catalog 补偿；Host 测试比较两入口，CLI 真实命令测试覆盖改链/no-op。验证：core Catalog 29 通过；CLI `paper_move` 3 通过；Host service 1 通过；`export_typescript_bindings` 通过且 wire 文件无变化；三 crate `clippy --all-targets -- -D warnings` 通过。提交记录待主审提交后补充。
 - [ ] **A2 统一 trash/restore 操作计划**（依赖 A1 的用例边界；恢复策略与 B 协作）
   - 收敛本地与远端的校验、恢复 manifest、执行顺序和失败结果；IO 执行器保留能力差异。
   - 验收：移动后 manifest 写失败、Catalog 更新失败、远端发布失败均有明确可恢复结果；同表测试覆盖两种后端。
@@ -132,7 +133,7 @@
 
 小范围修复可单独提交，不等待架构重构；R1/R2/R3 已完成，其余状态见各项。安全与正确性修复不因其规模小而推迟。
 
-验证保护（2026-09-25）：CI 的既有 `cli-tests` 任务改为显式运行 `cargo test -p agentero-core -p agentero-cli`，使 R2 等共享层回归测试进入 PR 检查；复用该任务的 PDFium provisioning 与构建产物，不增加矩阵任务或桌面 adapter staging。本地 `cargo test -p agentero-core`：506 通过、4 个既有手动/性能测试 ignored、0 失败；详见[测试入口](../test/index.md)。
+验证保护（2026-09-25）：CI 的既有 `cli-tests` 任务改为显式运行 `cargo test -p agentero-core -p agentero-cli`，使 R2 等共享层回归测试进入 PR 检查；复用该任务的 PDFium provisioning 与构建产物，不增加矩阵任务或桌面 adapter staging。本地 `cargo test -p agentero-core`：506 通过、4 个既有手动/性能测试 ignored、0 失败；详见[测试入口](../test/index.md)。提交：`4abb65180`。
 
 - [x] **R1 WAL 一致快照**（旧 P0-1，2026-09-25）：CatalogMirror 初始化与 push 使用 `VACUUM INTO` 导出自包含快照，保留 size/mtime 冲突检查；临时文件由 RAII 清理，不依赖关闭连接或 checkpoint。验证：`cargo test -p agentero catalog_mirror::tests --lib -- --nocapture`（1 通过），LocalFs 回归测试保持 WAL 写连接存活，验证未提交行不可见、提交后再次 push/checkout 的内容及完整性；`cargo clippy -p agentero --lib --tests -- -D warnings` 通过。B2 的投影就绪与会话清退尚未完成。提交：`cf9b4730f`。
 - [x] **R2 字段原子更新**（旧 P0-7，2026-09-25）：`papers.rs::mutate_paper` 用 `BEGIN IMMEDIATE` 统一 `update_meta`、`set_is_read`、`set_tags`、`add_tags`、`remove_tags` 的事务内读改写与回读。标签集合修改受同一写预约保护，覆盖独立 SQLite 连接。验证：`cargo test -p agentero-core features::paper::catalog::papers::tests -- --nocapture`（22 通过），新增独立连接写预约/错误释放及并发字段/标签集合测试。sidecar 与 NOTES 仍在提交后 best-effort 写入；B1 的投影重试和顺序保护未完成。提交：`90f26ca99`。
@@ -157,13 +158,13 @@
 | 批次 | 工作 | 主要依赖 | 状态 |
 |---|---|---|---|
 | 前置修复 | R1–R6 | 各项独立；按影响优先处理 R1/R2/R3 | R1/R2/R3 已完成，其余未开始 |
-| 第一批 | A1 移动用例，随后 A2/A3 | 复用已有 rename；A2 与 B3 明确恢复契约 | 未开始 |
+| 第一批 | A1 移动用例，随后 A2/A3 | 复用已有 rename；A2 与 B3 明确恢复契约 | A1 已完成，A2/A3 未开始 |
 | 第二批 | B1–B3、A4、C1/C2 | B 以前置数据修复为基础；A4/C 接入提交结果 | 未开始 |
 | 第三批 | D1/D2、E1 | D1 与 E1 先对齐计划接口；D2 可独立试点 | 未开始 |
 | 可独立推进 | E2/E3、F1–F3 | E2 从 R3 起步；F 内部按事件→执行→装配 | E2 的 sync lease 已完成，其余未开始 |
 | 后置 | S1–S6 | 主线边界稳定、或具体需求证明收益 | 未开始 |
 
-首个架构改动建议选择 **A1**：范围可控，已有实现可复用，又能用 CLI/桌面对比证明业务语义收敛。R 中的数据与安全问题先行或穿插处理，不要求所有 R 完成后才能开始独立主线。
+首个架构切片 **A1** 已完成：复用现有 rename，用 CLI/桌面对比证明本地移动语义收敛；后续继续 A2/A3。R 中的数据与安全问题先行或穿插处理，不要求所有 R 完成后才能开始独立主线。
 
 ## 旧任务归并索引
 

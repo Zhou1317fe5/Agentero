@@ -749,13 +749,20 @@ fn paper_list_json_slim_by_default_fields_and_full() {
 }
 
 #[test]
-fn paper_move_updates_filesystem_and_catalog() {
+fn paper_move_updates_filesystem_catalog_and_wiki() {
     let tmp = tempdir().unwrap();
     let vault = tmp.path().join("v");
     create_vault(&vault);
     fs::create_dir_all(vault.join("papers/inbox/demo")).unwrap();
     fs::create_dir_all(vault.join("papers/archive")).unwrap();
     seed_paper(&vault, "papers/inbox/demo", "demo", "Demo");
+    fs::write(vault.join("papers/inbox/demo/NOTES.md"), "# Demo\n").unwrap();
+    fs::create_dir_all(vault.join("notes")).unwrap();
+    fs::write(
+        vault.join("notes/source.md"),
+        "[[papers/inbox/demo/NOTES]]\n",
+    )
+    .unwrap();
 
     agentero()
         .args([
@@ -772,6 +779,22 @@ fn paper_move_updates_filesystem_and_catalog() {
 
     assert!(!vault.join("papers/inbox/demo").exists());
     assert!(vault.join("papers/archive/demo").is_dir());
+    assert_eq!(
+        fs::read_to_string(vault.join("notes/source.md")).unwrap(),
+        "[[papers/archive/demo/NOTES]]\n"
+    );
+    agentero()
+        .args([
+            "--vault",
+            vault.to_str().unwrap(),
+            "paper",
+            "move",
+            "papers/archive/demo",
+            "papers/archive",
+            "--json",
+        ])
+        .assert()
+        .success();
     let listed = agentero()
         .args([
             "--vault",

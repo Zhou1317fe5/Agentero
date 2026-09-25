@@ -27,6 +27,7 @@
 - `tags_json`：字符串或 `{name,color}`（Apple 8 色）。`@zotero:` / `@arxiv:` 前缀为内部隐标签（Connector 来源 / arXiv 学科分类），UI 与 CLI 默认不展示。**契约缺口**：`impl Serialize for PaperTag` 无色时输出裸字符串，而 specta 生成的类型是 `{ name, color }` 对象，因此前端必须保留 `PaperTagInput[]` + `coercePaperTags`
 - `paper_list` 对前端 Library 返回按 `id` 去重的视图：同一逻辑论文若因历史原因出现在多个路径，只保留一条（优先存在磁盘的路径，其次 `updated_at` 最新、路径最短/字典序最小）
 - `paper_rescan`：盘上有、库内无则补齐
+- **同 Vault 移动**：core `catalog/move_paper.rs::move_with_index` 统一文件移动、Wiki 改链、Catalog 与页数路径更新；后两者在同一个 SQLite 事务内提交，提交失败由既有 rename 事务补偿文件和链接。桌面/本地 Connector 经 Host `catalog/service.rs` 适配，CLI 经 `move_paper_under` 构造 Wiki 索引；业务不再放在 commands。重复移动到当前父目录统一成功返回原路径和空 `linkUpdate.updatedSources`（桌面原先报错，CLI/Connector 保持幂等）；桌面 `dirty_paths` 仍在写入前校验。跨 Vault migrate 与远端移动保持原实现。
 - 删除：回收站快照；恢复 upsert
 - 连接启用 WAL + `busy_timeout`，写入不阻塞列表读取；每个 Vault 维护一条常驻连接（`schema.rs::with_catalog`，进程级缓存，Mutex 串行化 `spawn_blocking` 并发），PRAGMA/迁移只在首次打开执行；数据库文件被外部删除时自动丢弃旧句柄并重建
 - 连接缓存生命期：切走 / 关闭 vault 时由前端 `vault:opened` 作用域的 teardown 调 `vault_release` 驱逐（`evict_catalog_conn`）。否则一次会话中访问过的每个 Vault 都会把 SQLite 句柄与 WAL 留到进程退出。驱逐对进行中的操作安全 —— 它们持有连接的 `Arc` 克隆

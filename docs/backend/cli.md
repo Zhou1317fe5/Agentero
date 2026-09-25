@@ -184,7 +184,7 @@ agentero paper tag list --all
 
 `paper delete` 默认移入可恢复回收站（由桌面端管理恢复与清空）；明确传 `--files` 才会物理删除。
 
-论文移动会更新文件夹和 Catalog 路径。目标父目录不存在时会自动创建；目标已存在或路径逃出 `papers/` 时失败且不改 Catalog：
+同 Vault 论文移动与桌面、本地 Connector 共用 core 用例：更新文件夹、Catalog/页数路径与已解析的 Wiki 链接；Catalog 提交失败时补偿文件和链接。CLI 为本次操作构建 Wiki 索引，无本进程未保存编辑状态；不能替另一个桌面进程保护未保存内容。移动到当前父目录为成功 no-op。目标父目录不存在时会自动创建；目标已存在或路径逃出 `papers/` 时失败且不改 Catalog：
 
 ```bash
 agentero paper move papers/inbox/demo papers/archive
