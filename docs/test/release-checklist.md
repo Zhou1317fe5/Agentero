@@ -54,7 +54,7 @@
 ```bash
 pnpm lint && pnpm test && pnpm build
 cargo test --manifest-path src-tauri/Cargo.toml
-cargo test -p agentero-cli
+cargo test -p agentero-core -p agentero-cli
 ```
 
 | # | 界面 | 操作 | 预期 | 结果 |

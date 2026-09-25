@@ -132,9 +132,11 @@
 
 小范围修复可单独提交，不等待架构重构；R1/R2/R3 已完成，其余状态见各项。安全与正确性修复不因其规模小而推迟。
 
+验证保护（2026-09-25）：CI 的既有 `cli-tests` 任务改为显式运行 `cargo test -p agentero-core -p agentero-cli`，使 R2 等共享层回归测试进入 PR 检查；复用该任务的 PDFium provisioning 与构建产物，不增加矩阵任务或桌面 adapter staging。本地 `cargo test -p agentero-core`：506 通过、4 个既有手动/性能测试 ignored、0 失败；详见[测试入口](../test/index.md)。
+
 - [x] **R1 WAL 一致快照**（旧 P0-1，2026-09-25）：CatalogMirror 初始化与 push 使用 `VACUUM INTO` 导出自包含快照，保留 size/mtime 冲突检查；临时文件由 RAII 清理，不依赖关闭连接或 checkpoint。验证：`cargo test -p agentero catalog_mirror::tests --lib -- --nocapture`（1 通过），LocalFs 回归测试保持 WAL 写连接存活，验证未提交行不可见、提交后再次 push/checkout 的内容及完整性；`cargo clippy -p agentero --lib --tests -- -D warnings` 通过。B2 的投影就绪与会话清退尚未完成。提交：`cf9b4730f`。
 - [x] **R2 字段原子更新**（旧 P0-7，2026-09-25）：`papers.rs::mutate_paper` 用 `BEGIN IMMEDIATE` 统一 `update_meta`、`set_is_read`、`set_tags`、`add_tags`、`remove_tags` 的事务内读改写与回读。标签集合修改受同一写预约保护，覆盖独立 SQLite 连接。验证：`cargo test -p agentero-core features::paper::catalog::papers::tests -- --nocapture`（22 通过），新增独立连接写预约/错误释放及并发字段/标签集合测试。sidecar 与 NOTES 仍在提交后 best-effort 写入；B1 的投影重试和顺序保护未完成。提交：`90f26ca99`。
-- [x] **R3 sync 占用 RAII**（旧 P0-2，2026-09-25）：`SyncRunLease` 替代手工 begin/end，正常/错误/超时/abort 均释放占用；退出 flush 使用相同 lease，忙碌 Vault 跳过。验证：`cargo test -p agentero integration::sync::tests --lib -- --nocapture`（3 通过），覆盖真实 tokio abort、虚拟时钟 timeout、错误返回与多 Vault 独立性。保留既有 wire 终态；abort 后的 UI 事件对账及子任务协调取消留在 E2，不宣称 abort 可撤销远端 IO 或 `spawn_blocking`。提交记录待主审提交后补充。
+- [x] **R3 sync 占用 RAII**（旧 P0-2，2026-09-25）：`SyncRunLease` 替代手工 begin/end，正常/错误/超时/abort 均释放占用；退出 flush 使用相同 lease，忙碌 Vault 跳过。验证：`cargo test -p agentero integration::sync::tests --lib -- --nocapture`（3 通过），覆盖真实 tokio abort、虚拟时钟 timeout、错误返回与多 Vault 独立性。保留既有 wire 终态；abort 后的 UI 事件对账及子任务协调取消留在 E2，不宣称 abort 可撤销远端 IO 或 `spawn_blocking`。提交：`ef2ca0a75`。
 - [ ] **R4 Agent 交互清理与转发**（旧 P0-3/P0-4）：超时/取消移除 pending，补齐 Bridge ask-user/elicitation 请求转发；晚到回答保持 `resolved:false`，完整交互链路验证后再由 F1 替换临时转发。
 - [ ] **R5 论文附件分类**（旧 P0-5）：附件 PDF/TeX 不成为主资产；测试锁定 AGENTS.md 约定，不未经确认搬动历史用户文件。
 - [ ] **R6 文件授权与会话清退**（旧 P0-6/P0-8 连接项）：规范化路径并校验已授权 Vault 范围；远端断开前释放 work-root 连接和任务。验证正常打开流程及越界拒绝。
