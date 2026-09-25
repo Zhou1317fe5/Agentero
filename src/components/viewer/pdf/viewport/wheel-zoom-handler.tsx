@@ -4,6 +4,7 @@ import {
 } from "@embedpdf/plugin-viewport/react";
 import { useZoom } from "@embedpdf/plugin-zoom/react";
 import { useEffect, useLayoutEffect, useRef } from "react";
+import { EMBED_PAGE_ATTR } from "@/components/viewer/pdf/coords";
 import { bindZoomGesture, type ZoomGesturePoint } from "@/lib/pdf/wheel-zoom";
 import { clampZoomPreviewScale, zoomPreviewTranslate } from "@/lib/pdf/zoom";
 
@@ -12,6 +13,17 @@ const ZOOM_GESTURE_WATCHDOG_MS = 1200;
 
 /** Zoom deltas below this are not worth a real relayout. */
 const ZOOM_COMMIT_EPSILON = 1e-3;
+
+/** Let the virtual scroller publish its new page dimensions before giving up. */
+const ZOOM_LAYOUT_SETTLE_FRAMES = 8;
+
+type PageAnchor = {
+	pageIndex: number;
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+};
 
 /**
  * Ctrl/Cmd+wheel and trackpad pinch zoom.
@@ -47,33 +59,21 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 	const pendingCommitRef = useRef(false);
 	/** Scroll the zoom plugin derived for the commit, read in the same task. */
 	const pendingScrollRef = useRef<{ left: number; top: number } | null>(null);
+	/** The PDF point under the gesture, used to join preview and real layout. */
+	const pendingAnchorRef = useRef<PageAnchor | null>(null);
+	const settleCommitRef = useRef<(() => void) | null>(null);
 
-	// The scroller resizes with the zoom inside the same React commit as this
-	// effect, before the browser paints. Applying the scroll the zoom plugin
-	// derived and dropping the preview transform here keeps the release to a
-	// single paint: the DOM never shows the new layout scaled a second time by
-	// the preview transform (which, over a document-height element, stalls the
-	// compositor), and the viewport's own deferred scroll arrives afterwards as a
-	// no-op.
+	// A zoom-state change can precede the virtual scroller's DOM resize. Let the
+	// settle loop verify the rendered page dimensions before removing the preview
+	// transform; clearing it immediately exposes a stale layout for one frame.
 	useLayoutEffect(() => {
 		if (
 			!pendingCommitRef.current ||
 			!Number.isFinite(zoomState.currentZoomLevel)
 		)
 			return;
-		pendingCommitRef.current = false;
-		const scroll = pendingScrollRef.current;
-		pendingScrollRef.current = null;
-		const element = previewElementRef.current;
-		if (element) {
-			element.style.transform = "";
-			element.style.willChange = "";
-		}
-		const container = viewportRef?.current;
-		if (!container || !scroll) return;
-		if (Number.isFinite(scroll.left)) container.scrollLeft = scroll.left;
-		if (Number.isFinite(scroll.top)) container.scrollTop = scroll.top;
-	}, [viewportRef, zoomState.currentZoomLevel]);
+		settleCommitRef.current?.();
+	}, [zoomState.currentZoomLevel]);
 
 	useEffect(() => {
 		const container = viewportRef?.current;
@@ -96,6 +96,8 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 		/** Gesture point in the transformed element's own coordinates. */
 		let local = { x: 0, y: 0 };
 		let watchdog: ReturnType<typeof setTimeout> | null = null;
+		let settleFrame: number | null = null;
+		let settleFrames = 0;
 		let running = false;
 
 		const clearWatchdog = () => {
@@ -103,6 +105,75 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 			clearTimeout(watchdog);
 			watchdog = null;
 		};
+
+		const cancelSettle = () => {
+			if (settleFrame === null) return;
+			cancelAnimationFrame(settleFrame);
+			settleFrame = null;
+		};
+
+		const completeCommit = () => {
+			cancelSettle();
+			pendingCommitRef.current = false;
+			pendingScrollRef.current = null;
+			pendingAnchorRef.current = null;
+			resetPreview();
+		};
+
+		const scheduleSettle = () => {
+			if (settleFrame !== null || !pendingCommitRef.current) return;
+			settleFrame = requestAnimationFrame(() => {
+				settleFrame = null;
+				settleCommit();
+			});
+		};
+
+		const settleCommit = () => {
+			if (!pendingCommitRef.current) return;
+			const element = previewElementRef.current;
+			const scroll = pendingScrollRef.current;
+			const anchor = pendingAnchorRef.current;
+			if (!element || !scroll) {
+				completeCommit();
+				return;
+			}
+
+			// Transforms change getBoundingClientRect(). Temporarily inspect the real
+			// layout, then restore the preview if the virtual page sizes are still old.
+			const previewTransform = element.style.transform;
+			element.style.transform = "";
+			const page = anchor
+				? container.querySelector<HTMLElement>(
+						`[${EMBED_PAGE_ATTR}="${anchor.pageIndex}"]`,
+					)
+				: null;
+			const pageRect = page?.getBoundingClientRect();
+			const expectedWidth = anchor ? anchor.width * previewScale : 0;
+			const expectedHeight = anchor ? anchor.height * previewScale : 0;
+			const layoutReady =
+				!anchor ||
+				(Math.abs((pageRect?.width ?? Infinity) - expectedWidth) <= 2 &&
+					Math.abs((pageRect?.height ?? Infinity) - expectedHeight) <= 2);
+
+			if (!layoutReady && settleFrames < ZOOM_LAYOUT_SETTLE_FRAMES) {
+				element.style.transform = previewTransform;
+				settleFrames += 1;
+				scheduleSettle();
+				return;
+			}
+
+			if (Number.isFinite(scroll.left)) container.scrollLeft = scroll.left;
+			if (Number.isFinite(scroll.top)) container.scrollTop = scroll.top;
+			if (anchor && page) {
+				const current = page.getBoundingClientRect();
+				const anchoredX = current.left + current.width * anchor.x;
+				const anchoredY = current.top + current.height * anchor.y;
+				container.scrollLeft += anchoredX - pointer.x;
+				container.scrollTop += anchoredY - pointer.y;
+			}
+			completeCommit();
+		};
+		settleCommitRef.current = settleCommit;
 
 		const commit = () => {
 			if (!running) return;
@@ -121,6 +192,7 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 				return;
 			}
 			pendingCommitRef.current = true;
+			settleFrames = 0;
 			zoomRef.current?.requestZoom(target, focus);
 			// Read the scroll the plugin derived for this focus in the same task as
 			// the request, before anything can walk the cached metrics back to the
@@ -131,14 +203,7 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 			pendingScrollRef.current = metrics
 				? { left: metrics.scrollLeft, top: metrics.scrollTop }
 				: null;
-			// Safety net: if the plugin snaps the request to its own grid and nothing
-			// changes, no commit follows and the layout effect never runs.
-			requestAnimationFrame(() => {
-				if (!pendingCommitRef.current) return;
-				pendingCommitRef.current = false;
-				pendingScrollRef.current = null;
-				resetPreview();
-			});
+			scheduleSettle();
 		};
 
 		const armWatchdog = () => {
@@ -151,10 +216,13 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 			onZoomStart: (point) => {
 				if (running) commit();
 				clearWatchdog();
+				cancelSettle();
 				// Measure the element without a stale preview transform; a commit whose
 				// layout effect has not run yet finishes through the plugin's own
 				// deferred scroll instead.
 				pendingCommitRef.current = false;
+				pendingScrollRef.current = null;
+				pendingAnchorRef.current = null;
 				resetPreview();
 				const containerRect = container.getBoundingClientRect();
 				// WebKit's GestureEvent does not always carry coordinates.
@@ -166,6 +234,20 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 						? point.y
 						: containerRect.top + containerRect.height / 2,
 				};
+				const page = document
+					.elementFromPoint(pointer.x, pointer.y)
+					?.closest<HTMLElement>(`[${EMBED_PAGE_ATTR}]`);
+				const pageRect = page?.getBoundingClientRect();
+				pendingAnchorRef.current =
+					page && pageRect && pageRect.width > 0 && pageRect.height > 0
+						? {
+								pageIndex: Number(page.getAttribute(EMBED_PAGE_ATTR)),
+								x: (pointer.x - pageRect.left) / pageRect.width,
+								y: (pointer.y - pageRect.top) / pageRect.height,
+								width: pageRect.width,
+								height: pageRect.height,
+							}
+						: null;
 				previewZoom = zoomLevelRef.current || 1;
 				previewScale = 1;
 				running = true;
@@ -201,7 +283,11 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 		return () => {
 			binding.dispose();
 			clearWatchdog();
+			cancelSettle();
+			settleCommitRef.current = null;
 			pendingCommitRef.current = false;
+			pendingScrollRef.current = null;
+			pendingAnchorRef.current = null;
 			resetPreview();
 		};
 	}, [docId, viewportRef]);
