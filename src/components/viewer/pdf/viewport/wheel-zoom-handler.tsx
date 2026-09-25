@@ -6,7 +6,10 @@ import { useZoom } from "@embedpdf/plugin-zoom/react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import { EMBED_PAGE_ATTR } from "@/components/viewer/pdf/coords";
 import { bindZoomGesture, type ZoomGesturePoint } from "@/lib/pdf/wheel-zoom";
-import { clampZoomPreviewScale, zoomPreviewTranslate } from "@/lib/pdf/zoom";
+import {
+	clampZoomPreviewScale,
+	zoomPreviewTranslateForViewport,
+} from "@/lib/pdf/zoom";
 
 /** Safety net for a dropped `gestureend`: commit the pending preview. */
 const ZOOM_GESTURE_WATCHDOG_MS = 1200;
@@ -40,8 +43,9 @@ type PageAnchor = {
  * the viewport towards the start of the document, and a fixed step of 10–20%
  * made a slow pinch feel like it was not responding at all.
  *
- * The transform keeps the gesture's own point fixed, so a pinch scales around
- * the fingers rather than the viewport center.
+ * The transform follows the reader's centered layout while pages fit the
+ * viewport, then hands the horizontal anchor smoothly to the gesture point as
+ * the page overflows.
  */
 export function WheelZoomHandler({ docId }: { docId: string }) {
 	const viewportRef = useViewportElement();
@@ -92,6 +96,8 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 
 		let previewZoom = 1;
 		let previewScale = 1;
+		let previewElementWidth = 0;
+		let previewViewportWidth = 0;
 		let pointer: ZoomGesturePoint = { x: 0, y: 0 };
 		/** Gesture point in the transformed element's own coordinates. */
 		let local = { x: 0, y: 0 };
@@ -180,8 +186,7 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 			running = false;
 			clearWatchdog();
 			const containerRect = container.getBoundingClientRect();
-			// The focus the zoom plugin anchors on: the gesture point keeps its
-			// viewport position once the scroller is scaled to `target`.
+			// The focus keeps the gesture point in place once the real layout lands.
 			const focus = {
 				vx: pointer.x - containerRect.left,
 				vy: pointer.y - containerRect.top,
@@ -250,6 +255,10 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 						: null;
 				previewZoom = zoomLevelRef.current || 1;
 				previewScale = 1;
+				previewElementWidth = previewElementRef.current?.offsetWidth ?? 0;
+				previewViewportWidth =
+					viewportCapabilityRef.current?.forDocument(docId).getMetrics()
+						.clientWidth ?? container.clientWidth;
 				running = true;
 				const element = previewElementRef.current;
 				if (element) {
@@ -274,7 +283,13 @@ export function WheelZoomHandler({ docId }: { docId: string }) {
 				armWatchdog();
 				const element = previewElementRef.current;
 				if (!element) return;
-				const offset = zoomPreviewTranslate(local.x, local.y, previewScale);
+				const offset = zoomPreviewTranslateForViewport(
+					local.x,
+					local.y,
+					previewScale,
+					previewElementWidth,
+					previewViewportWidth,
+				);
 				element.style.transform = `translate(${offset.x}px, ${offset.y}px) scale(${previewScale})`;
 			},
 			onZoomEnd: commit,
