@@ -1287,14 +1287,14 @@ pub fn list_under_path(vault_root: &Path, path: &str) -> Result<Vec<PaperRecord>
     if path.is_empty() {
         return Ok(Vec::new());
     }
-    let like = format!("{path}/%");
+    let like = crate::sqlite::descendant_path_pattern(&path);
     with_catalog(vault_root, |conn| {
         let mut stmt = conn
             .prepare(&format!(
                 r#"
             SELECT {PAPER_COLUMNS}
             FROM papers
-            WHERE path = ?1 OR path LIKE ?2
+            WHERE path = ?1 OR path LIKE ?2 ESCAPE '!'
             ORDER BY path ASC
             "#,
             ))
@@ -1315,16 +1315,16 @@ pub fn delete_under_path(vault_root: &Path, path: &str) -> Result<usize, AppErro
     if path.is_empty() {
         return Err(AppError::message("path is required"));
     }
-    let like = format!("{path}/%");
+    let like = crate::sqlite::descendant_path_pattern(&path);
     with_catalog(vault_root, |conn| {
         let n = conn
             .execute(
-                "DELETE FROM papers WHERE path = ?1 OR path LIKE ?2",
+                "DELETE FROM papers WHERE path = ?1 OR path LIKE ?2 ESCAPE '!'",
                 params![path, like],
             )
             .map_err(AppError::from)?;
         conn.execute(
-            "DELETE FROM pdf_page_counts WHERE path = ?1 OR path LIKE ?2",
+            "DELETE FROM pdf_page_counts WHERE path = ?1 OR path LIKE ?2 ESCAPE '!'",
             params![path, like],
         )
         .map_err(AppError::from)?;
@@ -1340,7 +1340,7 @@ pub fn move_under_path(vault_root: &Path, from: &str, to: &str) -> Result<usize,
     if from.is_empty() || to.is_empty() {
         return Err(AppError::message("from and to are required"));
     }
-    let like = format!("{from}/%");
+    let like = crate::sqlite::descendant_path_pattern(&from);
     let now = crate::time::now_rfc3339_millis();
     // Exact row -> `to`; nested rows -> `to` + the suffix after `from`.
     // substr uses a 1-based CHARACTER index so non-ASCII folder names are safe.
@@ -1351,13 +1351,13 @@ pub fn move_under_path(vault_root: &Path, from: &str, to: &str) -> Result<usize,
         let n = tx
             .execute(
                 "UPDATE papers SET path = ?1 || substr(path, ?2), updated_at = ?3 \
-                 WHERE path = ?4 OR path LIKE ?5",
+                 WHERE path = ?4 OR path LIKE ?5 ESCAPE '!'",
                 params![to, offset, now, from, like],
             )
             .map_err(AppError::from)?;
         tx.execute(
             "UPDATE pdf_page_counts SET path = ?1 || substr(path, ?2) \
-             WHERE path = ?3 OR path LIKE ?4",
+             WHERE path = ?3 OR path LIKE ?4 ESCAPE '!'",
             params![to, offset, from, like],
         )
         .map_err(AppError::from)?;
@@ -1646,6 +1646,82 @@ mod tests {
             params![path, path],
         )
         .unwrap();
+    }
+
+    #[test]
+    fn path_prefix_crud_treats_wildcards_and_escape_as_literals() {
+        let root = tempfile::tempdir().unwrap();
+        let conn = ensure_catalog(root.path()).unwrap();
+        let from = "papers/a%_!论文";
+        let to = "papers/moved%_!论文";
+        let matching = [
+            from.to_string(),
+            format!("{from}/child"),
+            format!("{from}/child/deep"),
+        ];
+        let siblings = [
+            "papers/aXY!论文/child",
+            "papers/a%_!论文-more/child",
+            "papers/a%_论文/child",
+            "papers/other/a%_!论文/child",
+            "papers/movedXY!论文/child",
+            "papers/moved%_!论文-more/child",
+        ];
+        for path in matching.iter().map(String::as_str).chain(siblings) {
+            insert(&conn, path);
+            set_page_counts(root.path(), &[(path.to_string(), 7)]).unwrap();
+        }
+        let source_windows = from.replace('/', "\\");
+        let listed = list_under_path(root.path(), &source_windows).unwrap();
+        assert_eq!(
+            listed
+                .iter()
+                .map(|row| row.path.as_str())
+                .collect::<Vec<_>>(),
+            matching.iter().map(String::as_str).collect::<Vec<_>>()
+        );
+        assert_eq!(
+            move_under_path(root.path(), &source_windows, &to.replace('/', "\\")).unwrap(),
+            3
+        );
+        for path in &matching {
+            let moved = path.replacen(from, to, 1);
+            assert!(get_by_path(root.path(), path).unwrap().is_none());
+            assert!(get_by_path(root.path(), &moved).unwrap().is_some());
+            assert_eq!(
+                conn.query_row(
+                    "SELECT page_count FROM pdf_page_counts WHERE path=?1",
+                    [&moved],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+                7
+            );
+        }
+        assert_eq!(
+            delete_under_path(root.path(), &to.replace('/', "\\")).unwrap(),
+            3
+        );
+        assert!(list_under_path(root.path(), to).unwrap().is_empty());
+        for path in siblings {
+            assert!(get_by_path(root.path(), path).unwrap().is_some());
+            assert_eq!(
+                conn.query_row(
+                    "SELECT page_count FROM pdf_page_counts WHERE path=?1",
+                    [path],
+                    |r| r.get::<_, i64>(0)
+                )
+                .unwrap(),
+                7
+            );
+        }
+        assert_eq!(
+            conn.query_row("SELECT count(*) FROM pdf_page_counts", [], |r| r
+                .get::<_, i64>(0))
+                .unwrap(),
+            siblings.len() as i64
+        );
+        super::super::evict_catalog_conn(root.path());
     }
 
     #[test]

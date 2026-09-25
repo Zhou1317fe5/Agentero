@@ -38,7 +38,8 @@
   - 在现有 core 的对应业务域建立 application/service 入口，复用已有 Wiki 规划、执行和回滚，不再造 rename 引擎。
   - Desktop 传入当前索引与 dirty paths；CLI 构造所需索引并明确无本进程编辑状态。Connector 调用服务而非 `commands`。
   - 验收：同一 fixture 经桌面服务和 CLI 后，文件、Catalog、`[[...]]` 双链结果一致；失败不遗留半移动状态；桌面脏文档保护保留。
-  - 实施：core `catalog/move_paper.rs::move_with_index` 复用 rename 引擎；Host `catalog/service.rs` 仅适配 blocking/索引锁，Connector 不再引用 commands；CLI 的兼容入口构建新索引。`papers` 与 `pdf_page_counts` 路径更新补为同一事务。重复移动统一成功 no-op（桌面原报错语义调整，wire 形状不变）。核心测试覆盖冷/热索引结果、dirty 阻止、第二条 SQL 故障后的文件/链接/Catalog 补偿；Host 测试比较两入口，CLI 真实命令测试覆盖改链/no-op。验证：core Catalog 29 通过；CLI `paper_move` 3 通过；Host service 1 通过；`export_typescript_bindings` 通过且 wire 文件无变化；三 crate `clippy --all-targets -- -D warnings` 通过。提交记录待主审提交后补充。
+  - 实施：core `catalog/move_paper.rs::move_with_index` 复用 rename 引擎；Host `catalog/service.rs` 仅适配 blocking/索引锁，Connector 不再引用 commands；CLI 的兼容入口构建新索引。`papers` 与 `pdf_page_counts` 路径更新补为同一事务。重复移动统一成功 no-op（桌面原报错语义调整，wire 形状不变）。核心测试覆盖冷/热索引结果、dirty 阻止、第二条 SQL 故障后的文件/链接/Catalog 补偿；Host 测试比较两入口，CLI 真实命令测试覆盖改链/no-op。验证：core Catalog 29 通过；CLI `paper_move` 3 通过；Host service 1 通过；`export_typescript_bindings` 通过且 wire 文件无变化；三 crate `clippy --all-targets -- -D warnings` 通过。提交：`267e22caa`。
+  - 后续正确性修复（2026-09-25）：Catalog 的子树快照/删除/移动、页数表和 Usage 筛选/改名统一使用 `sqlite::descendant_path_pattern` + `LIKE … ESCAPE '!'`，避免路径 `%` / `_` 被当作通配符；`!` 同时转义。保留路径边界、Windows 分隔符归一与既有 LIKE 大小写规则。实际 SQL 回归覆盖精确/嵌套路径、相似旁支、转义字符、非 ASCII、页数及 Usage 聚合/其他 Vault 隔离。验证：core Catalog 30 通过、Usage 13 通过；三 crate `clippy --all-targets -- -D warnings` 通过。提交记录待主审提交后补充。
 - [ ] **A2 统一 trash/restore 操作计划**（依赖 A1 的用例边界；恢复策略与 B 协作）
   - 收敛本地与远端的校验、恢复 manifest、执行顺序和失败结果；IO 执行器保留能力差异。
   - 验收：移动后 manifest 写失败、Catalog 更新失败、远端发布失败均有明确可恢复结果；同表测试覆盖两种后端。
