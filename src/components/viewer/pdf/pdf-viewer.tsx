@@ -27,6 +27,7 @@ import {
 } from "@embedpdf/plugin-layout-analysis/react";
 import { RenderPluginPackage } from "@embedpdf/plugin-render/react";
 import {
+	type PageLayout,
 	Scroller,
 	ScrollPluginPackage,
 	useScroll,
@@ -1525,21 +1526,13 @@ function PdfViewerInner({
 	 * can bail out instead of rebuilding ten page subtrees.
 	 */
 	const renderPage = useCallback(
-		({
-			pageIndex,
-			width,
-			height,
-		}: {
-			pageIndex: number;
-			width: number;
-			height: number;
-		}) => (
+		({ pageIndex, width, height, rotatedWidth, rotatedHeight }: PageLayout) => (
 			<PdfPageLayers
 				annotationSource={paperRelPath ?? paperAbsPath ?? undefined}
 				docId={docId}
 				pageIndex={pageIndex}
-				width={width}
-				height={height}
+				width={rotatedWidth || width}
+				height={rotatedHeight || height}
 				tone={pdfTone}
 				zoomRef={zoomRef}
 				annotationCap={annotationCap}

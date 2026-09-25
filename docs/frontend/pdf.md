@@ -15,7 +15,7 @@ PDFium engine 由窗口共享。默认优先 **worker 引擎**（PDFium WASM 跑
 
 `RenderLayer` 只是瓦片下的底图层，其 scale 另按 `PDF_BASE_LAYER_SCALE_CAP`（1.5）封顶：zoom 超过该值后整页光栅不再重渲染（单 worker 串行渲染下，长文档高倍缩放的整页光栅 + blob 传输是主要开销），清晰层由 `TilingLayer` 承担。瓦片 `tileSize: 1024` + `extraRings: 1`，减少长文档快速滚动时的渲染往返与边缘弹出。
 
-PDFium 的 `page.size` 已经包含页面 `/Rotate`（例如竖向 A4 上 `/Rotate 90` 的宽表，尺寸是横向的，光栅也是转正后的）。滚动布局和瓦片不能再按 `page.rotation` 对调宽高或重排瓦片，否则页框按横向宽度居中、纸面却按竖向宽度贴在左边，表格也被多转 90°。阅读器自己的旋转（`coreDoc.rotation`）仍然叠加在这个显示尺寸上。划词菜单同样不再按 `/Rotate` 反向旋转。这三个补丁包在 `vite.config.ts` 里排除了依赖预构建，避免 dev 一直吃到发布包的旧副本。
+PDFium / EmbedPDF 的滚动布局会为带 `/Rotate` 的页面给出显示尺寸：`PageLayout.rotatedWidth` / `rotatedHeight`。`PdfPageLayers` 的内层 page shell 必须使用这组旋转后的尺寸，而不是原始 `width` / `height`，否则第 90°/270° 旋转页会被塞进未旋转页框。滚动布局和瓦片也不能再额外按 `page.rotation` 对调宽高或重排瓦片，否则页框按横向宽度居中、纸面却按竖向宽度贴在左边，表格也被多转 90°。阅读器自己的旋转（`coreDoc.rotation`）仍然叠加在这个显示尺寸上。划词菜单同样不再按 `/Rotate` 反向旋转。这三个补丁包在 `vite.config.ts` 里排除了依赖预构建，避免 dev 一直吃到发布包的旧副本。
 
 抗抽动（twitch）措施：瓦片 `extraRings: 1` 预渲染视口外圈，减少快速滚动时边缘瓦片延迟弹出；`TilingLayer` patch 在新瓦片集异步光栅到达前保留旧瓦片作拉伸占位（`scale/srcScale` 重映射，1.5s 超时兜底），消除缩放瞬间的空白闪烁；marks 不再定时轮询，改由 Vault 文件监听（`vault:file-changed`，命中 `{paper}/marks/` 前缀，200ms 合并突发）触发刷新，配合激活时与窗口 focus 兜底；应用自身对 `marks/` 的写入会登记路径（3s TTL），其 watcher 回声直接跳过（写入方已更新内存态），mark 文件并发读取，读取结果仍做 JSON 指纹比对，内容未变不提交 state，避免整 viewer 重渲染。高亮派生态（视图模型 / 页边针锚点 / 链接分页图）的 annotation 事件按微任务合并后重建一次，批量导入 n 条不再逐事件 O(n²) 重建。
 

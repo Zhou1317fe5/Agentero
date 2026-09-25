@@ -135,7 +135,7 @@
 		"copied": "Copied {{label}}",
 		"copyFailed": "Could not copy to clipboard",
 		"count": "{{formatted}} papers",
-		"search": "Search by title or tag",
+		"search": "Search title, author, ID, DOI, or tag",
 		"filterTags": "Filter by tag",
 		"filterTagsEmpty": "No tags in this library yet.",
 		"clearTagFilter": "Clear tag filter",

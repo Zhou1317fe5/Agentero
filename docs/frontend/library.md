@@ -21,6 +21,7 @@
 | 能力 | 说明 |
 |---|---|
 | 排序 | 表头点击；日期 / 被引数默认新→旧（高→低），文本列升序。日期列按 `YYYYMMDD` 数值键排序，未披露的月/日补 `0`（年份粒度排在该年已披露日期之前），无日期无年份的行排最后（降序）；排序/标签筛选变化时行区 150ms 淡入提示重排（搜索键入不触发） |
+| 搜索 | 表头搜索框匹配标题、作者、catalog id、展示 identifier、vault path、DOI、arXiv、PMID、ISBN、期刊/出版物、出版社和可见标签。拖入 PDF 后即使标题被识别改名，也可用文件夹 id / DOI 找回 |
 | 列 | 表头右键选列 / 拖拽排序；顺序+显隐持久化 `libraryColumns`；标题列不可隐藏；标题单元格对 `$...$` / `\\(...\\)` 做 KaTeX 内联渲染（复制仍为原始 TeX）。日期列显示 `YYYY` / `YYYY-MM` / `YYYY-MM-DD`（精度随元数据），无 `date` 时回退 `year`；旧设置里的 `year` 列键在加载时原地改名为 `date` |
 | 滚动 | 横向 + 纵向；滚动中表头控件瞬间隐藏为纯列名（搜索框与刷新/筛选等图标，固定 `h-9` 行高与占位不变；当前排序列仍保留方向箭头；有标签筛选时 Tags 列名旁留小圆点），停滚约 450ms 后淡入恢复（入 300ms） |
 | tags | 染色 chip；搜索框匹配用户标签子串；`@zotero:` / `@arxiv:` 内部标签不显示 |
@@ -30,7 +31,7 @@
 | Download | 库内任一篇缺资源时批量补下 |
 | 导入/导出 | Library 工具栏；导出 BibTeX 亦可在 `papers/` 论文库节点右键 |
 | 发现引用 | `papers/` 论文库节点右键「发现引用我的新论文」→ 后台扫描全库反向引用 → 候选清单勾选入库；见 [../backend/citation-parsing.md](../backend/citation-parsing.md) §7 |
-| 拖入 PDF | Finder / 其它 App 把一个或多个 PDF 拖到 Library 表：虚线 overlay（仅 PDF），松手后直接后台导入。文件夹作用域导入到当前 `papers/…`；全库则落到树选中的 Papers 夹（否则 `papers/`）。识别、重命名和版面分析在后台继续；非 PDF 不显示 overlay、不入库 |
+| 拖入 PDF | Finder / 其它 App 把一个或多个 PDF 拖到 Library 表：虚线 overlay（仅 PDF），松手后直接后台导入。文件夹作用域导入到当前 `papers/…`；全库则落到树选中的 Papers 夹（否则 `papers/`）。Host lifecycle 事件会触发表格刷新；前端导入 job 成功后也会主动 `refreshLibrary()` 兜底，避免事件延迟时新论文短时间不可见。识别、重命名和版面分析在后台继续；非 PDF 不显示 overlay、不入库 |
 
 ## Tags（前端）
 

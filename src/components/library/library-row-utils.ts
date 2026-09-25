@@ -39,6 +39,7 @@ export function isMissingLocalPdf(p: PaperLibraryRow): boolean {
 export type PaperRow = {
 	paper: PaperLibraryRow;
 	tags: PaperTag[];
+	searchText: string;
 	tagSearch: string;
 	sort: Record<SortKey, string | number>;
 };
@@ -46,11 +47,29 @@ export type PaperRow = {
 export function buildPaperRow(p: PaperLibraryRow): PaperRow {
 	const tags = visiblePaperTags(p.tags);
 	const id = identifierValue(p) ?? "";
+	const tagSearch = tags
+		.map((t) => t.name)
+		.join(" ")
+		.toLocaleLowerCase();
 	return {
 		paper: p,
 		tags,
-		tagSearch: tags
-			.map((t) => t.name)
+		tagSearch,
+		searchText: [
+			p.title,
+			p.id,
+			id,
+			p.path,
+			p.doi,
+			p.arxiv_id,
+			p.pmid ? `PMID:${p.pmid}` : null,
+			p.isbn,
+			p.publication,
+			p.publisher,
+			...(p.authors ?? []),
+			tagSearch,
+		]
+			.filter((value): value is string => Boolean(value?.trim()))
 			.join(" ")
 			.toLocaleLowerCase(),
 		sort: {

@@ -248,10 +248,8 @@ export function PapersLibrary({
 	const rows = useMemo(() => {
 		let filtered = indexedRows;
 		if (normalizedQuery) {
-			filtered = filtered.filter(
-				(row) =>
-					String(row.sort.title).includes(normalizedQuery) ||
-					row.tagSearch.includes(normalizedQuery),
+			filtered = filtered.filter((row) =>
+				row.searchText.includes(normalizedQuery),
 			);
 		}
 		if (tagFilterSet.size > 0) {
