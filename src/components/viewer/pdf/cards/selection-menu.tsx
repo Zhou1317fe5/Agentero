@@ -1,4 +1,4 @@
-import { Languages } from "lucide-react";
+import { Copy, Languages } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,7 +64,7 @@ export function SelectionMenu({
 	const vh = typeof window !== "undefined" ? window.innerHeight : 800;
 	// Approximate collapsed width for centering; flex content sizes the real bar.
 	// Pin with CSS `right` so stack width changes grow left without moving actions.
-	const barW = (showTranslate ? 280 : 200) + (onCopy ? 72 : 0);
+	const barW = (showTranslate ? 280 : 200) + (onCopy ? 32 : 0);
 	const expandPad = showHighlight ? HIGHLIGHT_COLOR_STACK_WIDTH_DELTA : 0;
 	let left = screen.x - barW / 2;
 	// Leave room on the left so the color stack can expand without clipping.
@@ -125,18 +125,22 @@ export function SelectionMenu({
 					</Tooltip>
 				) : null}
 				{onCopy ? (
-					<button
-						type="button"
-						className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md px-1.5 text-caption font-medium text-foreground outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/50 active:scale-[0.97] motion-reduce:active:scale-100"
-						aria-label={`${t("selection.copy")} ${copyShortcut}`}
-						onPointerDown={(event) => event.preventDefault()}
-						onClick={onCopy}
-					>
-						<span>{t("selection.copy")}</span>
-						<kbd className="translate-y-px scale-90 text-caption font-normal text-muted-foreground/80 tabular-nums">
-							{copyShortcut}
-						</kbd>
-					</button>
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<Button
+								type="button"
+								variant="ghost"
+								size="icon-sm"
+								className="size-7"
+								aria-label={`${t("selection.copy")} ${copyShortcut}`}
+								onPointerDown={(event) => event.preventDefault()}
+								onClick={onCopy}
+							>
+								<Copy className="size-3.5" />
+							</Button>
+						</TooltipTrigger>
+						<TooltipContent side="top">{t("selection.copy")}</TooltipContent>
+					</Tooltip>
 				) : null}
 				<button
 					type="button"
