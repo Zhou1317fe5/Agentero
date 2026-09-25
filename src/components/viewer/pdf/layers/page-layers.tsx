@@ -164,10 +164,10 @@ function pdfPageRenderRotation(
 	documentState: ReturnType<typeof useDocumentState>,
 	pageIndex: number,
 ): Rotation {
-	const document = documentState?.document;
-	const pageRotation = document?.normalizedRotation
-		? 0
-		: (document?.pages[pageIndex]?.rotation ?? 0);
+	// `normalizeRotation: true` reports the unrotated content-space size and
+	// keeps /Rotate in `page.rotation`; the raster is only upright when the
+	// caller re-applies it (see test/pdf-page-rotation.test.ts).
+	const pageRotation = documentState?.document?.pages[pageIndex]?.rotation ?? 0;
 	return ((((pageRotation + (documentState?.rotation ?? 0)) % 4) + 4) %
 		4) as Rotation;
 }

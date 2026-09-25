@@ -35,10 +35,8 @@ export default defineConfig(async () => ({
 			"onnxruntime-web",
 			"@embedpdf/ai",
 			// Patched in-repo. Prebundling freezes the published copy, so a
-			// /Rotate fix in plugin-scroll/tiling never reaches `vite dev`.
-			"@embedpdf/plugin-scroll",
+			// patch fix in plugin-tiling never reaches `vite dev`.
 			"@embedpdf/plugin-tiling",
-			"@embedpdf/plugin-selection",
 		],
 	},
 
