@@ -50,9 +50,10 @@ tauri-build = { version = "2", features = [] }
 [dev-dependencies]
 # `start_paused` virtual clock for stream coalescer / throttle unit tests.
 tokio = { workspace = true, features = ["test-util", "macros"] }
-tempfile = { workspace = true }
 
 [dependencies]
+# RAII temporary SQLite snapshots for remote Catalog publication.
+tempfile = { workspace = true }
 # Tauri-independent foundations (errors, fs, http, paths, sqlite, usage log),
 # re-exported as `crate::core::*`. Must stay free of tauri/wry/tao.
 agentero-core = { path = "../crates/agentero-core" }

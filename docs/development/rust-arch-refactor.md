@@ -1,6 +1,6 @@
 # Rust 端架构重构计划（2026-09）
 
-状态：**实施中：R2 字段原子更新已完成，其余按下文状态推进**。最后更新：2026-09-25。
+状态：**实施中：R1 WAL 一致快照、R2 字段原子更新已完成，其余按下文状态推进**。最后更新：2026-09-25。
 
 来源：2026-09-06 三轮架构审计；2026-09-08 由 3 个 sub-agent 分别复核应用边界、存储一致性、运行时与集成，主评审补充核实论文入库及解析链路。本次为静态代码评审，未运行行为测试。历史 V 编号保留，旧 P0–P6 执行顺序由本文新计划替代。
 
@@ -52,13 +52,13 @@
 
 ## B · 数据提交、投影与恢复契约
 
-**问题与证据：** core `catalog/papers.rs::upsert_paper` 在 DB 提交后独立写 sidecar；字段操作原先读整行再 upsert 的并发窗口已由 R2 的事务内 patch 修复，可靠投影仍待实施；Host `integration/remote/catalog_mirror.rs:105` 发布时裸读 SQLite 主文件。`integration/sync/engine.rs:466` 从拉取的文件重建 Catalog，说明投影失败会影响跨设备传播。关联 V1、V10、V11、V33、V35。
+**问题与证据：** core `catalog/papers.rs::upsert_paper` 在 DB 提交后独立写 sidecar；字段操作原先读整行再 upsert 的并发窗口已由 R2 的事务内 patch 修复，可靠投影仍待实施；Host `integration/remote/catalog_mirror.rs` 发布原先裸读 SQLite 主文件的问题已由 R1 的一致快照修复。`integration/sync/engine.rs:466` 从拉取的文件重建 Catalog，说明投影失败会影响跨设备传播。关联 V1、V10、V11、V33、V35。
 
 - [ ] **B1 字段级事务与可重试投影**（以前置 R1/R2 为基础；R2 字段修改事务已完成，投影部分未开始）
   - 以 `PaperMutation` 或等价用例保存字段 patch 语义，读改写在一个 DB 事务内完成；不把所有更新统一成全行覆盖。
   - 同事务记录待投影版本，由有序 projector 写 sidecar；失败可重试，旧版本不得覆盖新版本。同步扫描前排空相关投影或显式报告未就绪。
   - 验收：并发改不同字段不丢值；投影失败、乱序及重启后可恢复；Catalog 始终是结构化 metadata 的事实来源。
-- [ ] **B2 明确远端 snapshot/publish 边界**
+- [ ] **B2 明确远端 snapshot/publish 边界**（R1 一致快照已完成，其余未开始）
   - 以一致快照发布 Catalog，保持冲突检查；将连接、work-root 和待发布投影纳入远端会话生命周期。
   - 修正 remote commit 先上传目录、后在 staging 生成 sidecar 的顺序缺口（`integration/remote/paper_commit.rs:84`）。
   - 验收：活跃连接写入后 push/pull 数据完整；sidecar 到达正确目标；失败不误报已发布；断开清退连接后才能清理临时目录。
@@ -130,10 +130,10 @@
 
 ## R · 前置正确性修复
 
-小范围修复可单独提交，不等待架构重构；R2 已完成，其余状态见各项。安全与正确性修复不因其规模小而推迟。
+小范围修复可单独提交，不等待架构重构；R1/R2 已完成，其余状态见各项。安全与正确性修复不因其规模小而推迟。
 
-- [ ] **R1 WAL 一致快照**（旧 P0-1）：用 SQLite 支持的一致快照机制导出；若采用 checkpoint + 读文件，必须协调写连接、检查 checkpoint 结果并保证读取窗口，不能认为新开短连接就自动安全。活跃 WAL 连接 write→push→pull 的 LocalFs 测试进入 CI，无需真实 SSH。
-- [x] **R2 字段原子更新**（旧 P0-7，2026-09-25）：`papers.rs::mutate_paper` 用 `BEGIN IMMEDIATE` 统一 `update_meta`、`set_is_read`、`set_tags`、`add_tags`、`remove_tags` 的事务内读改写与回读。标签集合修改受同一写预约保护，覆盖独立 SQLite 连接。验证：`cargo test -p agentero-core features::paper::catalog::papers::tests -- --nocapture`（22 通过），新增独立连接写预约/错误释放及并发字段/标签集合测试。sidecar 与 NOTES 仍在提交后 best-effort 写入；B1 的投影重试和顺序保护未完成。提交记录待主审提交后补充。
+- [x] **R1 WAL 一致快照**（旧 P0-1，2026-09-25）：CatalogMirror 初始化与 push 使用 `VACUUM INTO` 导出自包含快照，保留 size/mtime 冲突检查；临时文件由 RAII 清理，不依赖关闭连接或 checkpoint。验证：`cargo test -p agentero catalog_mirror::tests --lib -- --nocapture`（1 通过），LocalFs 回归测试保持 WAL 写连接存活，验证未提交行不可见、提交后再次 push/checkout 的内容及完整性；`cargo clippy -p agentero --lib --tests -- -D warnings` 通过。B2 的投影就绪与会话清退尚未完成。提交记录待主审提交后补充。
+- [x] **R2 字段原子更新**（旧 P0-7，2026-09-25）：`papers.rs::mutate_paper` 用 `BEGIN IMMEDIATE` 统一 `update_meta`、`set_is_read`、`set_tags`、`add_tags`、`remove_tags` 的事务内读改写与回读。标签集合修改受同一写预约保护，覆盖独立 SQLite 连接。验证：`cargo test -p agentero-core features::paper::catalog::papers::tests -- --nocapture`（22 通过），新增独立连接写预约/错误释放及并发字段/标签集合测试。sidecar 与 NOTES 仍在提交后 best-effort 写入；B1 的投影重试和顺序保护未完成。提交：`90f26ca99`。
 - [ ] **R3 sync 占用 RAII**（旧 P0-2）：guard 释放占用；abort 后可再次同步，作为 E2 的第一个落点。
 - [ ] **R4 Agent 交互清理与转发**（旧 P0-3/P0-4）：超时/取消移除 pending，补齐 Bridge ask-user/elicitation 请求转发；晚到回答保持 `resolved:false`，完整交互链路验证后再由 F1 替换临时转发。
 - [ ] **R5 论文附件分类**（旧 P0-5）：附件 PDF/TeX 不成为主资产；测试锁定 AGENTS.md 约定，不未经确认搬动历史用户文件。
@@ -154,7 +154,7 @@
 
 | 批次 | 工作 | 主要依赖 | 状态 |
 |---|---|---|---|
-| 前置修复 | R1–R6 | 各项独立；按影响优先处理 R1/R2/R3 | R2 已完成，其余未开始 |
+| 前置修复 | R1–R6 | 各项独立；按影响优先处理 R1/R2/R3 | R1/R2 已完成，其余未开始 |
 | 第一批 | A1 移动用例，随后 A2/A3 | 复用已有 rename；A2 与 B3 明确恢复契约 | 未开始 |
 | 第二批 | B1–B3、A4、C1/C2 | B 以前置数据修复为基础；A4/C 接入提交结果 | 未开始 |
 | 第三批 | D1/D2、E1 | D1 与 E1 先对齐计划接口；D2 可独立试点 | 未开始 |
