@@ -1,6 +1,6 @@
 # Rust 端架构重构计划（2026-09）
 
-状态：**实施中：R1 WAL 一致快照、R2 字段原子更新已完成，其余按下文状态推进**。最后更新：2026-09-25。
+状态：**实施中：R1 WAL 一致快照、R2 字段原子更新、R3 sync 占用 RAII 已完成，其余按下文状态推进**。最后更新：2026-09-25。
 
 来源：2026-09-06 三轮架构审计；2026-09-08 由 3 个 sub-agent 分别复核应用边界、存储一致性、运行时与集成，主评审补充核实论文入库及解析链路。本次为静态代码评审，未运行行为测试。历史 V 编号保留，旧 P0–P6 执行顺序由本文新计划替代。
 
@@ -96,13 +96,13 @@
 
 ## E · 调度内核与任务资源生命周期
 
-**问题与证据：** `features/jobs/mod.rs:417` 集中匹配业务并发，`:1549` 起包含论文后续调度；已存在 runner 注册和取消 RAII。`integration/sync/commands.rs:211` 的占用直到 await 后手工释放，而 `scheduler.rs:53` 直接 abort。关联 V13、V14、V28–V30。
+**问题与证据：** `features/jobs/mod.rs:417` 集中匹配业务并发，`:1549` 起包含论文后续调度；已存在 runner 注册和取消 RAII。sync 原先手工释放占用且 scheduler 直接 abort 的问题已由 R3 的 `SyncRunLease` 修复。关联 V13、V14、V28–V30。
 
 - [ ] **E1 JobCenter 退出论文业务策略**（与 D1 协作）
   - 论文域构建 JobSpec / PipelinePlan，拥有参数、后续工作和配额策略；调度内核只管理作用域、去重键、资源配额、依赖、执行与终态。
   - 保留已有 runner 注册、backfill probe、panic settle 与取消登记，不重写调度器；不预设必须把 JobKind enum 改为裸字符串。
   - 验收：新增业务任务不修改中央业务 match；既有 fingerprint、Renderer offer/report、timeout 和终态行为兼容。
-- [ ] **E2 薄运行作用域与释放契约**（从 R3 的 sync lease 起步）
+- [ ] **E2 薄运行作用域与释放契约**（R3 sync lease 已完成，子任务/服务作用域仍未开始）
   - `RunLease` 管理占用/取消登记，任务作用域管理子任务、协作取消及有界等待；区分停止周期触发与取消在途工作。
   - 逐步覆盖同步、Agent 运行及服务句柄；同步退出 flush 与正常同步共享必要的占用规则。
   - 验收：取消、错误、任务 abort 后资源可再次获取；应用退出与配置重启可预测。`spawn_blocking` 和远端写入明确可取消边界，不能宣称 abort 可终止所有操作。
@@ -130,11 +130,11 @@
 
 ## R · 前置正确性修复
 
-小范围修复可单独提交，不等待架构重构；R1/R2 已完成，其余状态见各项。安全与正确性修复不因其规模小而推迟。
+小范围修复可单独提交，不等待架构重构；R1/R2/R3 已完成，其余状态见各项。安全与正确性修复不因其规模小而推迟。
 
-- [x] **R1 WAL 一致快照**（旧 P0-1，2026-09-25）：CatalogMirror 初始化与 push 使用 `VACUUM INTO` 导出自包含快照，保留 size/mtime 冲突检查；临时文件由 RAII 清理，不依赖关闭连接或 checkpoint。验证：`cargo test -p agentero catalog_mirror::tests --lib -- --nocapture`（1 通过），LocalFs 回归测试保持 WAL 写连接存活，验证未提交行不可见、提交后再次 push/checkout 的内容及完整性；`cargo clippy -p agentero --lib --tests -- -D warnings` 通过。B2 的投影就绪与会话清退尚未完成。提交记录待主审提交后补充。
+- [x] **R1 WAL 一致快照**（旧 P0-1，2026-09-25）：CatalogMirror 初始化与 push 使用 `VACUUM INTO` 导出自包含快照，保留 size/mtime 冲突检查；临时文件由 RAII 清理，不依赖关闭连接或 checkpoint。验证：`cargo test -p agentero catalog_mirror::tests --lib -- --nocapture`（1 通过），LocalFs 回归测试保持 WAL 写连接存活，验证未提交行不可见、提交后再次 push/checkout 的内容及完整性；`cargo clippy -p agentero --lib --tests -- -D warnings` 通过。B2 的投影就绪与会话清退尚未完成。提交：`cf9b4730f`。
 - [x] **R2 字段原子更新**（旧 P0-7，2026-09-25）：`papers.rs::mutate_paper` 用 `BEGIN IMMEDIATE` 统一 `update_meta`、`set_is_read`、`set_tags`、`add_tags`、`remove_tags` 的事务内读改写与回读。标签集合修改受同一写预约保护，覆盖独立 SQLite 连接。验证：`cargo test -p agentero-core features::paper::catalog::papers::tests -- --nocapture`（22 通过），新增独立连接写预约/错误释放及并发字段/标签集合测试。sidecar 与 NOTES 仍在提交后 best-effort 写入；B1 的投影重试和顺序保护未完成。提交：`90f26ca99`。
-- [ ] **R3 sync 占用 RAII**（旧 P0-2）：guard 释放占用；abort 后可再次同步，作为 E2 的第一个落点。
+- [x] **R3 sync 占用 RAII**（旧 P0-2，2026-09-25）：`SyncRunLease` 替代手工 begin/end，正常/错误/超时/abort 均释放占用；退出 flush 使用相同 lease，忙碌 Vault 跳过。验证：`cargo test -p agentero integration::sync::tests --lib -- --nocapture`（3 通过），覆盖真实 tokio abort、虚拟时钟 timeout、错误返回与多 Vault 独立性。保留既有 wire 终态；abort 后的 UI 事件对账及子任务协调取消留在 E2，不宣称 abort 可撤销远端 IO 或 `spawn_blocking`。提交记录待主审提交后补充。
 - [ ] **R4 Agent 交互清理与转发**（旧 P0-3/P0-4）：超时/取消移除 pending，补齐 Bridge ask-user/elicitation 请求转发；晚到回答保持 `resolved:false`，完整交互链路验证后再由 F1 替换临时转发。
 - [ ] **R5 论文附件分类**（旧 P0-5）：附件 PDF/TeX 不成为主资产；测试锁定 AGENTS.md 约定，不未经确认搬动历史用户文件。
 - [ ] **R6 文件授权与会话清退**（旧 P0-6/P0-8 连接项）：规范化路径并校验已授权 Vault 范围；远端断开前释放 work-root 连接和任务。验证正常打开流程及越界拒绝。
@@ -154,11 +154,11 @@
 
 | 批次 | 工作 | 主要依赖 | 状态 |
 |---|---|---|---|
-| 前置修复 | R1–R6 | 各项独立；按影响优先处理 R1/R2/R3 | R1/R2 已完成，其余未开始 |
+| 前置修复 | R1–R6 | 各项独立；按影响优先处理 R1/R2/R3 | R1/R2/R3 已完成，其余未开始 |
 | 第一批 | A1 移动用例，随后 A2/A3 | 复用已有 rename；A2 与 B3 明确恢复契约 | 未开始 |
 | 第二批 | B1–B3、A4、C1/C2 | B 以前置数据修复为基础；A4/C 接入提交结果 | 未开始 |
 | 第三批 | D1/D2、E1 | D1 与 E1 先对齐计划接口；D2 可独立试点 | 未开始 |
-| 可独立推进 | E2/E3、F1–F3 | E2 从 R3 起步；F 内部按事件→执行→装配 | 未开始 |
+| 可独立推进 | E2/E3、F1–F3 | E2 从 R3 起步；F 内部按事件→执行→装配 | E2 的 sync lease 已完成，其余未开始 |
 | 后置 | S1–S6 | 主线边界稳定、或具体需求证明收益 | 未开始 |
 
 首个架构改动建议选择 **A1**：范围可控，已有实现可复用，又能用 CLI/桌面对比证明业务语义收敛。R 中的数据与安全问题先行或穿插处理，不要求所有 R 完成后才能开始独立主线。
